@@ -31,31 +31,30 @@ class Address {
     String? city,
     String? region,
     String? country,
-  }) =>
-      Address(
-        street: street ?? this.street,
-        complement: complement ?? this.complement,
-        zipCode: zipCode ?? this.zipCode,
-        city: city ?? this.city,
-        region: region ?? this.region,
-        country: country ?? this.country,
-      );
+  }) => Address(
+    street: street ?? this.street,
+    complement: complement ?? this.complement,
+    zipCode: zipCode ?? this.zipCode,
+    city: city ?? this.city,
+    region: region ?? this.region,
+    country: country ?? this.country,
+  );
 
   Map<String, dynamic> toJson() => {
-        if (street.isNotEmpty) 'street': street,
-        if (complement.isNotEmpty) 'complement': complement,
-        if (zipCode.isNotEmpty) 'zip': zipCode,
-        if (city.isNotEmpty) 'city': city,
-        if (region.isNotEmpty) 'region': region,
-        if (country.isNotEmpty) 'country': country,
-      };
+    if (street.isNotEmpty) 'street': street,
+    if (complement.isNotEmpty) 'complement': complement,
+    if (zipCode.isNotEmpty) 'zip': zipCode,
+    if (city.isNotEmpty) 'city': city,
+    if (region.isNotEmpty) 'region': region,
+    if (country.isNotEmpty) 'country': country,
+  };
 
   static Address fromJson(Map<String, dynamic> json) => Address(
-        street: json['street'] as String? ?? '',
-        complement: json['complement'] as String? ?? '',
-        zipCode: json['zip'] as String? ?? '',
-        city: json['city'] as String? ?? '',
-        region: json['region'] as String? ?? '',
-        country: json['country'] as String? ?? 'FR',
-      );
+    street: json['street'] as String? ?? '',
+    complement: json['complement'] as String? ?? '',
+    zipCode: json['zip'] as String? ?? '',
+    city: json['city'] as String? ?? '',
+    region: json['region'] as String? ?? '',
+    country: json['country'] as String? ?? 'FR',
+  );
 }

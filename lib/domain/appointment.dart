@@ -6,13 +6,7 @@ class AppointmentStatus {
   static const String cancelled = 'cancelled';
   static const String noShow = 'no_show';
 
-  static const List<String> all = [
-    planned,
-    confirmed,
-    done,
-    cancelled,
-    noShow,
-  ];
+  static const List<String> all = [planned, confirmed, done, cancelled, noShow];
 }
 
 class Appointment {
@@ -73,25 +67,23 @@ class Appointment {
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) =>
-      Appointment(
-        id: id ?? this.id,
-        clientId: clientId ?? this.clientId,
-        animalId: animalId ?? this.animalId,
-        sessionId: sessionId ?? this.sessionId,
-        startAt: startAt ?? this.startAt,
-        endAt: endAt ?? this.endAt,
-        title: title ?? this.title,
-        location: location ?? this.location,
-        kind: kind ?? this.kind,
-        status: status ?? this.status,
-        reminderMinutesBefore:
-            reminderMinutesBefore ?? this.reminderMinutesBefore,
-        externalCalendarEventId:
-            externalCalendarEventId ?? this.externalCalendarEventId,
-        externalCalendarId: externalCalendarId ?? this.externalCalendarId,
-        notes: notes ?? this.notes,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-      );
+  }) => Appointment(
+    id: id ?? this.id,
+    clientId: clientId ?? this.clientId,
+    animalId: animalId ?? this.animalId,
+    sessionId: sessionId ?? this.sessionId,
+    startAt: startAt ?? this.startAt,
+    endAt: endAt ?? this.endAt,
+    title: title ?? this.title,
+    location: location ?? this.location,
+    kind: kind ?? this.kind,
+    status: status ?? this.status,
+    reminderMinutesBefore: reminderMinutesBefore ?? this.reminderMinutesBefore,
+    externalCalendarEventId:
+        externalCalendarEventId ?? this.externalCalendarEventId,
+    externalCalendarId: externalCalendarId ?? this.externalCalendarId,
+    notes: notes ?? this.notes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }

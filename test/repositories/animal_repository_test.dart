@@ -22,12 +22,14 @@ void main() {
     repo = AnimalRepository(db, crypto);
     clients = ClientRepository(db, crypto);
     final now = DateTime.now();
-    final client = await clients.create(Client(
-      id: '',
-      firstName: 'Owner',
-      lastName: 'Test',
-      consents: ConsentSet(rgpdAt: now, disclaimerAt: now),
-    ));
+    final client = await clients.create(
+      Client(
+        id: '',
+        firstName: 'Owner',
+        lastName: 'Test',
+        consents: ConsentSet(rgpdAt: now, disclaimerAt: now),
+      ),
+    );
     clientId = client.id;
   });
 
@@ -36,14 +38,14 @@ void main() {
   });
 
   Animal draft({String name = 'Rex', String species = Species.dog}) => Animal(
-        id: '',
-        clientId: clientId,
-        name: name,
-        species: species,
-        weightGrams: 12000,
-        healthNotes: 'Léger boitement antérieur droit',
-        behaviorNotes: 'Anxieux en début de séance',
-      );
+    id: '',
+    clientId: clientId,
+    name: name,
+    species: species,
+    weightGrams: 12000,
+    healthNotes: 'Léger boitement antérieur droit',
+    behaviorNotes: 'Anxieux en début de séance',
+  );
 
   test('create + getById decrypts notes', () async {
     final created = await repo.create(draft());
@@ -65,9 +67,7 @@ void main() {
   test('species filter narrows the global list', () async {
     await repo.create(draft(name: 'Rex'));
     await repo.create(draft(name: 'Mia', species: Species.cat));
-    final cats = await repo
-        .watchAll(speciesFilter: Species.cat)
-        .first;
+    final cats = await repo.watchAll(speciesFilter: Species.cat).first;
     expect(cats.length, 1);
     expect(cats.single.name, 'Mia');
   });

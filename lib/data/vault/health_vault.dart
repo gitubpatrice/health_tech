@@ -27,19 +27,21 @@ import 'field_crypto.dart';
 ///   - VEK is uniformly random (better than a passphrase-derived key for AEAD).
 class HealthVault {
   HealthVault({FlutterSecureStorage? secureStorage})
-      : _storage = secureStorage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(
-                encryptedSharedPreferences: true,
-                resetOnError: false,
-              ),
-            );
+    : _storage =
+          secureStorage ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions(
+              encryptedSharedPreferences: true,
+              resetOnError: false,
+            ),
+          );
 
   static const _kWrappedVek = 'health_vault.wrapped_vek_v1';
   static const _kKdfSalt = 'health_vault.kdf_salt_v1';
   static const _kKdfMemory = 'health_vault.kdf_memory_v1';
   static const _kKdfIterations = 'health_vault.kdf_iterations_v1';
   static const _kKdfParallelism = 'health_vault.kdf_parallelism_v1';
+
   /// Backend tag persisted alongside the KDF parameters. When the user
   /// upgrades the app and the underlying Argon2id implementation switches
   /// (pure Dart → native JNI), unlock takes a fraction of the previous
@@ -187,11 +189,14 @@ class HealthVault {
       throw const VaultNotInitialisedError();
     }
     final memoryKb = int.parse(
-        await _storage.read(key: _kKdfMemory) ?? '$_defaultMemoryKb');
+      await _storage.read(key: _kKdfMemory) ?? '$_defaultMemoryKb',
+    );
     final iterations = int.parse(
-        await _storage.read(key: _kKdfIterations) ?? '$_defaultIterations');
+      await _storage.read(key: _kKdfIterations) ?? '$_defaultIterations',
+    );
     final parallelism = int.parse(
-        await _storage.read(key: _kKdfParallelism) ?? '$_defaultParallelism');
+      await _storage.read(key: _kKdfParallelism) ?? '$_defaultParallelism',
+    );
 
     final masterKey = await _deriveMasterKey(
       passphrase: passphrase,
@@ -279,10 +284,16 @@ class HealthVault {
     );
     final out = Uint8List(_wrapNonceLen + box.cipherText.length + _macLen);
     out.setRange(0, _wrapNonceLen, nonce);
-    out.setRange(_wrapNonceLen, _wrapNonceLen + box.cipherText.length,
-        box.cipherText);
-    out.setRange(_wrapNonceLen + box.cipherText.length, out.length,
-        box.mac.bytes);
+    out.setRange(
+      _wrapNonceLen,
+      _wrapNonceLen + box.cipherText.length,
+      box.cipherText,
+    );
+    out.setRange(
+      _wrapNonceLen + box.cipherText.length,
+      out.length,
+      box.mac.bytes,
+    );
     return out;
   }
 

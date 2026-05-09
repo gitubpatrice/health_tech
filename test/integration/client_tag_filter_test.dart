@@ -21,8 +21,7 @@ void main() {
   test('clientsStreamProvider intersects free-text + tag filter', () async {
     final db = HealthDb.forTesting();
     addTearDown(db.close);
-    final crypto =
-        FieldCrypto(Uint8List.fromList(List.generate(32, (i) => i)));
+    final crypto = FieldCrypto(Uint8List.fromList(List.generate(32, (i) => i)));
     final clients = ClientRepository(db, crypto);
     final tags = TagRepository(db);
 
@@ -36,24 +35,25 @@ void main() {
 
     final now = DateTime.now();
     final consents = ConsentSet(rgpdAt: now, disclaimerAt: now);
-    final c1 = await clients.create(Client(
-      id: '',
-      firstName: 'Alice',
-      lastName: 'Martin',
-      consents: consents,
-    ));
-    final c2 = await clients.create(Client(
-      id: '',
-      firstName: 'Bob',
-      lastName: 'Durand',
-      consents: consents,
-    ));
-    await clients.create(Client(
-      id: '',
-      firstName: 'Carole',
-      lastName: 'Petit',
-      consents: consents,
-    ));
+    final c1 = await clients.create(
+      Client(
+        id: '',
+        firstName: 'Alice',
+        lastName: 'Martin',
+        consents: consents,
+      ),
+    );
+    final c2 = await clients.create(
+      Client(id: '', firstName: 'Bob', lastName: 'Durand', consents: consents),
+    );
+    await clients.create(
+      Client(
+        id: '',
+        firstName: 'Carole',
+        lastName: 'Petit',
+        consents: consents,
+      ),
+    );
 
     final stress = await tags.upsert(label: 'Stress');
     final sommeil = await tags.upsert(label: 'Sommeil');

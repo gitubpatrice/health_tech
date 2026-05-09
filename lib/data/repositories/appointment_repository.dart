@@ -21,8 +21,11 @@ class AppointmentRepository {
     }
     final id = draft.id.isEmpty ? _uuid.v4() : draft.id;
     final epoch = nowEpochSeconds();
-    final companion =
-        await _toCompanion(draft.copyWith(id: id), isInsert: true, epoch: epoch);
+    final companion = await _toCompanion(
+      draft.copyWith(id: id),
+      isInsert: true,
+      epoch: epoch,
+    );
     await _db.into(_db.appointments).insert(companion);
     return (await getById(id))!;
   }
@@ -30,15 +33,16 @@ class AppointmentRepository {
   Future<Appointment> update(Appointment a) async {
     final epoch = nowEpochSeconds();
     final companion = await _toCompanion(a, isInsert: false, epoch: epoch);
-    await (_db.update(_db.appointments)..where((t) => t.id.equals(a.id)))
-        .write(companion);
+    await (_db.update(
+      _db.appointments,
+    )..where((t) => t.id.equals(a.id))).write(companion);
     return (await getById(a.id))!;
   }
 
   Future<Appointment?> getById(String id) async {
-    final row = await (_db.select(_db.appointments)
-          ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.appointments,
+    )..where((t) => t.id.equals(id) & t.deletedAt.isNull())).getSingleOrNull();
     if (row == null) return null;
     return _fromRow(row);
   }
@@ -47,13 +51,13 @@ class AppointmentRepository {
     final fromS = from.millisecondsSinceEpoch ~/ 1000;
     final toS = to.millisecondsSinceEpoch ~/ 1000;
     final select = _db.select(_db.appointments)
-      ..where((t) =>
-          t.deletedAt.isNull() &
-          t.startAt.isBetweenValues(fromS, toS))
+      ..where(
+        (t) => t.deletedAt.isNull() & t.startAt.isBetweenValues(fromS, toS),
+      )
       ..orderBy([(t) => OrderingTerm.asc(t.startAt)]);
     return select.watch().map(
-          (rows) => rows.map(_fromRowLight).toList(growable: false),
-        );
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
   }
 
   Stream<List<Appointment>> watchByClient(String clientId) {
@@ -61,29 +65,27 @@ class AppointmentRepository {
       ..where((t) => t.deletedAt.isNull() & t.clientId.equals(clientId))
       ..orderBy([(t) => OrderingTerm.desc(t.startAt)]);
     return select.watch().map(
-          (rows) => rows.map(_fromRowLight).toList(growable: false),
-        );
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
   }
 
   Stream<List<Appointment>> watchUpcoming({int limit = 50}) {
     final nowS = nowEpochSeconds();
     final select = _db.select(_db.appointments)
-      ..where((t) =>
-          t.deletedAt.isNull() & t.startAt.isBiggerOrEqualValue(nowS))
+      ..where(
+        (t) => t.deletedAt.isNull() & t.startAt.isBiggerOrEqualValue(nowS),
+      )
       ..orderBy([(t) => OrderingTerm.asc(t.startAt)])
       ..limit(limit);
     return select.watch().map(
-          (rows) => rows.map(_fromRowLight).toList(growable: false),
-        );
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
   }
 
   Future<void> softDelete(String id) async {
     final epoch = nowEpochSeconds();
     await (_db.update(_db.appointments)..where((t) => t.id.equals(id))).write(
-      AppointmentsCompanion(
-        deletedAt: Value(epoch),
-        updatedAt: Value(epoch),
-      ),
+      AppointmentsCompanion(deletedAt: Value(epoch), updatedAt: Value(epoch)),
     );
   }
 
@@ -129,20 +131,20 @@ class AppointmentRepository {
   Appointment _fromRowLight(AppointmentRow r) => _baseFromRow(r);
 
   Appointment _baseFromRow(AppointmentRow r) => Appointment(
-        id: r.id,
-        clientId: r.clientId,
-        animalId: r.animalId,
-        sessionId: r.sessionId,
-        startAt: DateTime.fromMillisecondsSinceEpoch(r.startAt * 1000),
-        endAt: DateTime.fromMillisecondsSinceEpoch(r.endAt * 1000),
-        title: r.title,
-        location: r.location,
-        kind: r.kind,
-        status: r.status,
-        reminderMinutesBefore: r.reminderMinutesBefore,
-        externalCalendarEventId: r.externalCalendarEventId,
-        externalCalendarId: r.externalCalendarId,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(r.createdAt * 1000),
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(r.updatedAt * 1000),
-      );
+    id: r.id,
+    clientId: r.clientId,
+    animalId: r.animalId,
+    sessionId: r.sessionId,
+    startAt: DateTime.fromMillisecondsSinceEpoch(r.startAt * 1000),
+    endAt: DateTime.fromMillisecondsSinceEpoch(r.endAt * 1000),
+    title: r.title,
+    location: r.location,
+    kind: r.kind,
+    status: r.status,
+    reminderMinutesBefore: r.reminderMinutesBefore,
+    externalCalendarEventId: r.externalCalendarEventId,
+    externalCalendarId: r.externalCalendarId,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(r.createdAt * 1000),
+    updatedAt: DateTime.fromMillisecondsSinceEpoch(r.updatedAt * 1000),
+  );
 }

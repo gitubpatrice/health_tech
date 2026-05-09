@@ -46,16 +46,17 @@ class ClientRepository {
       isInsert: false,
       epochSeconds: now,
     );
-    await (_db.update(_db.clients)..where((t) => t.id.equals(client.id)))
-        .write(companion);
+    await (_db.update(
+      _db.clients,
+    )..where((t) => t.id.equals(client.id))).write(companion);
     return (await getById(client.id))!;
   }
 
   /// Returns null if not found or already soft-deleted.
   Future<Client?> getById(String id) async {
-    final row = await (_db.select(_db.clients)
-          ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.clients,
+    )..where((t) => t.id.equals(id) & t.deletedAt.isNull())).getSingleOrNull();
     if (row == null) return null;
     return _fromRow(row);
   }
@@ -71,15 +72,17 @@ class ClientRepository {
       ]);
     if (query != null && query.trim().isNotEmpty) {
       final pattern = '%${query.trim()}%';
-      select.where((t) =>
-          t.lastName.like(pattern) |
-          t.firstName.like(pattern) |
-          t.email.like(pattern) |
-          t.phone.like(pattern));
+      select.where(
+        (t) =>
+            t.lastName.like(pattern) |
+            t.firstName.like(pattern) |
+            t.email.like(pattern) |
+            t.phone.like(pattern),
+      );
     }
     return select.watch().map(
-          (rows) => rows.map(_fromRowLight).toList(growable: false),
-        );
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
   }
 
   /// Soft delete — keeps the row for cascading checks. Use [purge] for the
@@ -122,12 +125,15 @@ class ClientRepository {
       healthNotesEncrypted: healthEncrypted,
       notesEncrypted: notesEncrypted,
       consentRgpdAt: Value(client.consents.rgpdAt?.millisecondsSinceEpoch),
-      consentDisclaimerAt:
-          Value(client.consents.disclaimerAt?.millisecondsSinceEpoch),
-      consentReminderAt:
-          Value(client.consents.reminderAt?.millisecondsSinceEpoch),
-      consentNewsletterAt:
-          Value(client.consents.newsletterAt?.millisecondsSinceEpoch),
+      consentDisclaimerAt: Value(
+        client.consents.disclaimerAt?.millisecondsSinceEpoch,
+      ),
+      consentReminderAt: Value(
+        client.consents.reminderAt?.millisecondsSinceEpoch,
+      ),
+      consentNewsletterAt: Value(
+        client.consents.newsletterAt?.millisecondsSinceEpoch,
+      ),
       updatedAt: Value(epochSeconds),
       createdAt: isInsert ? Value(epochSeconds) : const Value.absent(),
     );
@@ -148,30 +154,30 @@ class ClientRepository {
   Client _fromRowLight(ClientRow row) => _baseFromRow(row);
 
   Client _baseFromRow(ClientRow row) => Client(
-        id: row.id,
-        civility: row.civility,
-        lastName: row.lastName,
-        firstName: row.firstName,
-        birthDate: row.birthDateMs == null
-            ? null
-            : DateTime.fromMillisecondsSinceEpoch(row.birthDateMs!),
-        phone: row.phone,
-        email: row.email,
-        profession: row.profession,
-        address: row.addressJson.isEmpty
-            ? const Address()
-            : Address.fromJson(row.addressJson),
-        consents: ConsentSet(
-          rgpdAt: _msToDate(row.consentRgpdAt),
-          disclaimerAt: _msToDate(row.consentDisclaimerAt),
-          reminderAt: _msToDate(row.consentReminderAt),
-          newsletterAt: _msToDate(row.consentNewsletterAt),
-        ),
-        profile: row.profileJson,
-        business: row.businessJson,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt * 1000),
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt * 1000),
-      );
+    id: row.id,
+    civility: row.civility,
+    lastName: row.lastName,
+    firstName: row.firstName,
+    birthDate: row.birthDateMs == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(row.birthDateMs!),
+    phone: row.phone,
+    email: row.email,
+    profession: row.profession,
+    address: row.addressJson.isEmpty
+        ? const Address()
+        : Address.fromJson(row.addressJson),
+    consents: ConsentSet(
+      rgpdAt: _msToDate(row.consentRgpdAt),
+      disclaimerAt: _msToDate(row.consentDisclaimerAt),
+      reminderAt: _msToDate(row.consentReminderAt),
+      newsletterAt: _msToDate(row.consentNewsletterAt),
+    ),
+    profile: row.profileJson,
+    business: row.businessJson,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt * 1000),
+    updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt * 1000),
+  );
 
   static DateTime? _msToDate(int? ms) =>
       ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);

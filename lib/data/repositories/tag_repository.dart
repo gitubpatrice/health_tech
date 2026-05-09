@@ -11,7 +11,11 @@ class TagRepository {
   final HealthDb _db;
   final Uuid _uuid = const Uuid();
 
-  Future<Tag> upsert({String? id, required String label, int? colorArgb}) async {
+  Future<Tag> upsert({
+    String? id,
+    required String label,
+    int? colorArgb,
+  }) async {
     final normalised = label.trim();
     if (normalised.isEmpty) {
       throw const ValidationError('tag_label_empty', 'label');
@@ -19,9 +23,11 @@ class TagRepository {
     if (id == null) {
       // Reuse an existing tag with the same label (case-insensitive) instead
       // of creating a duplicate — tags are user-facing labels.
-      final existing = await (_db.select(_db.tags)
-            ..where((t) => t.label.lower().equals(normalised.toLowerCase())))
-          .getSingleOrNull();
+      final existing =
+          await (_db.select(
+                _db.tags,
+              )..where((t) => t.label.lower().equals(normalised.toLowerCase())))
+              .getSingleOrNull();
       if (existing != null) {
         return Tag(
           id: existing.id,
@@ -31,7 +37,9 @@ class TagRepository {
       }
     }
     final tagId = id ?? _uuid.v4();
-    await _db.into(_db.tags).insertOnConflictUpdate(
+    await _db
+        .into(_db.tags)
+        .insertOnConflictUpdate(
           TagsCompanion.insert(
             id: Value(tagId),
             label: normalised,
@@ -46,13 +54,13 @@ class TagRepository {
   }
 
   Stream<List<Tag>> watchAll() {
-    return (_db.select(_db.tags)
-          ..orderBy([(t) => OrderingTerm.asc(t.label)]))
-        .watch()
-        .map((rows) => rows
-            .map((r) =>
-                Tag(id: r.id, label: r.label, colorArgb: r.colorArgb))
-            .toList(growable: false));
+    return (_db.select(
+      _db.tags,
+    )..orderBy([(t) => OrderingTerm.asc(t.label)])).watch().map(
+      (rows) => rows
+          .map((r) => Tag(id: r.id, label: r.label, colorArgb: r.colorArgb))
+          .toList(growable: false),
+    );
   }
 
   Future<void> link({
@@ -60,7 +68,9 @@ class TagRepository {
     required String ownerType,
     required String ownerId,
   }) async {
-    await _db.into(_db.tagLinks).insertOnConflictUpdate(
+    await _db
+        .into(_db.tagLinks)
+        .insertOnConflictUpdate(
           TagLinksCompanion.insert(
             tagId: tagId,
             ownerType: ownerType,
@@ -74,11 +84,12 @@ class TagRepository {
     required String ownerType,
     required String ownerId,
   }) async {
-    await (_db.delete(_db.tagLinks)
-          ..where((t) =>
+    await (_db.delete(_db.tagLinks)..where(
+          (t) =>
               t.tagId.equals(tagId) &
               t.ownerType.equals(ownerType) &
-              t.ownerId.equals(ownerId)))
+              t.ownerId.equals(ownerId),
+        ))
         .go();
   }
 
@@ -86,19 +97,21 @@ class TagRepository {
     required String ownerType,
     required String ownerId,
   }) {
-    final query = _db.select(_db.tags).join([
-      innerJoin(
-        _db.tagLinks,
-        _db.tagLinks.tagId.equalsExp(_db.tags.id),
-      ),
-    ])
-      ..where(_db.tagLinks.ownerType.equals(ownerType) &
-          _db.tagLinks.ownerId.equals(ownerId))
-      ..orderBy([OrderingTerm.asc(_db.tags.label)]);
-    return query.watch().map((rows) => rows
-        .map((r) => r.readTable(_db.tags))
-        .map((r) => Tag(id: r.id, label: r.label, colorArgb: r.colorArgb))
-        .toList(growable: false));
+    final query =
+        _db.select(_db.tags).join([
+            innerJoin(_db.tagLinks, _db.tagLinks.tagId.equalsExp(_db.tags.id)),
+          ])
+          ..where(
+            _db.tagLinks.ownerType.equals(ownerType) &
+                _db.tagLinks.ownerId.equals(ownerId),
+          )
+          ..orderBy([OrderingTerm.asc(_db.tags.label)]);
+    return query.watch().map(
+      (rows) => rows
+          .map((r) => r.readTable(_db.tags))
+          .map((r) => Tag(id: r.id, label: r.label, colorArgb: r.colorArgb))
+          .toList(growable: false),
+    );
   }
 
   /// Returns the IDs of owners (of the given type) that have ALL [tagIds]
@@ -110,15 +123,15 @@ class TagRepository {
     if (tagIds.isEmpty) return null;
     final query = _db.selectOnly(_db.tagLinks)
       ..addColumns([_db.tagLinks.ownerId])
-      ..where(_db.tagLinks.ownerType.equals(ownerType) &
-          _db.tagLinks.tagId.isIn(tagIds))
+      ..where(
+        _db.tagLinks.ownerType.equals(ownerType) &
+            _db.tagLinks.tagId.isIn(tagIds),
+      )
       ..groupBy(
         [_db.tagLinks.ownerId],
         having: _db.tagLinks.tagId.count(distinct: true).equals(tagIds.length),
       );
     final rows = await query.get();
-    return rows
-        .map((r) => r.read(_db.tagLinks.ownerId)!)
-        .toSet();
+    return rows.map((r) => r.read(_db.tagLinks.ownerId)!).toSet();
   }
 }

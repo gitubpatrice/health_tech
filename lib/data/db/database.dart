@@ -13,7 +13,15 @@ import 'tables.dart';
 part 'database.g.dart';
 
 @DriftDatabase(
-  tables: [Clients, Animals, Sessions, Appointments, Attachments, Tags, TagLinks],
+  tables: [
+    Clients,
+    Animals,
+    Sessions,
+    Appointments,
+    Attachments,
+    Tags,
+    TagLinks,
+  ],
 )
 class HealthDb extends _$HealthDb {
   HealthDb(super.executor);
@@ -23,22 +31,22 @@ class HealthDb extends _$HealthDb {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await _createIndexes();
-          await _createFts();
-        },
-        onUpgrade: (m, from, to) async {
-          // Future migrations land here, version by version.
-          // Each upgrade MUST be tested in test/db/migration_test.dart.
-        },
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON;');
-          await customStatement('PRAGMA journal_mode = WAL;');
-          await customStatement('PRAGMA synchronous = NORMAL;');
-          await customStatement('PRAGMA temp_store = MEMORY;');
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+      await _createIndexes();
+      await _createFts();
+    },
+    onUpgrade: (m, from, to) async {
+      // Future migrations land here, version by version.
+      // Each upgrade MUST be tested in test/db/migration_test.dart.
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON;');
+      await customStatement('PRAGMA journal_mode = WAL;');
+      await customStatement('PRAGMA synchronous = NORMAL;');
+      await customStatement('PRAGMA temp_store = MEMORY;');
+    },
+  );
 
   Future<void> _createIndexes() async {
     await customStatement(
@@ -81,21 +89,21 @@ class HealthDb extends _$HealthDb {
         content='clients', content_rowid='rowid', tokenize='unicode61'
       );
     ''');
-    await customStatement('''
+      await customStatement('''
       CREATE TRIGGER IF NOT EXISTS clients_ai AFTER INSERT ON clients BEGIN
         INSERT INTO clients_fts(rowid, last_name, first_name, email, phone)
         VALUES (new.rowid, new.last_name, new.first_name,
                 COALESCE(new.email,''), COALESCE(new.phone,''));
       END;
     ''');
-    await customStatement('''
+      await customStatement('''
       CREATE TRIGGER IF NOT EXISTS clients_ad AFTER DELETE ON clients BEGIN
         INSERT INTO clients_fts(clients_fts, rowid, last_name, first_name, email, phone)
         VALUES ('delete', old.rowid, old.last_name, old.first_name,
                 COALESCE(old.email,''), COALESCE(old.phone,''));
       END;
     ''');
-    await customStatement('''
+      await customStatement('''
       CREATE TRIGGER IF NOT EXISTS clients_au AFTER UPDATE ON clients BEGIN
         INSERT INTO clients_fts(clients_fts, rowid, last_name, first_name, email, phone)
         VALUES ('delete', old.rowid, old.last_name, old.first_name,
@@ -119,8 +127,11 @@ class HealthDb extends _$HealthDb {
   /// (Dart `String`s cannot be zeroed) to a single `db.execute` call.
   static Future<HealthDb> open({required Uint8List vek}) async {
     if (vek.length != 32) {
-      throw ArgumentError.value(vek.length, 'vek.length',
-          'SQLCipher raw key must be exactly 32 bytes');
+      throw ArgumentError.value(
+        vek.length,
+        'vek.length',
+        'SQLCipher raw key must be exactly 32 bytes',
+      );
     }
     await applyWorkaroundToOpenSqlCipherOnOldAndroidVersions();
 

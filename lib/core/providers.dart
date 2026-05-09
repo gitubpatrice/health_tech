@@ -59,8 +59,8 @@ class VaultSessionController extends StateNotifier<VaultSession?> {
 
 final vaultSessionProvider =
     StateNotifierProvider<VaultSessionController, VaultSession?>(
-  VaultSessionController.new,
-);
+      VaultSessionController.new,
+    );
 
 /// Database is opened lazily after unlock and disposed on lock.
 final databaseProvider = FutureProvider<HealthDb>((ref) async {
@@ -153,8 +153,7 @@ final rgpdExportServiceProvider = Provider((ref) {
 /// not exposed: FLAG_SECURE is non-negotiable for medical/wellness data and
 /// removing it would let screenshots leak sensitive content into the OS
 /// recents carousel and accessibility recorders.
-const _secureChannel =
-    MethodChannel('com.filestech.health_tech/secure_window');
+const _secureChannel = MethodChannel('com.filestech.health_tech/secure_window');
 
 class SecureWindow {
   const SecureWindow._();

@@ -8,9 +8,7 @@ final animalsQueryProvider = StateProvider<String>((_) => '');
 final animalsSpeciesFilterProvider = StateProvider<String?>((_) => null);
 
 /// Tag filter (AND across the selected tag ids). Empty = no filtering.
-final animalsTagFilterProvider = StateProvider<Set<String>>(
-  (_) => <String>{},
-);
+final animalsTagFilterProvider = StateProvider<Set<String>>((_) => <String>{});
 
 final animalsStreamProvider = StreamProvider<List<Animal>>((ref) {
   final query = ref.watch(animalsQueryProvider);
@@ -19,9 +17,9 @@ final animalsStreamProvider = StreamProvider<List<Animal>>((ref) {
   final repo = ref.watch(animalRepositoryProvider);
   final tagRepo = ref.watch(tagRepositoryProvider);
 
-  return repo
-      .watchAll(query: query, speciesFilter: species)
-      .asyncMap((animals) async {
+  return repo.watchAll(query: query, speciesFilter: species).asyncMap((
+    animals,
+  ) async {
     if (tagIds.isEmpty) return animals;
     final allowed = await tagRepo.ownerIdsTaggedWithAll(
       ownerType: TagOwner.animal,
@@ -42,8 +40,10 @@ final selectedAnimalProvider = FutureProvider<Animal?>((ref) async {
 
 /// Live list of animals attached to a given client (used inside the client
 /// detail screen).
-final animalsByClientProvider =
-    StreamProvider.family<List<Animal>, String>((ref, clientId) {
+final animalsByClientProvider = StreamProvider.family<List<Animal>, String>((
+  ref,
+  clientId,
+) {
   final repo = ref.watch(animalRepositoryProvider);
   return repo.watchByClient(clientId);
 });

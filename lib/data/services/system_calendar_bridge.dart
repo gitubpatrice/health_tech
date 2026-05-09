@@ -24,7 +24,7 @@ class CalendarUnavailable implements Exception {
 /// daylight-saving drift you get with naive UTC offsets.
 class SystemCalendarBridge {
   SystemCalendarBridge([DeviceCalendarPlugin? plugin])
-      : _plugin = plugin ?? DeviceCalendarPlugin();
+    : _plugin = plugin ?? DeviceCalendarPlugin();
 
   final DeviceCalendarPlugin _plugin;
   bool _tzReady = false;
@@ -57,7 +57,8 @@ class SystemCalendarBridge {
   /// Creates a calendar event for [appointment] and returns the
   /// `(calendarId, eventId)` pair the caller persists on the row.
   Future<({String calendarId, String eventId})?> push(
-      Appointment appointment) async {
+    Appointment appointment,
+  ) async {
     if (!await _ensurePermission()) {
       throw const CalendarPermissionDenied();
     }

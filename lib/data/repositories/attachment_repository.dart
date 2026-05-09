@@ -88,7 +88,9 @@ class AttachmentRepository {
     await atomicWriteBytes(file, encrypted);
 
     final epoch = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    await _db.into(_db.attachments).insert(
+    await _db
+        .into(_db.attachments)
+        .insert(
           AttachmentsCompanion.insert(
             id: Value(id),
             ownerType: ownerType,
@@ -117,9 +119,9 @@ class AttachmentRepository {
   }
 
   Future<Uint8List> readBytes(String id) async {
-    final row = await (_db.select(_db.attachments)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.attachments,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) throw StateError('Attachment $id not found');
     final file = await _fileFor(row.storagePath);
     final encrypted = await file.readAsBytes();
@@ -132,26 +134,28 @@ class AttachmentRepository {
     String? kindFilter,
   }) {
     final select = _db.select(_db.attachments)
-      ..where((t) =>
-          t.ownerType.equals(ownerType) &
-          t.ownerId.equals(ownerId) &
-          t.deletedAt.isNull())
+      ..where(
+        (t) =>
+            t.ownerType.equals(ownerType) &
+            t.ownerId.equals(ownerId) &
+            t.deletedAt.isNull(),
+      )
       ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
     if (kindFilter != null) {
       select.where((t) => t.kind.equals(kindFilter));
     }
     return select.watch().map(
-          (rows) => rows.map(_fromRow).toList(growable: false),
-        );
+      (rows) => rows.map(_fromRow).toList(growable: false),
+    );
   }
 
   /// Removes the row AND the encrypted file. Best-effort: row deletion is
   /// authoritative, file delete failures are logged but don't fail the call
   /// (the file becomes orphan, cleaned by [purgeOrphans]).
   Future<void> purge(String id) async {
-    final row = await (_db.select(_db.attachments)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.attachments,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) return;
     await (_db.delete(_db.attachments)..where((t) => t.id.equals(id))).go();
     final file = await _fileFor(row.storagePath);
@@ -167,10 +171,11 @@ class AttachmentRepository {
     required String ownerType,
     required String ownerId,
   }) async {
-    final rows = await (_db.select(_db.attachments)
-          ..where((t) =>
-              t.ownerType.equals(ownerType) & t.ownerId.equals(ownerId)))
-        .get();
+    final rows =
+        await (_db.select(_db.attachments)..where(
+              (t) => t.ownerType.equals(ownerType) & t.ownerId.equals(ownerId),
+            ))
+            .get();
     for (final r in rows) {
       final file = await _fileFor(r.storagePath);
       try {
@@ -179,9 +184,9 @@ class AttachmentRepository {
         // ignore: orphan
       }
     }
-    return (_db.delete(_db.attachments)
-          ..where((t) =>
-              t.ownerType.equals(ownerType) & t.ownerId.equals(ownerId)))
+    return (_db.delete(_db.attachments)..where(
+          (t) => t.ownerType.equals(ownerType) & t.ownerId.equals(ownerId),
+        ))
         .go();
   }
 
@@ -210,14 +215,14 @@ class AttachmentRepository {
   }
 
   Attachment _fromRow(AttachmentRow r) => Attachment(
-        id: r.id,
-        ownerType: r.ownerType,
-        ownerId: r.ownerId,
-        kind: r.kind,
-        filename: r.filename,
-        mimeType: r.mimeType,
-        sizeBytes: r.sizeBytes,
-        storagePath: r.storagePath,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(r.createdAt * 1000),
-      );
+    id: r.id,
+    ownerType: r.ownerType,
+    ownerId: r.ownerId,
+    kind: r.kind,
+    filename: r.filename,
+    mimeType: r.mimeType,
+    sizeBytes: r.sizeBytes,
+    storagePath: r.storagePath,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(r.createdAt * 1000),
+  );
 }

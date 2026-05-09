@@ -478,5 +478,4 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
       decoration: InputDecoration(labelText: label),
     ),
   );
-
 }

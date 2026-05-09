@@ -44,14 +44,11 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
                   ),
                 ],
                 selected: {_monthMode},
-                onSelectionChanged: (s) =>
-                    setState(() => _monthMode = s.first),
+                onSelectionChanged: (s) => setState(() => _monthMode = s.first),
               ),
             ),
             Expanded(
-              child: _monthMode
-                  ? const _MonthView()
-                  : const _ListView(),
+              child: _monthMode ? const _MonthView() : const _ListView(),
             ),
           ],
         ),
@@ -108,8 +105,7 @@ class _MonthViewState extends ConsumerState<_MonthView> {
     final start = DateTime(day.year, day.month, day.day);
     final end = start.add(const Duration(days: 1));
     return all
-        .where((a) =>
-            a.startAt.isBefore(end) && a.endAt.isAfter(start))
+        .where((a) => a.startAt.isBefore(end) && a.endAt.isAfter(start))
         .toList();
   }
 
@@ -150,9 +146,7 @@ class _MonthViewState extends ConsumerState<_MonthView> {
                   shape: BoxShape.circle,
                 ),
                 todayDecoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer,
+                  color: Theme.of(context).colorScheme.primaryContainer,
                   shape: BoxShape.circle,
                 ),
                 selectedDecoration: BoxDecoration(
@@ -174,8 +168,7 @@ class _MonthViewState extends ConsumerState<_MonthView> {
                   ? Center(child: Text(l10n.agendaSelectedDayEmpty))
                   : ListView.separated(
                       itemCount: dayItems.length,
-                      separatorBuilder: (_, _) =>
-                          const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (_, i) =>
                           _AppointmentTile(appointment: dayItems[i]),
                     ),
@@ -195,8 +188,7 @@ class _GroupedByDay extends StatelessWidget {
   Widget build(BuildContext context) {
     final groups = <DateTime, List<Appointment>>{};
     for (final a in appointments) {
-      final key =
-          DateTime(a.startAt.year, a.startAt.month, a.startAt.day);
+      final key = DateTime(a.startAt.year, a.startAt.month, a.startAt.day);
       groups.putIfAbsent(key, () => <Appointment>[]).add(a);
     }
     final orderedKeys = groups.keys.toList()..sort();
@@ -275,10 +267,9 @@ class _AppointmentTile extends ConsumerWidget {
           ),
           Text(
             formatTime(appointment.endAt),
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Theme.of(context).colorScheme.outline),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.outline,
+            ),
           ),
         ],
       ),
@@ -298,5 +289,4 @@ class _AppointmentTile extends ConsumerWidget {
       ),
     );
   }
-
 }

@@ -55,9 +55,7 @@ class _AutoLockTile extends ConsumerWidget {
       },
     );
     if (picked != null) {
-      await ref
-          .read(autoLockControllerProvider)
-          .setDurationMinutes(picked);
+      await ref.read(autoLockControllerProvider).setDurationMinutes(picked);
     }
   }
 
@@ -69,9 +67,7 @@ class _AutoLockTile extends ConsumerWidget {
       leading: const Icon(Icons.timer_outlined),
       title: Text(l10n.settingsAutoLockTitle),
       subtitle: Text(l10n.settingsAutoLockSubtitle),
-      trailing: Text(
-        l10n.settingsAutoLockMinutes(ctrl.duration.inMinutes),
-      ),
+      trailing: Text(l10n.settingsAutoLockMinutes(ctrl.duration.inMinutes)),
       onTap: () => _pick(context, ref),
     );
   }
@@ -101,10 +97,7 @@ class _ExportClientTile extends ConsumerWidget {
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      const SnackBar(
-        duration: Duration(seconds: 2),
-        content: Text('…'),
-      ),
+      const SnackBar(duration: Duration(seconds: 2), content: Text('…')),
     );
     final bytes = await ref
         .read(rgpdExportServiceProvider)

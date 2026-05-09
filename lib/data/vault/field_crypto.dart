@@ -14,7 +14,7 @@ import 'package:cryptography/cryptography.dart';
 /// read sensitive columns without the runtime master key.
 class FieldCrypto {
   FieldCrypto(this._key)
-      : assert(_key.length == 32, 'Master key must be 32 bytes');
+    : assert(_key.length == 32, 'Master key must be 32 bytes');
 
   static const int _version = 1;
   static const int _nonceLen = 12;
@@ -51,8 +51,7 @@ class FieldCrypto {
       throw const FormatException('Field crypto blob truncated');
     }
     final nonce = bytes.sublist(1, 1 + _nonceLen);
-    final cipher =
-        bytes.sublist(1 + _nonceLen, bytes.length - _macLen);
+    final cipher = bytes.sublist(1 + _nonceLen, bytes.length - _macLen);
     final mac = Mac(bytes.sublist(bytes.length - _macLen));
     final box = SecretBox(cipher, nonce: nonce, mac: mac);
     final clear = await _aead.decrypt(box, secretKey: SecretKey(_key));

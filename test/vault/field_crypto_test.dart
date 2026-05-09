@@ -20,13 +20,15 @@ void main() {
       expect(await crypto.decryptString(''), '');
     });
 
-    test('two encryptions of same text produce different blobs (nonce)',
-        () async {
-      final crypto = FieldCrypto(key);
-      final a = await crypto.encryptString('same content');
-      final b = await crypto.encryptString('same content');
-      expect(a, isNot(equals(b)));
-    });
+    test(
+      'two encryptions of same text produce different blobs (nonce)',
+      () async {
+        final crypto = FieldCrypto(key);
+        final a = await crypto.encryptString('same content');
+        final b = await crypto.encryptString('same content');
+        expect(a, isNot(equals(b)));
+      },
+    );
 
     test('rejects truncated blob', () async {
       final crypto = FieldCrypto(key);

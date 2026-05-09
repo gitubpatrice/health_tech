@@ -40,10 +40,7 @@ void main() {
       final payload = Uint8List.fromList(List.filled(32, 0));
       final blob = await crypto.encryptBytes(payload);
       blob[0] = 0xFF;
-      expect(
-        () => crypto.decryptBytes(blob),
-        throwsA(isA<FormatException>()),
-      );
+      expect(() => crypto.decryptBytes(blob), throwsA(isA<FormatException>()));
     });
   });
 }

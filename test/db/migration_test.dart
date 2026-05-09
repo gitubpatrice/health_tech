@@ -78,9 +78,9 @@ void main() {
         'business_json, profile_json) '
         "VALUES('c-1','Doe','Jane','','','')",
       );
-      final rows = await (db.select(db.clients)
-            ..orderBy([(t) => OrderingTerm.asc(t.id)]))
-          .get();
+      final rows = await (db.select(
+        db.clients,
+      )..orderBy([(t) => OrderingTerm.asc(t.id)])).get();
       expect(rows.length, 1);
       expect(rows.single.firstName, 'Jane');
     });

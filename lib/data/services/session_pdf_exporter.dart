@@ -75,12 +75,13 @@ class SessionPdfExporter {
           _meta(s, session, client),
           pw.SizedBox(height: 16),
           if (session.motives.isNotEmpty) ...[
-            _line(s.motivesLine,
-                session.motives.map((k) => s.motivesByKey[k] ?? k).join(' · ')),
+            _line(
+              s.motivesLine,
+              session.motives.map((k) => s.motivesByKey[k] ?? k).join(' · '),
+            ),
             pw.SizedBox(height: 12),
           ],
-          if (!session.report.isEmpty)
-            _reportBlock(session, s),
+          if (!session.report.isEmpty) _reportBlock(session, s),
           pw.Spacer(),
           pw.Divider(),
           pw.Text(
@@ -94,18 +95,15 @@ class SessionPdfExporter {
   }
 
   pw.Widget _header(String title) => pw.Container(
-        padding: const pw.EdgeInsets.only(bottom: 8),
-        decoration: const pw.BoxDecoration(
-          border: pw.Border(
-            bottom: pw.BorderSide(color: PdfColors.grey400),
-          ),
-        ),
-        child: pw.Text(
-          title,
-          style:
-              pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
-        ),
-      );
+    padding: const pw.EdgeInsets.only(bottom: 8),
+    decoration: const pw.BoxDecoration(
+      border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400)),
+    ),
+    child: pw.Text(
+      title,
+      style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+    ),
+  );
 
   pw.Widget _meta(PdfStrings s, Session session, Client client) {
     return pw.Column(
@@ -142,10 +140,7 @@ class SessionPdfExporter {
         for (final e in entries) ...[
           pw.Text(
             e.$1,
-            style: pw.TextStyle(
-              fontSize: 11,
-              fontWeight: pw.FontWeight.bold,
-            ),
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 2),
           pw.Text(e.$2, style: const pw.TextStyle(fontSize: 11)),
@@ -156,19 +151,19 @@ class SessionPdfExporter {
   }
 
   pw.Widget _line(String label, String value) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 2),
-        child: pw.RichText(
-          text: pw.TextSpan(
-            children: [
-              pw.TextSpan(
-                text: '$label : ',
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-              ),
-              pw.TextSpan(text: value),
-            ],
+    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+    child: pw.RichText(
+      text: pw.TextSpan(
+        children: [
+          pw.TextSpan(
+            text: '$label : ',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
           ),
-        ),
-      );
+          pw.TextSpan(text: value),
+        ],
+      ),
+    ),
+  );
 
   static String _formatDuration(Duration d) {
     final h = d.inHours;

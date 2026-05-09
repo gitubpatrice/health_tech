@@ -262,7 +262,9 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.animalFormBirthDate),
-                subtitle: Text(_birthDate == null ? '—' : formatDate(_birthDate!)),
+                subtitle: Text(
+                  _birthDate == null ? '—' : formatDate(_birthDate!),
+                ),
                 trailing: const Icon(Icons.calendar_month_outlined),
                 onTap: () => _pickDate(
                   context,
@@ -315,7 +317,9 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.animalFormLastVaccination),
-                subtitle: Text(_lastVaccin == null ? '—' : formatDate(_lastVaccin!)),
+                subtitle: Text(
+                  _lastVaccin == null ? '—' : formatDate(_lastVaccin!),
+                ),
                 trailing: const Icon(Icons.vaccines_outlined),
                 onTap: () => _pickDate(
                   context,
@@ -376,5 +380,4 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
       ),
     );
   }
-
 }

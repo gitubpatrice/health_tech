@@ -24,28 +24,17 @@ void main() {
   });
 
   test('rejects empty labels', () async {
-    expect(
-      () => repo.upsert(label: '   '),
-      throwsA(isA<ValidationError>()),
-    );
+    expect(() => repo.upsert(label: '   '), throwsA(isA<ValidationError>()));
   });
 
   test('link / unlink toggles ownership', () async {
     final t = await repo.upsert(label: 'Suivi régulier');
-    await repo.link(
-      tagId: t.id,
-      ownerType: TagOwner.client,
-      ownerId: 'c1',
-    );
+    await repo.link(tagId: t.id, ownerType: TagOwner.client, ownerId: 'c1');
     var attached = await repo
         .watchForOwner(ownerType: TagOwner.client, ownerId: 'c1')
         .first;
     expect(attached.length, 1);
-    await repo.unlink(
-      tagId: t.id,
-      ownerType: TagOwner.client,
-      ownerId: 'c1',
-    );
+    await repo.unlink(tagId: t.id, ownerType: TagOwner.client, ownerId: 'c1');
     attached = await repo
         .watchForOwner(ownerType: TagOwner.client, ownerId: 'c1')
         .first;

@@ -7,13 +7,7 @@ class SessionStatus {
   static const String cancelled = 'cancelled';
   static const String noShow = 'no_show';
 
-  static const List<String> all = [
-    planned,
-    confirmed,
-    done,
-    cancelled,
-    noShow,
-  ];
+  static const List<String> all = [planned, confirmed, done, cancelled, noShow];
 }
 
 class SessionKind {
@@ -150,42 +144,41 @@ class SessionReport {
     String? afterState,
     String? advice,
     String? nextRecommendation,
-  }) =>
-      SessionReport(
-        beforeState: beforeState ?? this.beforeState,
-        clientPerception: clientPerception ?? this.clientPerception,
-        observations: observations ?? this.observations,
-        flow: flow ?? this.flow,
-        zonesWorked: zonesWorked ?? this.zonesWorked,
-        energetic: energetic ?? this.energetic,
-        afterState: afterState ?? this.afterState,
-        advice: advice ?? this.advice,
-        nextRecommendation: nextRecommendation ?? this.nextRecommendation,
-      );
+  }) => SessionReport(
+    beforeState: beforeState ?? this.beforeState,
+    clientPerception: clientPerception ?? this.clientPerception,
+    observations: observations ?? this.observations,
+    flow: flow ?? this.flow,
+    zonesWorked: zonesWorked ?? this.zonesWorked,
+    energetic: energetic ?? this.energetic,
+    afterState: afterState ?? this.afterState,
+    advice: advice ?? this.advice,
+    nextRecommendation: nextRecommendation ?? this.nextRecommendation,
+  );
 
   Map<String, dynamic> toJson() => {
-        if (beforeState.isNotEmpty) 'before': beforeState,
-        if (clientPerception.isNotEmpty) 'client': clientPerception,
-        if (observations.isNotEmpty) 'observations': observations,
-        if (flow.isNotEmpty) 'flow': flow,
-        if (zonesWorked.isNotEmpty) 'zones': zonesWorked,
-        if (energetic.isNotEmpty) 'energetic': energetic,
-        if (afterState.isNotEmpty) 'after': afterState,
-        if (advice.isNotEmpty) 'advice': advice,
-        if (nextRecommendation.isNotEmpty) 'next': nextRecommendation,
-      };
+    if (beforeState.isNotEmpty) 'before': beforeState,
+    if (clientPerception.isNotEmpty) 'client': clientPerception,
+    if (observations.isNotEmpty) 'observations': observations,
+    if (flow.isNotEmpty) 'flow': flow,
+    if (zonesWorked.isNotEmpty) 'zones': zonesWorked,
+    if (energetic.isNotEmpty) 'energetic': energetic,
+    if (afterState.isNotEmpty) 'after': afterState,
+    if (advice.isNotEmpty) 'advice': advice,
+    if (nextRecommendation.isNotEmpty) 'next': nextRecommendation,
+  };
 
   static SessionReport fromJson(Map<String, dynamic> json) => SessionReport(
-        beforeState: json['before'] as String? ?? '',
-        clientPerception: json['client'] as String? ?? '',
-        observations: json['observations'] as String? ?? '',
-        flow: json['flow'] as String? ?? '',
-        zonesWorked: json['zones'] as String? ?? '',
-        energetic: json['energetic'] as String? ?? '',
-        afterState: json['after'] as String? ?? '',
-        advice: json['advice'] as String? ?? '',
-        nextRecommendation: json['next'] as String? ?? '',
-      );
+    beforeState: json['before'] as String? ?? '',
+    clientPerception: json['client'] as String? ?? '',
+    observations: json['observations'] as String? ?? '',
+    flow: json['flow'] as String? ?? '',
+    zonesWorked: json['zones'] as String? ?? '',
+    energetic: json['energetic'] as String? ?? '',
+    afterState: json['after'] as String? ?? '',
+    advice: json['advice'] as String? ?? '',
+    nextRecommendation: json['next'] as String? ?? '',
+  );
 }
 
 class Session {
@@ -254,25 +247,24 @@ class Session {
     DateTime? nextSuggestedAt,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) =>
-      Session(
-        id: id ?? this.id,
-        clientId: clientId ?? this.clientId,
-        animalId: animalId ?? this.animalId,
-        startAt: startAt ?? this.startAt,
-        endAt: endAt ?? this.endAt,
-        kind: kind ?? this.kind,
-        location: location ?? this.location,
-        status: status ?? this.status,
-        motives: motives ?? this.motives,
-        priceCents: priceCents ?? this.priceCents,
-        paymentStatus: paymentStatus ?? this.paymentStatus,
-        paymentMethod: paymentMethod ?? this.paymentMethod,
-        report: report ?? this.report,
-        privateNote: privateNote ?? this.privateNote,
-        improvementLevel: improvementLevel ?? this.improvementLevel,
-        nextSuggestedAt: nextSuggestedAt ?? this.nextSuggestedAt,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-      );
+  }) => Session(
+    id: id ?? this.id,
+    clientId: clientId ?? this.clientId,
+    animalId: animalId ?? this.animalId,
+    startAt: startAt ?? this.startAt,
+    endAt: endAt ?? this.endAt,
+    kind: kind ?? this.kind,
+    location: location ?? this.location,
+    status: status ?? this.status,
+    motives: motives ?? this.motives,
+    priceCents: priceCents ?? this.priceCents,
+    paymentStatus: paymentStatus ?? this.paymentStatus,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+    report: report ?? this.report,
+    privateNote: privateNote ?? this.privateNote,
+    improvementLevel: improvementLevel ?? this.improvementLevel,
+    nextSuggestedAt: nextSuggestedAt ?? this.nextSuggestedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }

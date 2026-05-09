@@ -8,11 +8,7 @@ import '../../l10n/generated/app_localizations.dart';
 /// Inline tag editor: shows current tags as deletable chips and an Autocomplete
 /// input that creates a new tag (or reuses an existing one) on submit.
 class TagEditor extends ConsumerWidget {
-  const TagEditor({
-    super.key,
-    required this.ownerType,
-    required this.ownerId,
-  });
+  const TagEditor({super.key, required this.ownerType, required this.ownerId});
 
   final String ownerType;
   final String ownerId;
@@ -21,10 +17,9 @@ class TagEditor extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
     final repo = ref.watch(tagRepositoryProvider);
-    final attached = ref.watch(_attachedTagsProvider((
-      ownerType: ownerType,
-      ownerId: ownerId,
-    )));
+    final attached = ref.watch(
+      _attachedTagsProvider((ownerType: ownerType, ownerId: ownerId)),
+    );
     final all = ref.watch(_allTagsProvider);
     return attached.when(
       loading: () => const SizedBox(height: 32),
@@ -52,33 +47,34 @@ class TagEditor extends ConsumerWidget {
                 optionsBuilder: (input) {
                   final q = input.text.trim().toLowerCase();
                   if (q.isEmpty) return const Iterable<Tag>.empty();
-                  return (all.valueOrNull ?? const <Tag>[])
-                      .where((t) =>
-                          !attachedIds.contains(t.id) &&
-                          t.label.toLowerCase().contains(q));
+                  return (all.valueOrNull ?? const <Tag>[]).where(
+                    (t) =>
+                        !attachedIds.contains(t.id) &&
+                        t.label.toLowerCase().contains(q),
+                  );
                 },
                 fieldViewBuilder:
                     (ctx, controller, focusNode, onFieldSubmitted) {
-                  return TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    decoration: InputDecoration(
-                      hintText: l10n.tagsAddHint,
-                      isDense: true,
-                    ),
-                    onSubmitted: (value) async {
-                      final v = value.trim();
-                      if (v.isEmpty) return;
-                      final tag = await repo.upsert(label: v);
-                      await repo.link(
-                        tagId: tag.id,
-                        ownerType: ownerType,
-                        ownerId: ownerId,
+                      return TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        decoration: InputDecoration(
+                          hintText: l10n.tagsAddHint,
+                          isDense: true,
+                        ),
+                        onSubmitted: (value) async {
+                          final v = value.trim();
+                          if (v.isEmpty) return;
+                          final tag = await repo.upsert(label: v);
+                          await repo.link(
+                            tagId: tag.id,
+                            ownerType: ownerType,
+                            ownerId: ownerId,
+                          );
+                          controller.clear();
+                        },
                       );
-                      controller.clear();
                     },
-                  );
-                },
                 onSelected: (t) async {
                   await repo.link(
                     tagId: t.id,
@@ -97,12 +93,13 @@ class TagEditor extends ConsumerWidget {
 
 typedef _OwnerKey = ({String ownerType, String ownerId});
 
-final _attachedTagsProvider =
-    StreamProvider.family<List<Tag>, _OwnerKey>((ref, key) {
-  return ref.watch(tagRepositoryProvider).watchForOwner(
-        ownerType: key.ownerType,
-        ownerId: key.ownerId,
-      );
+final _attachedTagsProvider = StreamProvider.family<List<Tag>, _OwnerKey>((
+  ref,
+  key,
+) {
+  return ref
+      .watch(tagRepositoryProvider)
+      .watchForOwner(ownerType: key.ownerType, ownerId: key.ownerId);
 });
 
 final _allTagsProvider = StreamProvider<List<Tag>>((ref) {

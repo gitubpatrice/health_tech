@@ -82,12 +82,13 @@ class _SessionBody extends ConsumerWidget {
       after: l10n.sessionFormReportAfter,
       advice: l10n.sessionFormReportAdvice,
       next: l10n.sessionFormReportNext,
-      motivesByKey: {
-        for (final m in session.motives) m: motiveLabel(l10n, m),
-      },
+      motivesByKey: {for (final m in session.motives) m: motiveLabel(l10n, m)},
     );
-    final bytes = await const SessionPdfExporter()
-        .render(session: session, client: client, s: strings);
+    final bytes = await const SessionPdfExporter().render(
+      session: session,
+      client: client,
+      s: strings,
+    );
     await Printing.sharePdf(
       bytes: bytes,
       filename: 'session-${session.id}.pdf',
@@ -145,90 +146,88 @@ class _SessionBody extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-          TagEditor(
-            ownerType: TagOwner.session,
-            ownerId: session.id,
+        TagEditor(ownerType: TagOwner.session, ownerId: session.id),
+        const SizedBox(height: 12),
+        DetailRow(
+          icon: Icons.schedule,
+          text: '${formatTime(session.startAt)} – ${formatTime(session.endAt)}',
+        ),
+        DetailRow(
+          icon: Icons.category_outlined,
+          text: kindLabel(l10n, session.kind),
+        ),
+        DetailRow(
+          icon: Icons.flag_outlined,
+          text: statusLabel(l10n, session.status),
+        ),
+        if (session.location != null && session.location!.isNotEmpty)
+          DetailRow(icon: Icons.place_outlined, text: session.location!),
+        if (session.priceCents != null)
+          DetailRow(
+            icon: Icons.euro,
+            text:
+                '${(session.priceCents! / 100).toStringAsFixed(2)} € · '
+                '${paymentStatusLabel(l10n, session.paymentStatus)}',
           ),
-          const SizedBox(height: 12),
-          DetailRow(
-              icon: Icons.schedule,
-              text:
-                  '${formatTime(session.startAt)} – ${formatTime(session.endAt)}'),
-          DetailRow(
-              icon: Icons.category_outlined,
-              text: kindLabel(l10n, session.kind)),
-          DetailRow(
-              icon: Icons.flag_outlined,
-              text: statusLabel(l10n, session.status)),
-          if (session.location != null && session.location!.isNotEmpty)
-            DetailRow(icon: Icons.place_outlined, text: session.location!),
-          if (session.priceCents != null)
-            DetailRow(
-              icon: Icons.euro,
-              text: '${(session.priceCents! / 100).toStringAsFixed(2)} € · '
-                  '${paymentStatusLabel(l10n, session.paymentStatus)}',
-            ),
-          if (session.motives.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
+        if (session.motives.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final m in session.motives)
+                Chip(label: Text(motiveLabel(l10n, m))),
+            ],
+          ),
+        ],
+        const SizedBox(height: 16),
+        if (!r.isEmpty)
+          DetailSectionCard(
+            title: l10n.sessionFormSectionReport,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final m in session.motives)
-                  Chip(label: Text(motiveLabel(l10n, m))),
+                if (r.beforeState.isNotEmpty)
+                  _block(l10n.sessionFormReportBefore, r.beforeState),
+                if (r.clientPerception.isNotEmpty)
+                  _block(l10n.sessionFormReportClient, r.clientPerception),
+                if (r.observations.isNotEmpty)
+                  _block(l10n.sessionFormReportObservations, r.observations),
+                if (r.flow.isNotEmpty)
+                  _block(l10n.sessionFormReportFlow, r.flow),
+                if (r.zonesWorked.isNotEmpty)
+                  _block(l10n.sessionFormReportZones, r.zonesWorked),
+                if (r.energetic.isNotEmpty)
+                  _block(l10n.sessionFormReportEnergetic, r.energetic),
+                if (r.afterState.isNotEmpty)
+                  _block(l10n.sessionFormReportAfter, r.afterState),
+                if (r.advice.isNotEmpty)
+                  _block(l10n.sessionFormReportAdvice, r.advice),
+                if (r.nextRecommendation.isNotEmpty)
+                  _block(l10n.sessionFormReportNext, r.nextRecommendation),
               ],
             ),
-          ],
+          ),
+        if (session.privateNote.isNotEmpty) ...[
           const SizedBox(height: 16),
-          if (!r.isEmpty)
-            DetailSectionCard(
-              title: l10n.sessionFormSectionReport,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (r.beforeState.isNotEmpty)
-                    _block(l10n.sessionFormReportBefore, r.beforeState),
-                  if (r.clientPerception.isNotEmpty)
-                    _block(l10n.sessionFormReportClient, r.clientPerception),
-                  if (r.observations.isNotEmpty)
-                    _block(
-                        l10n.sessionFormReportObservations, r.observations),
-                  if (r.flow.isNotEmpty)
-                    _block(l10n.sessionFormReportFlow, r.flow),
-                  if (r.zonesWorked.isNotEmpty)
-                    _block(l10n.sessionFormReportZones, r.zonesWorked),
-                  if (r.energetic.isNotEmpty)
-                    _block(l10n.sessionFormReportEnergetic, r.energetic),
-                  if (r.afterState.isNotEmpty)
-                    _block(l10n.sessionFormReportAfter, r.afterState),
-                  if (r.advice.isNotEmpty)
-                    _block(l10n.sessionFormReportAdvice, r.advice),
-                  if (r.nextRecommendation.isNotEmpty)
-                    _block(l10n.sessionFormReportNext, r.nextRecommendation),
-                ],
-              ),
-            ),
-          if (session.privateNote.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            DetailSectionCard(
-              title: l10n.sessionFormSectionPrivate,
-              child: Text(session.privateNote),
-            ),
-          ],
+          DetailSectionCard(
+            title: l10n.sessionFormSectionPrivate,
+            child: Text(session.privateNote),
+          ),
         ],
-      );
+      ],
+    );
   }
 
   Widget _block(String label, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text(value),
-          ],
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Text(value),
+      ],
+    ),
+  );
 }

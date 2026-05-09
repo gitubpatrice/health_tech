@@ -9,9 +9,7 @@ final clientsQueryProvider = StateProvider<String>((_) => '');
 
 /// Tag IDs that the user wants to filter by (AND across selected tags).
 /// Empty set means no filtering.
-final clientsTagFilterProvider = StateProvider<Set<String>>(
-  (_) => <String>{},
-);
+final clientsTagFilterProvider = StateProvider<Set<String>>((_) => <String>{});
 
 /// Live list of clients filtered by free-text [clientsQueryProvider] AND
 /// (optionally) by [clientsTagFilterProvider].

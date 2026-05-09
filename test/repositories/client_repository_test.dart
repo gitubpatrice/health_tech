@@ -41,10 +41,7 @@ void main() {
 
   test('create rejects clients without mandatory consents', () async {
     const draft = Client(id: '', firstName: 'X', lastName: 'Y');
-    expect(
-      () => repo.create(draft),
-      throwsA(isA<ValidationError>()),
-    );
+    expect(() => repo.create(draft), throwsA(isA<ValidationError>()));
   });
 
   test('create then getById returns decrypted sensitive fields', () async {
@@ -83,14 +80,16 @@ void main() {
     expect(list, isEmpty);
   });
 
-  test('update preserves consent timestamps and rewrites encrypted fields',
-      () async {
-    final created = await repo.create(draftClient());
-    final original = await repo.getById(created.id);
-    final updated = await repo.update(
-      original!.copyWith(healthNotes: 'Mise à jour santé'),
-    );
-    expect(updated.healthNotes, 'Mise à jour santé');
-    expect(updated.consents.rgpdAt, original.consents.rgpdAt);
-  });
+  test(
+    'update preserves consent timestamps and rewrites encrypted fields',
+    () async {
+      final created = await repo.create(draftClient());
+      final original = await repo.getById(created.id);
+      final updated = await repo.update(
+        original!.copyWith(healthNotes: 'Mise à jour santé'),
+      );
+      expect(updated.healthNotes, 'Mise à jour santé');
+      expect(updated.consents.rgpdAt, original.consents.rgpdAt);
+    },
+  );
 }

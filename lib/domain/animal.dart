@@ -67,27 +67,26 @@ class AnimalIdentifiers {
     String? vetName,
     String? vetPhone,
     String? vetEmail,
-  }) =>
-      AnimalIdentifiers(
-        chipNumber: chipNumber ?? this.chipNumber,
-        tattooNumber: tattooNumber ?? this.tattooNumber,
-        pedigreeNumber: pedigreeNumber ?? this.pedigreeNumber,
-        lastVaccinationAt: lastVaccinationAt ?? this.lastVaccinationAt,
-        vetName: vetName ?? this.vetName,
-        vetPhone: vetPhone ?? this.vetPhone,
-        vetEmail: vetEmail ?? this.vetEmail,
-      );
+  }) => AnimalIdentifiers(
+    chipNumber: chipNumber ?? this.chipNumber,
+    tattooNumber: tattooNumber ?? this.tattooNumber,
+    pedigreeNumber: pedigreeNumber ?? this.pedigreeNumber,
+    lastVaccinationAt: lastVaccinationAt ?? this.lastVaccinationAt,
+    vetName: vetName ?? this.vetName,
+    vetPhone: vetPhone ?? this.vetPhone,
+    vetEmail: vetEmail ?? this.vetEmail,
+  );
 
   Map<String, dynamic> toJson() => {
-        if (chipNumber.isNotEmpty) 'chip': chipNumber,
-        if (tattooNumber.isNotEmpty) 'tattoo': tattooNumber,
-        if (pedigreeNumber.isNotEmpty) 'pedigree': pedigreeNumber,
-        if (lastVaccinationAt != null)
-          'last_vaccin_ms': lastVaccinationAt!.millisecondsSinceEpoch,
-        if (vetName.isNotEmpty) 'vet_name': vetName,
-        if (vetPhone.isNotEmpty) 'vet_phone': vetPhone,
-        if (vetEmail.isNotEmpty) 'vet_email': vetEmail,
-      };
+    if (chipNumber.isNotEmpty) 'chip': chipNumber,
+    if (tattooNumber.isNotEmpty) 'tattoo': tattooNumber,
+    if (pedigreeNumber.isNotEmpty) 'pedigree': pedigreeNumber,
+    if (lastVaccinationAt != null)
+      'last_vaccin_ms': lastVaccinationAt!.millisecondsSinceEpoch,
+    if (vetName.isNotEmpty) 'vet_name': vetName,
+    if (vetPhone.isNotEmpty) 'vet_phone': vetPhone,
+    if (vetEmail.isNotEmpty) 'vet_email': vetEmail,
+  };
 
   static AnimalIdentifiers fromJson(Map<String, dynamic> json) {
     final ms = json['last_vaccin_ms'] as int?;
@@ -95,8 +94,9 @@ class AnimalIdentifiers {
       chipNumber: json['chip'] as String? ?? '',
       tattooNumber: json['tattoo'] as String? ?? '',
       pedigreeNumber: json['pedigree'] as String? ?? '',
-      lastVaccinationAt:
-          ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms),
+      lastVaccinationAt: ms == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(ms),
       vetName: json['vet_name'] as String? ?? '',
       vetPhone: json['vet_phone'] as String? ?? '',
       vetEmail: json['vet_email'] as String? ?? '',
@@ -139,8 +139,7 @@ class Animal {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  double? get weightKg =>
-      weightGrams == null ? null : weightGrams! / 1000.0;
+  double? get weightKg => weightGrams == null ? null : weightGrams! / 1000.0;
 
   int? get ageYears {
     final birth = birthDate;
@@ -170,22 +169,21 @@ class Animal {
     Map<String, dynamic>? profile,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) =>
-      Animal(
-        id: id ?? this.id,
-        clientId: clientId ?? this.clientId,
-        name: name ?? this.name,
-        species: species ?? this.species,
-        breed: breed ?? this.breed,
-        sex: sex ?? this.sex,
-        birthDate: birthDate ?? this.birthDate,
-        weightGrams: weightGrams ?? this.weightGrams,
-        color: color ?? this.color,
-        identifiers: identifiers ?? this.identifiers,
-        healthNotes: healthNotes ?? this.healthNotes,
-        behaviorNotes: behaviorNotes ?? this.behaviorNotes,
-        profile: profile ?? this.profile,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-      );
+  }) => Animal(
+    id: id ?? this.id,
+    clientId: clientId ?? this.clientId,
+    name: name ?? this.name,
+    species: species ?? this.species,
+    breed: breed ?? this.breed,
+    sex: sex ?? this.sex,
+    birthDate: birthDate ?? this.birthDate,
+    weightGrams: weightGrams ?? this.weightGrams,
+    color: color ?? this.color,
+    identifiers: identifiers ?? this.identifiers,
+    healthNotes: healthNotes ?? this.healthNotes,
+    behaviorNotes: behaviorNotes ?? this.behaviorNotes,
+    profile: profile ?? this.profile,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }

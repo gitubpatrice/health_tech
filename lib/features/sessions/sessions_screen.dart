@@ -22,11 +22,7 @@ class SessionsScreen extends ConsumerWidget {
           list: _SessionsList(),
           detail: SessionDetailScreen(),
         ),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: _AddSessionFab(),
-        ),
+        Positioned(right: 16, bottom: 16, child: _AddSessionFab()),
       ],
     );
   }
@@ -88,9 +84,7 @@ class _SessionTile extends ConsumerWidget {
     ref.read(selectedSessionIdProvider.notifier).state = session.id;
     if (context.isCompact) {
       await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => const SessionDetailScreen(),
-        ),
+        MaterialPageRoute<void>(builder: (_) => const SessionDetailScreen()),
       );
     }
   }
@@ -114,10 +108,7 @@ class _SessionTile extends ConsumerWidget {
       selected: selectedId == session.id,
       leading: CircleAvatar(
         backgroundColor: _statusColor(context).withValues(alpha: 0.15),
-        child: Icon(
-          Icons.event_note,
-          color: _statusColor(context),
-        ),
+        child: Icon(Icons.event_note, color: _statusColor(context)),
       ),
       title: Text(
         '${formatDayMonth(session.startAt)} · ${formatTime(session.startAt)}',
@@ -129,5 +120,4 @@ class _SessionTile extends ConsumerWidget {
       onTap: () => _select(context, ref),
     );
   }
-
 }

@@ -90,12 +90,11 @@ class _ClientTabbed extends ConsumerWidget {
             tabs: [
               Tab(icon: const Icon(Icons.info_outline), text: l10n.tabInfo),
               Tab(icon: const Icon(Icons.pets), text: l10n.tabAnimals),
+              Tab(icon: const Icon(Icons.event_note), text: l10n.tabSessions),
               Tab(
-                  icon: const Icon(Icons.event_note),
-                  text: l10n.tabSessions),
-              Tab(
-                  icon: const Icon(Icons.attach_file),
-                  text: l10n.tabAttachments),
+                icon: const Icon(Icons.attach_file),
+                text: l10n.tabAttachments,
+              ),
             ],
           ),
         ),
@@ -125,10 +124,7 @@ class _InfoTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        TagEditor(
-          ownerType: TagOwner.client,
-          ownerId: client.id,
-        ),
+        TagEditor(ownerType: TagOwner.client, ownerId: client.id),
         const SizedBox(height: 12),
         if (client.profession != null && client.profession!.isNotEmpty)
           DetailRow(icon: Icons.work_outline, text: client.profession!),
@@ -138,35 +134,37 @@ class _InfoTab extends StatelessWidget {
           DetailRow(icon: Icons.email_outlined, text: client.email!),
         if (!client.address.isEmpty)
           DetailRow(
-              icon: Icons.location_on_outlined,
-              text: _formatAddress(client)),
+            icon: Icons.location_on_outlined,
+            text: _formatAddress(client),
+          ),
         if (client.ageYears != null)
-          DetailRow(
-              icon: Icons.cake_outlined, text: '${client.ageYears} ans'),
+          DetailRow(icon: Icons.cake_outlined, text: '${client.ageYears} ans'),
         if (client.healthNotes.isNotEmpty) ...[
           const SizedBox(height: 16),
           DetailSectionCard(
-              title: l10n.clientFormSectionHealth,
-              child: Text(client.healthNotes)),
+            title: l10n.clientFormSectionHealth,
+            child: Text(client.healthNotes),
+          ),
         ],
         if (client.notes.isNotEmpty) ...[
           const SizedBox(height: 16),
           DetailSectionCard(
-              title: l10n.clientFormFreeNotes, child: Text(client.notes)),
+            title: l10n.clientFormFreeNotes,
+            child: Text(client.notes),
+          ),
         ],
       ],
     );
   }
 
-
   String _formatAddress(Client c) {
     final parts = <String>[
       if (c.address.street.isNotEmpty) c.address.street,
       if (c.address.complement.isNotEmpty) c.address.complement,
-      [c.address.zipCode, c.address.city]
-          .where((s) => s.isNotEmpty)
-          .join(' ')
-          .trim(),
+      [
+        c.address.zipCode,
+        c.address.city,
+      ].where((s) => s.isNotEmpty).join(' ').trim(),
       if (c.address.region.isNotEmpty) c.address.region,
       if (c.address.country.isNotEmpty && c.address.country != 'FR')
         c.address.country,
@@ -200,9 +198,8 @@ class _AnimalsTab extends ConsumerWidget {
                       title: Text(a.name),
                       subtitle: Text(speciesLabel(l10n, a.species)),
                       onTap: () {
-                        ref
-                            .read(selectedAnimalIdProvider.notifier)
-                            .state = a.id;
+                        ref.read(selectedAnimalIdProvider.notifier).state =
+                            a.id;
                       },
                     );
                   },
@@ -215,8 +212,7 @@ class _AnimalsTab extends ConsumerWidget {
             heroTag: 'add-animal-$clientId',
             onPressed: () => Navigator.of(context).push<bool>(
               MaterialPageRoute<bool>(
-                builder: (_) =>
-                    AnimalFormScreen(defaultClientId: clientId),
+                builder: (_) => AnimalFormScreen(defaultClientId: clientId),
                 fullscreenDialog: true,
               ),
             ),
@@ -262,9 +258,8 @@ class _SessionsTab extends ConsumerWidget {
                         '${statusLabel(l10n, s.status)}',
                       ),
                       onTap: () {
-                        ref
-                            .read(selectedSessionIdProvider.notifier)
-                            .state = s.id;
+                        ref.read(selectedSessionIdProvider.notifier).state =
+                            s.id;
                       },
                     );
                   },
@@ -277,8 +272,7 @@ class _SessionsTab extends ConsumerWidget {
             heroTag: 'add-session-$clientId',
             onPressed: () => Navigator.of(context).push<bool>(
               MaterialPageRoute<bool>(
-                builder: (_) =>
-                    SessionFormScreen(defaultClientId: clientId),
+                builder: (_) => SessionFormScreen(defaultClientId: clientId),
                 fullscreenDialog: true,
               ),
             ),

@@ -61,7 +61,9 @@ class _VisibilityToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: Icon(obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+      icon: Icon(
+        obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+      ),
       tooltip: obscured ? l10n.lockShowPassphrase : l10n.lockHidePassphrase,
       onPressed: onPressed,
     );
@@ -93,8 +95,7 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
       _error = null;
     });
     final passphrase = _ctrl.text;
-    final ok =
-        await ref.read(vaultSessionProvider.notifier).unlock(passphrase);
+    final ok = await ref.read(vaultSessionProvider.notifier).unlock(passphrase);
     // Best-effort: blank the controller as soon as possible. This won't
     // wipe the underlying Dart String (immutable, GC-eligible only) but
     // releases the controller-held reference so the next GC can reclaim it.
@@ -120,8 +121,10 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(l10n.lockTitle,
-                      style: Theme.of(context).textTheme.headlineMedium),
+                  Text(
+                    l10n.lockTitle,
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                   const SizedBox(height: 8),
                   Text(l10n.lockSubtitle),
                   const SizedBox(height: 24),
@@ -135,8 +138,7 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
                       errorText: _error,
                       suffixIcon: _VisibilityToggle(
                         obscured: _obscured,
-                        onPressed: () =>
-                            setState(() => _obscured = !_obscured),
+                        onPressed: () => setState(() => _obscured = !_obscured),
                         l10n: l10n,
                       ),
                     ),
@@ -149,7 +151,8 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2))
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : Text(l10n.lockUnlockButton),
                   ),
                 ],
@@ -198,9 +201,7 @@ class _SetupFormState extends ConsumerState<_SetupForm> {
       _error = null;
     });
     final passphrase = _passCtrl.text;
-    await ref
-        .read(vaultSessionProvider.notifier)
-        .setupAndUnlock(passphrase);
+    await ref.read(vaultSessionProvider.notifier).setupAndUnlock(passphrase);
     _passCtrl.clear();
     _confirmCtrl.clear();
     if (!mounted) return;
@@ -223,8 +224,10 @@ class _SetupFormState extends ConsumerState<_SetupForm> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(l10n.lockSetupTitle,
-                      style: Theme.of(context).textTheme.headlineMedium),
+                  Text(
+                    l10n.lockSetupTitle,
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                   const SizedBox(height: 8),
                   Text(l10n.lockSetupSubtitle),
                   const SizedBox(height: 24),
@@ -252,7 +255,8 @@ class _SetupFormState extends ConsumerState<_SetupForm> {
                       suffixIcon: _VisibilityToggle(
                         obscured: _confirmObscured,
                         onPressed: () => setState(
-                            () => _confirmObscured = !_confirmObscured),
+                          () => _confirmObscured = !_confirmObscured,
+                        ),
                         l10n: l10n,
                       ),
                     ),
@@ -265,7 +269,8 @@ class _SetupFormState extends ConsumerState<_SetupForm> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2))
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : Text(l10n.lockSetupCreateButton),
                   ),
                 ],

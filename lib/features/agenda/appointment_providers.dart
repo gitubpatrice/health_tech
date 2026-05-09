@@ -12,10 +12,10 @@ typedef _Range = ({DateTime from, DateTime to});
 
 final appointmentsRangeProvider =
     StreamProvider.family<List<Appointment>, _Range>((ref, range) {
-  return ref
-      .watch(appointmentRepositoryProvider)
-      .watchInRange(range.from, range.to);
-});
+      return ref
+          .watch(appointmentRepositoryProvider)
+          .watchInRange(range.from, range.to);
+    });
 
 /// Convenience: today's appointments.
 final todayAppointmentsProvider = StreamProvider<List<Appointment>>((ref) {

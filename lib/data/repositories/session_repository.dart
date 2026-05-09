@@ -34,17 +34,17 @@ class SessionRepository {
 
   Future<Session> update(Session session) async {
     final now = nowEpochSeconds();
-    final companion =
-        await _toCompanion(session, isInsert: false, epoch: now);
-    await (_db.update(_db.sessions)..where((t) => t.id.equals(session.id)))
-        .write(companion);
+    final companion = await _toCompanion(session, isInsert: false, epoch: now);
+    await (_db.update(
+      _db.sessions,
+    )..where((t) => t.id.equals(session.id))).write(companion);
     return (await getById(session.id))!;
   }
 
   Future<Session?> getById(String id) async {
-    final row = await (_db.select(_db.sessions)
-          ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.sessions,
+    )..where((t) => t.id.equals(id) & t.deletedAt.isNull())).getSingleOrNull();
     if (row == null) return null;
     return _fromRow(row);
   }
@@ -54,8 +54,8 @@ class SessionRepository {
       ..where((t) => t.clientId.equals(clientId) & t.deletedAt.isNull())
       ..orderBy([(t) => OrderingTerm.desc(t.startAt)]);
     return select.watch().map(
-          (rows) => rows.map(_fromRowLight).toList(growable: false),
-        );
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
   }
 
   Stream<List<Session>> watchByAnimal(String animalId) {
@@ -63,21 +63,21 @@ class SessionRepository {
       ..where((t) => t.animalId.equals(animalId) & t.deletedAt.isNull())
       ..orderBy([(t) => OrderingTerm.desc(t.startAt)]);
     return select.watch().map(
-          (rows) => rows.map(_fromRowLight).toList(growable: false),
-        );
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
   }
 
   Stream<List<Session>> watchInRange(DateTime from, DateTime to) {
     final fromS = from.millisecondsSinceEpoch ~/ 1000;
     final toS = to.millisecondsSinceEpoch ~/ 1000;
     final select = _db.select(_db.sessions)
-      ..where((t) =>
-          t.deletedAt.isNull() &
-          t.startAt.isBetweenValues(fromS, toS))
+      ..where(
+        (t) => t.deletedAt.isNull() & t.startAt.isBetweenValues(fromS, toS),
+      )
       ..orderBy([(t) => OrderingTerm.asc(t.startAt)]);
     return select.watch().map(
-          (rows) => rows.map(_fromRowLight).toList(growable: false),
-        );
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
   }
 
   Future<void> softDelete(String id) async {
@@ -101,8 +101,7 @@ class SessionRepository {
     final reportEncrypted = s.report.isEmpty
         ? const Value<String?>(null)
         : Value(await _crypto.encryptString(jsonEncode(s.report.toJson())));
-    final privateEncrypted =
-        await encryptOptional(_crypto, s.privateNote);
+    final privateEncrypted = await encryptOptional(_crypto, s.privateNote);
     return SessionsCompanion(
       id: Value(s.id),
       clientId: Value(s.clientId),
@@ -139,32 +138,29 @@ class SessionRepository {
     final privateNote = row.privateNoteEncrypted == null
         ? ''
         : await _crypto.decryptString(row.privateNoteEncrypted!);
-    return _baseFromRow(row).copyWith(
-      report: report,
-      privateNote: privateNote,
-    );
+    return _baseFromRow(row).copyWith(report: report, privateNote: privateNote);
   }
 
   Session _fromRowLight(SessionRow row) => _baseFromRow(row);
 
   Session _baseFromRow(SessionRow row) => Session(
-        id: row.id,
-        clientId: row.clientId,
-        animalId: row.animalId,
-        startAt: DateTime.fromMillisecondsSinceEpoch(row.startAt * 1000),
-        endAt: DateTime.fromMillisecondsSinceEpoch(row.endAt * 1000),
-        kind: row.kind,
-        location: row.location,
-        status: row.status,
-        motives: row.motivesJson,
-        priceCents: row.priceCents,
-        paymentStatus: row.paymentStatus,
-        paymentMethod: row.paymentMethod,
-        improvementLevel: row.improvementLevel,
-        nextSuggestedAt: row.nextSuggestedAt == null
-            ? null
-            : DateTime.fromMillisecondsSinceEpoch(row.nextSuggestedAt! * 1000),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt * 1000),
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt * 1000),
-      );
+    id: row.id,
+    clientId: row.clientId,
+    animalId: row.animalId,
+    startAt: DateTime.fromMillisecondsSinceEpoch(row.startAt * 1000),
+    endAt: DateTime.fromMillisecondsSinceEpoch(row.endAt * 1000),
+    kind: row.kind,
+    location: row.location,
+    status: row.status,
+    motives: row.motivesJson,
+    priceCents: row.priceCents,
+    paymentStatus: row.paymentStatus,
+    paymentMethod: row.paymentMethod,
+    improvementLevel: row.improvementLevel,
+    nextSuggestedAt: row.nextSuggestedAt == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(row.nextSuggestedAt! * 1000),
+    createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt * 1000),
+    updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt * 1000),
+  );
 }

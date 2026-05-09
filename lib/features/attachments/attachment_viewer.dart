@@ -23,11 +23,9 @@ class AttachmentViewer extends ConsumerWidget {
       body: future.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
-        data: (bytes) =>
-            attachment.isImage ? _ImageBody(bytes: bytes) : _OpaqueBody(
-              attachment: attachment,
-              bytes: bytes,
-            ),
+        data: (bytes) => attachment.isImage
+            ? _ImageBody(bytes: bytes)
+            : _OpaqueBody(attachment: attachment, bytes: bytes),
       ),
     );
   }
@@ -80,7 +78,9 @@ class _OpaqueBody extends StatelessWidget {
 
 /// Family provider — keyed by attachment id so multiple viewers can coexist
 /// (and so the cache is reused if the user reopens the same attachment).
-final _decryptedProvider =
-    FutureProvider.family<Uint8List, String>((ref, id) async {
+final _decryptedProvider = FutureProvider.family<Uint8List, String>((
+  ref,
+  id,
+) async {
   return ref.watch(attachmentRepositoryProvider).readBytes(id);
 });

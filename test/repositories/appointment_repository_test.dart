@@ -38,10 +38,7 @@ void main() {
   test('rejects appointments where end <= start', () async {
     final start = DateTime.now();
     final invalid = Appointment(id: '', startAt: start, endAt: start);
-    expect(
-      () => repo.create(invalid),
-      throwsA(isA<ValidationError>()),
-    );
+    expect(() => repo.create(invalid), throwsA(isA<ValidationError>()));
   });
 
   test('round-trip preserves encrypted notes', () async {
@@ -59,9 +56,11 @@ void main() {
     final list = await repo.watchUpcoming().first;
     expect(list.where((a) => a.id == fut.id), isNotEmpty);
     expect(
-      list.every((a) => a.startAt.isAfter(
-            DateTime.now().subtract(const Duration(minutes: 1)),
-          )),
+      list.every(
+        (a) => a.startAt.isAfter(
+          DateTime.now().subtract(const Duration(minutes: 1)),
+        ),
+      ),
       isTrue,
     );
   });

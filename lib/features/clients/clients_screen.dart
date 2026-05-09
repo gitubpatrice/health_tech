@@ -20,15 +20,8 @@ class ClientsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return const Stack(
       children: [
-        MasterDetailLayout(
-          list: _ClientsList(),
-          detail: ClientDetailScreen(),
-        ),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: _AddClientFab(),
-        ),
+        MasterDetailLayout(list: _ClientsList(), detail: ClientDetailScreen()),
+        Positioned(right: 16, bottom: 16, child: _AddClientFab()),
       ],
     );
   }
@@ -76,8 +69,7 @@ class _ClientsList extends ConsumerWidget {
               prefixIcon: const Icon(Icons.search),
               hintText: l10n.clientsListSearchHint,
             ),
-            onChanged: (v) =>
-                ref.read(clientsQueryProvider.notifier).state = v,
+            onChanged: (v) => ref.read(clientsQueryProvider.notifier).state = v,
           ),
         ),
         TagFilterRow(selectionProvider: clientsTagFilterProvider),
@@ -114,9 +106,7 @@ class _ClientTile extends ConsumerWidget {
     ref.read(selectedClientIdProvider.notifier).state = client.id;
     if (context.isCompact) {
       await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => const ClientDetailScreen(),
-        ),
+        MaterialPageRoute<void>(builder: (_) => const ClientDetailScreen()),
       );
     }
   }
@@ -129,10 +119,10 @@ class _ClientTile extends ConsumerWidget {
       leading: CircleAvatar(child: Text(_initials)),
       title: Text(client.fullName),
       subtitle: Text(
-        [client.email, client.phone]
-            .whereType<String>()
-            .where((s) => s.isNotEmpty)
-            .join(' · '),
+        [
+          client.email,
+          client.phone,
+        ].whereType<String>().where((s) => s.isNotEmpty).join(' · '),
       ),
       onTap: () => _select(context, ref),
     );
@@ -144,13 +134,13 @@ class _Empty extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(32),
-        child: Center(
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.all(32),
+    child: Center(
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+    ),
+  );
 }

@@ -83,9 +83,8 @@ class Sessions extends Table with _AuditCols {
   TextColumn get id => text().clientDefault(genId)();
   TextColumn get clientId =>
       text().references(Clients, #id, onDelete: KeyAction.restrict)();
-  TextColumn get animalId => text()
-      .nullable()
-      .references(Animals, #id, onDelete: KeyAction.setNull)();
+  TextColumn get animalId =>
+      text().nullable().references(Animals, #id, onDelete: KeyAction.setNull)();
 
   IntColumn get startAt => integer()();
   IntColumn get endAt => integer()();
@@ -123,15 +122,15 @@ class Sessions extends Table with _AuditCols {
 @DataClassName('AppointmentRow')
 class Appointments extends Table with _AuditCols {
   TextColumn get id => text().clientDefault(genId)();
-  TextColumn get clientId => text()
-      .nullable()
-      .references(Clients, #id, onDelete: KeyAction.setNull)();
-  TextColumn get animalId => text()
-      .nullable()
-      .references(Animals, #id, onDelete: KeyAction.setNull)();
-  TextColumn get sessionId => text()
-      .nullable()
-      .references(Sessions, #id, onDelete: KeyAction.setNull)();
+  TextColumn get clientId =>
+      text().nullable().references(Clients, #id, onDelete: KeyAction.setNull)();
+  TextColumn get animalId =>
+      text().nullable().references(Animals, #id, onDelete: KeyAction.setNull)();
+  TextColumn get sessionId => text().nullable().references(
+    Sessions,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
 
   IntColumn get startAt => integer()();
   IntColumn get endAt => integer()();
@@ -155,16 +154,20 @@ class Appointments extends Table with _AuditCols {
 @DataClassName('AttachmentRow')
 class Attachments extends Table with _AuditCols {
   TextColumn get id => text().clientDefault(genId)();
+
   /// 'client' | 'animal' | 'session'
   TextColumn get ownerType => text()();
   TextColumn get ownerId => text()();
+
   /// 'photo' | 'document' | 'vaccination' | 'prescription' | 'consent' | 'other'
   TextColumn get kind => text()();
   TextColumn get filename => text()();
   TextColumn get mimeType => text()();
   IntColumn get sizeBytes => integer()();
+
   /// Path under `appSupport/attachments/{uuid}.enc`.
   TextColumn get storagePath => text()();
+
   /// Per-file random nonce used for AES-GCM (base64).
   TextColumn get nonceB64 => text()();
 
@@ -186,6 +189,7 @@ class Tags extends Table {
 class TagLinks extends Table {
   TextColumn get tagId =>
       text().references(Tags, #id, onDelete: KeyAction.cascade)();
+
   /// 'client' | 'animal' | 'session'
   TextColumn get ownerType => text()();
   TextColumn get ownerId => text()();

@@ -56,7 +56,8 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
     _notes = TextEditingController(text: a?.notes ?? '');
     _clientId = a?.clientId ?? widget.defaultClientId;
     _animalId = a?.animalId;
-    _start = a?.startAt ??
+    _start =
+        a?.startAt ??
         widget.defaultStart ??
         _roundToNextHalfHour(DateTime.now());
     _end = a?.endAt ?? _start.add(const Duration(hours: 1));
@@ -75,8 +76,12 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
 
   static DateTime _roundToNextHalfHour(DateTime now) {
     final minutes = (now.minute < 30 ? 30 : 60);
-    return DateTime(now.year, now.month, now.day, now.hour)
-        .add(Duration(minutes: minutes));
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+    ).add(Duration(minutes: minutes));
   }
 
   Future<void> _pickDateTime({
@@ -95,22 +100,16 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       initialTime: TimeOfDay.fromDateTime(current),
     );
     if (time == null) return;
-    onPicked(DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time.hour,
-      time.minute,
-    ));
+    onPicked(DateTime(date.year, date.month, date.day, time.hour, time.minute));
   }
 
   Future<void> _save() async {
     final l10n = AppL10n.of(context);
     if (!_formKey.currentState!.validate()) return;
     if (!_end.isAfter(_start)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.sessionFormDurationInvalid)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.sessionFormDurationInvalid)));
       return;
     }
     setState(() => _busy = true);
@@ -141,29 +140,30 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       // Opt-in: push to system calendar AFTER the row is durable, then
       // persist the returned event ids on the row so a future edit knows
       // it can update / remove the system event.
-      if (_addToSystemCalendar &&
-          saved.externalCalendarEventId == null) {
+      if (_addToSystemCalendar && saved.externalCalendarEventId == null) {
         try {
           final pushed = await bridge.push(saved);
           if (pushed != null) {
-            await repo.update(saved.copyWith(
-              externalCalendarId: pushed.calendarId,
-              externalCalendarEventId: pushed.eventId,
-            ));
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text(l10n.appointmentFormSyncedToCalendar),
+            await repo.update(
+              saved.copyWith(
+                externalCalendarId: pushed.calendarId,
+                externalCalendarEventId: pushed.eventId,
               ),
+            );
+            messenger.showSnackBar(
+              SnackBar(content: Text(l10n.appointmentFormSyncedToCalendar)),
             );
           }
         } on CalendarPermissionDenied {
-          messenger.showSnackBar(SnackBar(
-            content: Text(l10n.appointmentFormCalendarPermissionDenied),
-          ));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(l10n.appointmentFormCalendarPermissionDenied),
+            ),
+          );
         } on CalendarUnavailable {
-          messenger.showSnackBar(SnackBar(
-            content: Text(l10n.appointmentFormCalendarMissing),
-          ));
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.appointmentFormCalendarMissing)),
+          );
         }
       }
       if (!mounted) return;
@@ -184,9 +184,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          isEdit
-              ? l10n.appointmentFormTitleEdit
-              : l10n.appointmentFormTitleNew,
+          isEdit ? l10n.appointmentFormTitleEdit : l10n.appointmentFormTitleNew,
         ),
         actions: [
           TextButton(
@@ -204,8 +202,9 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
               TextFormField(
                 controller: _title,
                 textCapitalization: TextCapitalization.sentences,
-                decoration:
-                    InputDecoration(labelText: l10n.appointmentFormTitle),
+                decoration: InputDecoration(
+                  labelText: l10n.appointmentFormTitle,
+                ),
               ),
               const SizedBox(height: 12),
               ListTile(
@@ -239,8 +238,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                 error: (e, _) => Text('$e'),
                 data: (list) => DropdownButtonFormField<String?>(
                   initialValue: _clientId,
-                  decoration:
-                      InputDecoration(labelText: l10n.animalFormClient),
+                  decoration: InputDecoration(labelText: l10n.animalFormClient),
                   items: [
                     const DropdownMenuItem<String?>(
                       value: null,
@@ -265,8 +263,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                   error: (e, _) => Text('$e'),
                   data: (list) => DropdownButtonFormField<String?>(
                     initialValue: _animalId,
-                    decoration:
-                        InputDecoration(labelText: l10n.navAnimals),
+                    decoration: InputDecoration(labelText: l10n.navAnimals),
                     items: [
                       const DropdownMenuItem<String?>(
                         value: null,
@@ -284,14 +281,14 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _location,
-                decoration:
-                    InputDecoration(labelText: l10n.appointmentFormLocation),
+                decoration: InputDecoration(
+                  labelText: l10n.appointmentFormLocation,
+                ),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: _status,
-                decoration:
-                    InputDecoration(labelText: l10n.sessionFormStatus),
+                decoration: InputDecoration(labelText: l10n.sessionFormStatus),
                 items: [
                   for (final s in AppointmentStatus.all)
                     DropdownMenuItem(
@@ -305,15 +302,17 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
               TextFormField(
                 controller: _reminder,
                 keyboardType: TextInputType.number,
-                decoration:
-                    InputDecoration(labelText: l10n.appointmentFormReminder),
+                decoration: InputDecoration(
+                  labelText: l10n.appointmentFormReminder,
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _notes,
                 maxLines: 4,
-                decoration:
-                    InputDecoration(labelText: l10n.appointmentFormNotes),
+                decoration: InputDecoration(
+                  labelText: l10n.appointmentFormNotes,
+                ),
               ),
               const SizedBox(height: 12),
               CheckboxListTile(
@@ -343,5 +342,4 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       ),
     );
   }
-
 }

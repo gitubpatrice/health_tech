@@ -8,16 +8,15 @@ class TagOwner {
 }
 
 class Tag {
-  const Tag({
-    required this.id,
-    required this.label,
-    this.colorArgb,
-  });
+  const Tag({required this.id, required this.label, this.colorArgb});
 
   final String id;
   final String label;
   final int? colorArgb;
 
-  Tag copyWith({String? label, int? colorArgb}) =>
-      Tag(id: id, label: label ?? this.label, colorArgb: colorArgb ?? this.colorArgb);
+  Tag copyWith({String? label, int? colorArgb}) => Tag(
+    id: id,
+    label: label ?? this.label,
+    colorArgb: colorArgb ?? this.colorArgb,
+  );
 }

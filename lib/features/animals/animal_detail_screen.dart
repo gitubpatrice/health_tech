@@ -114,25 +114,23 @@ class _InfoTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        TagEditor(
-          ownerType: TagOwner.animal,
-          ownerId: animal.id,
-        ),
+        TagEditor(ownerType: TagOwner.animal, ownerId: animal.id),
         const SizedBox(height: 12),
         DetailRow(
           icon: Icons.pets,
-          text: '${speciesLabel(l10n, animal.species)}'
+          text:
+              '${speciesLabel(l10n, animal.species)}'
               '${animal.breed == null ? '' : ' · ${animal.breed}'}',
         ),
         if (animal.sex != null && animal.sex != AnimalSex.unknown)
           DetailRow(icon: Icons.male, text: sexLabel(l10n, animal.sex)),
         if (animal.ageYears != null)
-          DetailRow(
-              icon: Icons.cake_outlined, text: '${animal.ageYears} ans'),
+          DetailRow(icon: Icons.cake_outlined, text: '${animal.ageYears} ans'),
         if (animal.weightKg != null)
           DetailRow(
-              icon: Icons.monitor_weight_outlined,
-              text: '${animal.weightKg!.toStringAsFixed(1)} kg'),
+            icon: Icons.monitor_weight_outlined,
+            text: '${animal.weightKg!.toStringAsFixed(1)} kg',
+          ),
         if (animal.color != null)
           DetailRow(icon: Icons.palette_outlined, text: animal.color!),
         if (!animal.identifiers.isEmpty) ...[
@@ -143,14 +141,20 @@ class _InfoTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (animal.identifiers.chipNumber.isNotEmpty)
-                  Text('${l10n.animalFormChip} : '
-                      '${animal.identifiers.chipNumber}'),
+                  Text(
+                    '${l10n.animalFormChip} : '
+                    '${animal.identifiers.chipNumber}',
+                  ),
                 if (animal.identifiers.tattooNumber.isNotEmpty)
-                  Text('${l10n.animalFormTattoo} : '
-                      '${animal.identifiers.tattooNumber}'),
+                  Text(
+                    '${l10n.animalFormTattoo} : '
+                    '${animal.identifiers.tattooNumber}',
+                  ),
                 if (animal.identifiers.pedigreeNumber.isNotEmpty)
-                  Text('${l10n.animalFormPedigree} : '
-                      '${animal.identifiers.pedigreeNumber}'),
+                  Text(
+                    '${l10n.animalFormPedigree} : '
+                    '${animal.identifiers.pedigreeNumber}',
+                  ),
               ],
             ),
           ),

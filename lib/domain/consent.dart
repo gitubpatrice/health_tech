@@ -27,11 +27,10 @@ class ConsentSet {
     DateTime? disclaimerAt,
     DateTime? reminderAt,
     DateTime? newsletterAt,
-  }) =>
-      ConsentSet(
-        rgpdAt: rgpdAt ?? this.rgpdAt,
-        disclaimerAt: disclaimerAt ?? this.disclaimerAt,
-        reminderAt: reminderAt ?? this.reminderAt,
-        newsletterAt: newsletterAt ?? this.newsletterAt,
-      );
+  }) => ConsentSet(
+    rgpdAt: rgpdAt ?? this.rgpdAt,
+    disclaimerAt: disclaimerAt ?? this.disclaimerAt,
+    reminderAt: reminderAt ?? this.reminderAt,
+    newsletterAt: newsletterAt ?? this.newsletterAt,
+  );
 }

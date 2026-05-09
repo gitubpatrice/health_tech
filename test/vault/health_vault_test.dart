@@ -17,8 +17,7 @@ class _MemoryStorage implements FlutterSecureStorage {
     WebOptions? webOptions,
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
-  }) async =>
-      _store[key];
+  }) async => _store[key];
 
   @override
   Future<void> write({
@@ -47,8 +46,7 @@ class _MemoryStorage implements FlutterSecureStorage {
     WebOptions? webOptions,
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
-  }) async =>
-      _store.remove(key);
+  }) async => _store.remove(key);
 
   @override
   Future<bool> containsKey({
@@ -59,16 +57,13 @@ class _MemoryStorage implements FlutterSecureStorage {
     WebOptions? webOptions,
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
-  }) async =>
-      _store.containsKey(key);
+  }) async => _store.containsKey(key);
 
   // The remaining methods aren't exercised by the vault — but they must be
   // declared because [FlutterSecureStorage] is concrete (not an interface).
   @override
   dynamic noSuchMethod(Invocation invocation) {
-    throw UnimplementedError(
-      'unsupported in tests: ${invocation.memberName}',
-    );
+    throw UnimplementedError('unsupported in tests: ${invocation.memberName}');
   }
 }
 
@@ -88,7 +83,10 @@ void main() {
       // Same passphrase, fresh vault instance — must unwrap the same VEK.
       final v2 = HealthVault(secureStorage: storage);
       expect(await v2.isInitialised(), isTrue);
-      expect(await v2.unlockWithPassphrase('correct horse battery staple'), isTrue);
+      expect(
+        await v2.unlockWithPassphrase('correct horse battery staple'),
+        isTrue,
+      );
       expect(v2.sqlCipherKeyBytes(), equals(key1));
     });
 
@@ -104,8 +102,7 @@ void main() {
       expect(await v.unlockWithPassphrase('right one'), isTrue);
     });
 
-    test('setup throws VaultAlreadyInitialisedError on second call',
-        () async {
+    test('setup throws VaultAlreadyInitialisedError on second call', () async {
       final storage = _MemoryStorage();
       final v = HealthVault(secureStorage: storage);
       await v.setupWithPassphrase('first');
@@ -126,10 +123,7 @@ void main() {
 
     test('sqlCipherKeyBytes throws VaultLockedError when locked', () {
       final v = HealthVault(secureStorage: _MemoryStorage());
-      expect(
-        v.sqlCipherKeyBytes,
-        throwsA(isA<VaultLockedError>()),
-      );
+      expect(v.sqlCipherKeyBytes, throwsA(isA<VaultLockedError>()));
     });
   });
 }

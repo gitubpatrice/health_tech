@@ -100,8 +100,7 @@ class _AutoLockGuardState extends ConsumerState<AutoLockGuard> {
       onPause: () => ref.read(autoLockControllerProvider).lockNow(),
       onHide: () => ref.read(autoLockControllerProvider).lockNow(),
       onDetach: () => ref.read(autoLockControllerProvider).lockNow(),
-      onResume: () =>
-          ref.read(autoLockControllerProvider).onUserActivity(),
+      onResume: () => ref.read(autoLockControllerProvider).onUserActivity(),
     );
     Future<void>.microtask(() async {
       await ref.read(autoLockControllerProvider).init();

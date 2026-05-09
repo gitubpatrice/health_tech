@@ -25,10 +25,9 @@ class AttachmentsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
-    final stream = ref.watch(_attachmentsByOwnerProvider((
-      ownerType: ownerType,
-      ownerId: ownerId,
-    )));
+    final stream = ref.watch(
+      _attachmentsByOwnerProvider((ownerType: ownerType, ownerId: ownerId)),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -69,9 +68,7 @@ class AttachmentsSection extends ConsumerWidget {
                 : ListView.separated(
                     itemCount: list.length,
                     separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (_, i) => _AttachmentTile(
-                      attachment: list[i],
-                    ),
+                    itemBuilder: (_, i) => _AttachmentTile(attachment: list[i]),
                   ),
           ),
         ),
@@ -97,7 +94,9 @@ class AttachmentsSection extends ConsumerWidget {
 
     final mime = _guessMime(file.name);
     try {
-      await ref.read(attachmentRepositoryProvider).importBytes(
+      await ref
+          .read(attachmentRepositoryProvider)
+          .importBytes(
             ownerType: ownerType,
             ownerId: ownerId,
             kind: kind,
@@ -107,14 +106,14 @@ class AttachmentsSection extends ConsumerWidget {
           );
     } on AttachmentTooLargeError {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.attachmentsTooLarge)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.attachmentsTooLarge)));
     } on AttachmentRejectedError {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.attachmentsRejectedImage)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.attachmentsRejectedImage)));
     }
   }
 
@@ -164,15 +163,13 @@ class _AttachmentTile extends ConsumerWidget {
       },
     );
   }
-
 }
 
 typedef _OwnerKey = ({String ownerType, String ownerId});
 
-final _attachmentsByOwnerProvider = StreamProvider.family<
-    List<Attachment>, _OwnerKey>((ref, key) {
-  return ref.watch(attachmentRepositoryProvider).watchByOwner(
-        ownerType: key.ownerType,
-        ownerId: key.ownerId,
-      );
-});
+final _attachmentsByOwnerProvider =
+    StreamProvider.family<List<Attachment>, _OwnerKey>((ref, key) {
+      return ref
+          .watch(attachmentRepositoryProvider)
+          .watchByOwner(ownerType: key.ownerType, ownerId: key.ownerId);
+    });

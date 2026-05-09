@@ -21,12 +21,14 @@ void main() {
     crypto = FieldCrypto(Uint8List.fromList(List.generate(32, (i) => i)));
     repo = SessionRepository(db, crypto);
     final now = DateTime.now();
-    final c = await ClientRepository(db, crypto).create(Client(
-      id: '',
-      firstName: 'Test',
-      lastName: 'Client',
-      consents: ConsentSet(rgpdAt: now, disclaimerAt: now),
-    ));
+    final c = await ClientRepository(db, crypto).create(
+      Client(
+        id: '',
+        firstName: 'Test',
+        lastName: 'Client',
+        consents: ConsentSet(rgpdAt: now, disclaimerAt: now),
+      ),
+    );
     clientId = c.id;
   });
 
@@ -61,10 +63,7 @@ void main() {
       endAt: start,
       kind: SessionKind.human,
     );
-    expect(
-      () => repo.create(invalid),
-      throwsA(isA<ValidationError>()),
-    );
+    expect(() => repo.create(invalid), throwsA(isA<ValidationError>()));
   });
 
   test('round-trip preserves report sections and motives', () async {
@@ -74,8 +73,10 @@ void main() {
     expect(fetched!.report.beforeState, 'Stressée');
     expect(fetched.report.observations, 'Énergie bloquée plexus');
     expect(fetched.privateNote, 'À surveiller au prochain RDV');
-    expect(fetched.motives,
-        containsAll([SessionMotives.reiki, SessionMotives.stress]));
+    expect(
+      fetched.motives,
+      containsAll([SessionMotives.reiki, SessionMotives.stress]),
+    );
   });
 
   test('watchByClient orders by start desc', () async {
@@ -90,10 +91,7 @@ void main() {
     await repo.create(draft(offset: const Duration(days: -100)));
     await repo.create(draft());
     final list = await repo
-        .watchInRange(
-          DateTime(2026, 5, 1),
-          DateTime(2026, 5, 31),
-        )
+        .watchInRange(DateTime(2026, 5, 1), DateTime(2026, 5, 31))
         .first;
     expect(list.length, 1);
   });

@@ -58,7 +58,8 @@ class ImageBoundsProbe {
       final marker = b[i + 1];
       if (marker == 0xD8 || marker == 0xD9) return null;
       final segLen = (b[i + 2] << 8) | b[i + 3];
-      final isSOF = marker >= 0xC0 &&
+      final isSOF =
+          marker >= 0xC0 &&
           marker <= 0xCF &&
           marker != 0xC4 &&
           marker != 0xC8 &&

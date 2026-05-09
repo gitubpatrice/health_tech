@@ -10,10 +10,7 @@ import '../vault/field_crypto.dart';
 /// Centralises the 7+ duplicated `if (x.isEmpty) Value(null) else
 /// Value(await crypto.encryptString(x))` patterns previously scattered
 /// across every repository.
-Future<Value<String?>> encryptOptional(
-  FieldCrypto crypto,
-  String plain,
-) async {
+Future<Value<String?>> encryptOptional(FieldCrypto crypto, String plain) async {
   if (plain.isEmpty) return const Value<String?>(null);
   return Value<String?>(await crypto.encryptString(plain));
 }

@@ -49,10 +49,7 @@ class ErrorView extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Text(
-          localiseError(context, error),
-          textAlign: TextAlign.center,
-        ),
+        child: Text(localiseError(context, error), textAlign: TextAlign.center),
       ),
     );
   }

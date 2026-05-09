@@ -17,8 +17,11 @@ class AnimalRepository {
   Future<Animal> create(Animal draft) async {
     final id = draft.id.isEmpty ? _uuid.v4() : draft.id;
     final now = nowEpochSeconds();
-    final companion =
-        await _toCompanion(draft.copyWith(id: id), isInsert: true, epoch: now);
+    final companion = await _toCompanion(
+      draft.copyWith(id: id),
+      isInsert: true,
+      epoch: now,
+    );
     await _db.into(_db.animals).insert(companion);
     return (await getById(id))!;
   }
@@ -26,15 +29,16 @@ class AnimalRepository {
   Future<Animal> update(Animal animal) async {
     final now = nowEpochSeconds();
     final companion = await _toCompanion(animal, isInsert: false, epoch: now);
-    await (_db.update(_db.animals)..where((t) => t.id.equals(animal.id)))
-        .write(companion);
+    await (_db.update(
+      _db.animals,
+    )..where((t) => t.id.equals(animal.id))).write(companion);
     return (await getById(animal.id))!;
   }
 
   Future<Animal?> getById(String id) async {
-    final row = await (_db.select(_db.animals)
-          ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.animals,
+    )..where((t) => t.id.equals(id) & t.deletedAt.isNull())).getSingleOrNull();
     if (row == null) return null;
     return _fromRow(row);
   }
@@ -44,8 +48,8 @@ class AnimalRepository {
       ..where((t) => t.clientId.equals(clientId) & t.deletedAt.isNull())
       ..orderBy([(t) => OrderingTerm.asc(t.name)]);
     return select.watch().map(
-          (rows) => rows.map(_fromRowLight).toList(growable: false),
-        );
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
   }
 
   Stream<List<Animal>> watchAll({String? query, String? speciesFilter}) {
@@ -60,8 +64,8 @@ class AnimalRepository {
       select.where((t) => t.species.equals(speciesFilter));
     }
     return select.watch().map(
-          (rows) => rows.map(_fromRowLight).toList(growable: false),
-        );
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
   }
 
   Future<void> softDelete(String id) async {
@@ -110,31 +114,30 @@ class AnimalRepository {
     final behavior = row.behaviorNotesEncrypted == null
         ? ''
         : await _crypto.decryptString(row.behaviorNotesEncrypted!);
-    return _baseFromRow(row).copyWith(
-      healthNotes: health,
-      behaviorNotes: behavior,
-    );
+    return _baseFromRow(
+      row,
+    ).copyWith(healthNotes: health, behaviorNotes: behavior);
   }
 
   Animal _fromRowLight(AnimalRow row) => _baseFromRow(row);
 
   Animal _baseFromRow(AnimalRow row) => Animal(
-        id: row.id,
-        clientId: row.clientId,
-        name: row.name,
-        species: row.species,
-        breed: row.breed,
-        sex: row.sex,
-        birthDate: row.birthDateMs == null
-            ? null
-            : DateTime.fromMillisecondsSinceEpoch(row.birthDateMs!),
-        weightGrams: row.weightGrams,
-        color: row.color,
-        identifiers: row.identifiersJson.isEmpty
-            ? const AnimalIdentifiers()
-            : AnimalIdentifiers.fromJson(row.identifiersJson),
-        profile: row.profileJson,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt * 1000),
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt * 1000),
-      );
+    id: row.id,
+    clientId: row.clientId,
+    name: row.name,
+    species: row.species,
+    breed: row.breed,
+    sex: row.sex,
+    birthDate: row.birthDateMs == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(row.birthDateMs!),
+    weightGrams: row.weightGrams,
+    color: row.color,
+    identifiers: row.identifiersJson.isEmpty
+        ? const AnimalIdentifiers()
+        : AnimalIdentifiers.fromJson(row.identifiersJson),
+    profile: row.profileJson,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt * 1000),
+    updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt * 1000),
+  );
 }

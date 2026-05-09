@@ -45,7 +45,9 @@ class HomeScreen extends ConsumerWidget {
         icon: Icons.event,
         label: l10n.navAgenda,
         color: scheme.surfaceContainerHigh,
-        onTap: () {/* agenda v0.4 */},
+        onTap: () {
+          /* agenda v0.4 */
+        },
       ),
     ];
 
@@ -70,8 +72,10 @@ class HomeScreen extends ConsumerWidget {
             children: [for (final s in shortcuts) _ShortcutCard(s)],
           ),
           const SizedBox(height: 24),
-          Text(l10n.homeTodayAppointments,
-              style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            l10n.homeTodayAppointments,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 8),
           // TODO replace with real list bound to providers
           const _EmptyState(),
@@ -163,10 +167,7 @@ class _EmptyState extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Center(
-          child: Text(
-            '—',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
+          child: Text('—', style: Theme.of(context).textTheme.bodyLarge),
         ),
       ),
     );

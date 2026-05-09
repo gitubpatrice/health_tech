@@ -23,12 +23,16 @@ final selectedSessionProvider = FutureProvider<Session?>((ref) async {
   return ref.watch(sessionRepositoryProvider).getById(id);
 });
 
-final sessionsByClientProvider =
-    StreamProvider.family<List<Session>, String>((ref, clientId) {
+final sessionsByClientProvider = StreamProvider.family<List<Session>, String>((
+  ref,
+  clientId,
+) {
   return ref.watch(sessionRepositoryProvider).watchByClient(clientId);
 });
 
-final sessionsByAnimalProvider =
-    StreamProvider.family<List<Session>, String>((ref, animalId) {
+final sessionsByAnimalProvider = StreamProvider.family<List<Session>, String>((
+  ref,
+  animalId,
+) {
   return ref.watch(sessionRepositoryProvider).watchByAnimal(animalId);
 });

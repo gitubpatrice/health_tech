@@ -18,15 +18,8 @@ class AnimalsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return const Stack(
       children: [
-        MasterDetailLayout(
-          list: _AnimalsList(),
-          detail: AnimalDetailScreen(),
-        ),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: _AddAnimalFab(),
-        ),
+        MasterDetailLayout(list: _AnimalsList(), detail: AnimalDetailScreen()),
+        Positioned(right: 16, bottom: 16, child: _AddAnimalFab()),
       ],
     );
   }
@@ -73,8 +66,7 @@ class _AnimalsList extends ConsumerWidget {
               prefixIcon: const Icon(Icons.search),
               hintText: l10n.actionSearch,
             ),
-            onChanged: (v) =>
-                ref.read(animalsQueryProvider.notifier).state = v,
+            onChanged: (v) => ref.read(animalsQueryProvider.notifier).state = v,
           ),
         ),
         SizedBox(
@@ -86,18 +78,18 @@ class _AnimalsList extends ConsumerWidget {
               ChoiceChip(
                 label: Text(l10n.speciesOther),
                 selected: species == null,
-                onSelected: (_) => ref
-                    .read(animalsSpeciesFilterProvider.notifier)
-                    .state = null,
+                onSelected: (_) =>
+                    ref.read(animalsSpeciesFilterProvider.notifier).state =
+                        null,
               ),
               const SizedBox(width: 8),
               for (final s in Species.all) ...[
                 ChoiceChip(
                   label: Text(speciesLabel(l10n, s)),
                   selected: species == s,
-                  onSelected: (sel) => ref
-                      .read(animalsSpeciesFilterProvider.notifier)
-                      .state = sel ? s : null,
+                  onSelected: (sel) =>
+                      ref.read(animalsSpeciesFilterProvider.notifier).state =
+                          sel ? s : null,
                 ),
                 const SizedBox(width: 8),
               ],
@@ -119,8 +111,7 @@ class _AnimalsList extends ConsumerWidget {
                     padding: const EdgeInsets.only(bottom: 96),
                     itemCount: animals.length,
                     separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (_, i) =>
-                        _AnimalTile(animal: animals[i]),
+                    itemBuilder: (_, i) => _AnimalTile(animal: animals[i]),
                   ),
           ),
         ),
@@ -134,20 +125,18 @@ class _AnimalTile extends ConsumerWidget {
   final Animal animal;
 
   IconData get _icon => switch (animal.species) {
-        Species.dog => Icons.pets,
-        Species.cat => Icons.pets,
-        Species.horse => Icons.directions_run,
-        Species.bird => Icons.flutter_dash,
-        _ => Icons.pets_outlined,
-      };
+    Species.dog => Icons.pets,
+    Species.cat => Icons.pets,
+    Species.horse => Icons.directions_run,
+    Species.bird => Icons.flutter_dash,
+    _ => Icons.pets_outlined,
+  };
 
   Future<void> _select(BuildContext context, WidgetRef ref) async {
     ref.read(selectedAnimalIdProvider.notifier).state = animal.id;
     if (context.isCompact) {
       await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => const AnimalDetailScreen(),
-        ),
+        MaterialPageRoute<void>(builder: (_) => const AnimalDetailScreen()),
       );
     }
   }
