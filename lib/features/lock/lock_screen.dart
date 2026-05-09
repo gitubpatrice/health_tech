@@ -25,6 +25,11 @@ class LockScreen extends ConsumerWidget {
   }
 }
 
+/// Minimum passphrase length enforced at setup. 12 chars is enough for
+/// a passphrase made of distinct words; passwords made of a single word
+/// + numbers will still be weak — the UI nudges users towards length.
+const int kMinPassphraseLength = 12;
+
 class _Loading extends StatelessWidget {
   const _Loading();
   @override
@@ -40,6 +45,29 @@ class _Error extends StatelessWidget {
       Scaffold(body: Center(child: Text(message)));
 }
 
+/// Suffix icon that toggles a bound `obscureText` flag. Reused across the
+/// 3 passphrase fields so they all expose the same interaction.
+class _VisibilityToggle extends StatelessWidget {
+  const _VisibilityToggle({
+    required this.obscured,
+    required this.onPressed,
+    required this.l10n,
+  });
+
+  final bool obscured;
+  final VoidCallback onPressed;
+  final AppL10n l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+      tooltip: obscured ? l10n.lockShowPassphrase : l10n.lockHidePassphrase,
+      onPressed: onPressed,
+    );
+  }
+}
+
 class _UnlockForm extends ConsumerStatefulWidget {
   const _UnlockForm();
   @override
@@ -49,6 +77,7 @@ class _UnlockForm extends ConsumerStatefulWidget {
 class _UnlockFormState extends ConsumerState<_UnlockForm> {
   final _ctrl = TextEditingController();
   bool _busy = false;
+  bool _obscured = true;
   String? _error;
 
   @override
@@ -98,12 +127,18 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
                   const SizedBox(height: 24),
                   TextField(
                     controller: _ctrl,
-                    obscureText: true,
+                    obscureText: _obscured,
                     autofocus: true,
                     autofillHints: const [AutofillHints.password],
                     decoration: InputDecoration(
                       labelText: l10n.lockPassphraseLabel,
                       errorText: _error,
+                      suffixIcon: _VisibilityToggle(
+                        obscured: _obscured,
+                        onPressed: () =>
+                            setState(() => _obscured = !_obscured),
+                        l10n: l10n,
+                      ),
                     ),
                     onSubmitted: _busy ? null : (_) => _submit(),
                   ),
@@ -137,6 +172,8 @@ class _SetupFormState extends ConsumerState<_SetupForm> {
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _busy = false;
+  bool _passObscured = true;
+  bool _confirmObscured = true;
   String? _error;
 
   @override
@@ -148,7 +185,7 @@ class _SetupFormState extends ConsumerState<_SetupForm> {
 
   Future<void> _submit() async {
     final l10n = AppL10n.of(context);
-    if (_passCtrl.text.length < 12) {
+    if (_passCtrl.text.length < kMinPassphraseLength) {
       setState(() => _error = l10n.lockSetupTooShort);
       return;
     }
@@ -174,6 +211,7 @@ class _SetupFormState extends ConsumerState<_SetupForm> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppL10n.of(context);
+    final lengthHint = l10n.lockSetupMinLength(kMinPassphraseLength);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -192,18 +230,31 @@ class _SetupFormState extends ConsumerState<_SetupForm> {
                   const SizedBox(height: 24),
                   TextField(
                     controller: _passCtrl,
-                    obscureText: true,
+                    obscureText: _passObscured,
                     decoration: InputDecoration(
                       labelText: l10n.lockPassphraseLabel,
+                      helperText: lengthHint,
                       errorText: _error,
+                      suffixIcon: _VisibilityToggle(
+                        obscured: _passObscured,
+                        onPressed: () =>
+                            setState(() => _passObscured = !_passObscured),
+                        l10n: l10n,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _confirmCtrl,
-                    obscureText: true,
+                    obscureText: _confirmObscured,
                     decoration: InputDecoration(
                       labelText: l10n.lockSetupConfirmLabel,
+                      suffixIcon: _VisibilityToggle(
+                        obscured: _confirmObscured,
+                        onPressed: () => setState(
+                            () => _confirmObscured = !_confirmObscured),
+                        l10n: l10n,
+                      ),
                     ),
                     onSubmitted: _busy ? null : (_) => _submit(),
                   ),
