@@ -5,6 +5,8 @@ import '../../core/providers.dart';
 import '../../domain/animal.dart';
 import '../../domain/session.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/date_format.dart';
+import '../../widgets/section_title.dart';
 import '../animals/animal_providers.dart';
 import '../clients/client_providers.dart';
 import 'session_l10n.dart';
@@ -59,7 +61,9 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
     final s = widget.initial;
     _location = TextEditingController(text: s?.location ?? '');
     _price = TextEditingController(
-      text: s?.priceCents == null ? '' : (s!.priceCents! / 100).toStringAsFixed(2),
+      text: s?.priceCents == null
+          ? ''
+          : (s!.priceCents! / 100).toStringAsFixed(2),
     );
     _before = TextEditingController(text: s?.report.beforeState ?? '');
     _client = TextEditingController(text: s?.report.clientPerception ?? '');
@@ -87,8 +91,18 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
   @override
   void dispose() {
     for (final c in [
-      _location, _price, _before, _client, _observations,
-      _flow, _zones, _energetic, _after, _advice, _next, _privateNote,
+      _location,
+      _price,
+      _before,
+      _client,
+      _observations,
+      _flow,
+      _zones,
+      _energetic,
+      _after,
+      _advice,
+      _next,
+      _privateNote,
     ]) {
       c.dispose();
     }
@@ -112,28 +126,22 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
       initialTime: TimeOfDay.fromDateTime(current),
     );
     if (time == null) return;
-    onPicked(DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time.hour,
-      time.minute,
-    ));
+    onPicked(DateTime(date.year, date.month, date.day, time.hour, time.minute));
   }
 
   Future<void> _save() async {
     final l10n = AppL10n.of(context);
     if (!_formKey.currentState!.validate()) return;
     if (_clientId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.sessionFormSelectClient)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.sessionFormSelectClient)));
       return;
     }
     if (!_end.isAfter(_start)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.sessionFormDurationInvalid)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.sessionFormDurationInvalid)));
       return;
     }
     setState(() => _busy = true);
@@ -198,7 +206,9 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEdit ? l10n.sessionFormTitleEdit : l10n.sessionFormTitleNew),
+        title: Text(
+          isEdit ? l10n.sessionFormTitleEdit : l10n.sessionFormTitleNew,
+        ),
         actions: [
           TextButton(
             onPressed: _busy ? null : _save,
@@ -212,20 +222,16 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _SectionTitle(l10n.sessionFormSectionWho),
+              SectionTitle(l10n.sessionFormSectionWho),
               clients.when(
                 loading: () => const LinearProgressIndicator(),
                 error: (e, _) => Text('$e'),
                 data: (list) => DropdownButtonFormField<String>(
                   initialValue: _clientId,
-                  decoration:
-                      InputDecoration(labelText: l10n.animalFormClient),
+                  decoration: InputDecoration(labelText: l10n.animalFormClient),
                   items: [
                     for (final c in list)
-                      DropdownMenuItem(
-                        value: c.id,
-                        child: Text(c.fullName),
-                      ),
+                      DropdownMenuItem(value: c.id, child: Text(c.fullName)),
                   ],
                   onChanged: (v) => setState(() {
                     _clientId = v;
@@ -254,11 +260,11 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                 ),
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.sessionFormSectionWhen),
+              SectionTitle(l10n.sessionFormSectionWhen),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.sessionFormStartAt),
-                subtitle: Text(_formatDateTime(_start)),
+                subtitle: Text(formatDateTime(_start)),
                 trailing: const Icon(Icons.schedule),
                 onTap: () => _pickDateTime(
                   context,
@@ -274,7 +280,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.sessionFormEndAt),
-                subtitle: Text(_formatDateTime(_end)),
+                subtitle: Text(formatDateTime(_end)),
                 trailing: const Icon(Icons.schedule),
                 onTap: () => _pickDateTime(
                   context,
@@ -283,7 +289,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                 ),
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.sessionFormSectionType),
+              SectionTitle(l10n.sessionFormSectionType),
               DropdownButtonFormField<String>(
                 initialValue: _kind,
                 decoration: InputDecoration(labelText: l10n.sessionFormKind),
@@ -309,8 +315,9 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _location,
-                decoration:
-                    InputDecoration(labelText: l10n.sessionFormLocation),
+                decoration: InputDecoration(
+                  labelText: l10n.sessionFormLocation,
+                ),
               ),
               const SizedBox(height: 16),
               Wrap(
@@ -332,7 +339,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                 ],
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.sessionFormSectionPayment),
+              SectionTitle(l10n.sessionFormSectionPayment),
               Row(
                 children: [
                   Expanded(
@@ -341,8 +348,9 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration:
-                          InputDecoration(labelText: l10n.sessionFormPrice),
+                      decoration: InputDecoration(
+                        labelText: l10n.sessionFormPrice,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -408,7 +416,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                 onChanged: (v) => setState(() => _paymentMethod = v),
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.sessionFormSectionReport),
+              SectionTitle(l10n.sessionFormSectionReport),
               _reportField(_before, l10n.sessionFormReportBefore),
               _reportField(_client, l10n.sessionFormReportClient),
               _reportField(_observations, l10n.sessionFormReportObservations),
@@ -435,7 +443,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                 onChanged: (v) => setState(() => _improvement = v),
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.sessionFormSectionPrivate),
+              SectionTitle(l10n.sessionFormSectionPrivate),
               TextFormField(
                 controller: _privateNote,
                 maxLines: 3,
@@ -463,31 +471,12 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
   }
 
   Widget _reportField(TextEditingController c, String label) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: TextFormField(
-          controller: c,
-          maxLines: 3,
-          decoration: InputDecoration(labelText: label),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 12),
+    child: TextFormField(
+      controller: c,
+      maxLines: 3,
+      decoration: InputDecoration(labelText: label),
+    ),
+  );
 
-  static String _formatDateTime(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/'
-      '${d.month.toString().padLeft(2, '0')}/'
-      '${d.year} '
-      '${d.hour.toString().padLeft(2, '0')}:'
-      '${d.minute.toString().padLeft(2, '0')}';
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-  final String text;
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Text(
-          text,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-      );
 }

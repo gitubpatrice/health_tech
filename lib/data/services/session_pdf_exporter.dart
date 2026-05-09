@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../domain/client.dart';
 import '../../domain/session.dart';
+import '../../utils/date_format.dart';
 
 /// Strings injected by the caller (UI layer) so the exporter stays
 /// independent from Flutter / l10n.
@@ -111,7 +112,7 @@ class SessionPdfExporter {
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         _line(s.clientLine, client.fullName),
-        _line(s.dateLine, _formatDateTime(session.startAt)),
+        _line(s.dateLine, formatDateTime(session.startAt)),
         _line(s.durationLine, _formatDuration(session.duration)),
       ],
     );
@@ -168,12 +169,6 @@ class SessionPdfExporter {
           ),
         ),
       );
-
-  static String _formatDateTime(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/'
-      '${d.month.toString().padLeft(2, '0')}/${d.year} '
-      '${d.hour.toString().padLeft(2, '0')}:'
-      '${d.minute.toString().padLeft(2, '0')}';
 
   static String _formatDuration(Duration d) {
     final h = d.inHours;

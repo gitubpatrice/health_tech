@@ -122,8 +122,11 @@ class SessionRepository {
       reportEncrypted: reportEncrypted,
       privateNoteEncrypted: privateEncrypted,
       improvementLevel: Value(s.improvementLevel),
-      nextSuggestedAt:
-          Value(s.nextSuggestedAt?.millisecondsSinceEpoch),
+      nextSuggestedAt: Value(
+        s.nextSuggestedAt == null
+            ? null
+            : s.nextSuggestedAt!.millisecondsSinceEpoch ~/ 1000,
+      ),
       updatedAt: Value(epoch),
       createdAt: isInsert ? Value(epoch) : const Value.absent(),
     );
@@ -163,7 +166,7 @@ class SessionRepository {
         improvementLevel: row.improvementLevel,
         nextSuggestedAt: row.nextSuggestedAt == null
             ? null
-            : DateTime.fromMillisecondsSinceEpoch(row.nextSuggestedAt!),
+            : DateTime.fromMillisecondsSinceEpoch(row.nextSuggestedAt! * 1000),
         createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt * 1000),
         updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt * 1000),
       );

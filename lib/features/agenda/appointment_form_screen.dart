@@ -5,6 +5,7 @@ import '../../core/providers.dart';
 import '../../domain/animal.dart';
 import '../../domain/appointment.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/date_format.dart';
 import '../animals/animal_providers.dart';
 import '../clients/client_providers.dart';
 import '../sessions/session_l10n.dart';
@@ -176,7 +177,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.appointmentFormStartAt),
-                subtitle: Text(_formatDateTime(_start)),
+                subtitle: Text(formatDateTime(_start)),
                 trailing: const Icon(Icons.schedule),
                 onTap: () => _pickDateTime(
                   current: _start,
@@ -191,7 +192,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.appointmentFormEndAt),
-                subtitle: Text(_formatDateTime(_end)),
+                subtitle: Text(formatDateTime(_end)),
                 trailing: const Icon(Icons.schedule),
                 onTap: () => _pickDateTime(
                   current: _end,
@@ -299,10 +300,4 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
     );
   }
 
-  static String _formatDateTime(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/'
-      '${d.month.toString().padLeft(2, '0')}/'
-      '${d.year} '
-      '${d.hour.toString().padLeft(2, '0')}:'
-      '${d.minute.toString().padLeft(2, '0')}';
 }

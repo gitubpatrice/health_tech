@@ -10,7 +10,6 @@ import '../data/repositories/session_repository.dart';
 import '../data/repositories/tag_repository.dart';
 import '../data/services/purge_service.dart';
 import '../data/services/rgpd_export_service.dart';
-import '../data/services/system_calendar_bridge.dart';
 import '../data/vault/health_vault.dart';
 
 /// Single instance of the vault for the app lifetime.
@@ -122,10 +121,6 @@ final purgeServiceProvider = Provider((ref) {
     sessions: ref.watch(sessionRepositoryProvider),
     attachments: ref.watch(attachmentRepositoryProvider),
   );
-});
-
-final systemCalendarBridgeProvider = Provider<SystemCalendarBridge>((ref) {
-  return SystemCalendarBridge();
 });
 
 final rgpdExportServiceProvider = Provider((ref) {

@@ -6,6 +6,7 @@ import '../../domain/address.dart';
 import '../../domain/client.dart';
 import '../../domain/consent.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/section_title.dart';
 
 /// Create / edit form for a client. Uses one [Form] with a [GlobalKey] for
 /// validation, no per-field controller leak (controllers disposed in dispose).
@@ -72,9 +73,19 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
   @override
   void dispose() {
     for (final ctrl in [
-      _lastName, _firstName, _phone, _email, _profession,
-      _street, _complement, _zip, _city, _region, _country,
-      _healthNotes, _freeNotes,
+      _lastName,
+      _firstName,
+      _phone,
+      _email,
+      _profession,
+      _street,
+      _complement,
+      _zip,
+      _city,
+      _region,
+      _country,
+      _healthNotes,
+      _freeNotes,
     ]) {
       ctrl.dispose();
     }
@@ -96,9 +107,9 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
     final l10n = AppL10n.of(context);
     if (!_formKey.currentState!.validate()) return;
     if (!_consentRgpd || !_consentDisclaimer) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.clientFormConsentRequired)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.clientFormConsentRequired)));
       return;
     }
     setState(() => _busy = true);
@@ -112,8 +123,9 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
       birthDate: _birthDate,
       phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
       email: _email.text.trim().isEmpty ? null : _email.text.trim(),
-      profession:
-          _profession.text.trim().isEmpty ? null : _profession.text.trim(),
+      profession: _profession.text.trim().isEmpty
+          ? null
+          : _profession.text.trim(),
       address: Address(
         street: _street.text.trim(),
         complement: _complement.text.trim(),
@@ -174,12 +186,10 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _SectionTitle(l10n.clientFormSectionIdentity),
+              SectionTitle(l10n.clientFormSectionIdentity),
               DropdownButtonFormField<String>(
                 initialValue: _civility,
-                decoration: InputDecoration(
-                  labelText: l10n.clientFormCivility,
-                ),
+                decoration: InputDecoration(labelText: l10n.clientFormCivility),
                 items: [
                   DropdownMenuItem(
                     value: Civility.mr,
@@ -201,9 +211,7 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
               TextFormField(
                 controller: _lastName,
                 textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: l10n.clientFormLastName,
-                ),
+                decoration: InputDecoration(labelText: l10n.clientFormLastName),
                 validator: (v) =>
                     (v ?? '').trim().isEmpty ? l10n.fieldRequired : null,
               ),
@@ -221,16 +229,18 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.clientFormBirthDate),
-                subtitle: Text(_birthDate == null
-                    ? '—'
-                    : '${_birthDate!.day.toString().padLeft(2, '0')}/'
-                        '${_birthDate!.month.toString().padLeft(2, '0')}/'
-                        '${_birthDate!.year}'),
+                subtitle: Text(
+                  _birthDate == null
+                      ? '—'
+                      : '${_birthDate!.day.toString().padLeft(2, '0')}/'
+                            '${_birthDate!.month.toString().padLeft(2, '0')}/'
+                            '${_birthDate!.year}',
+                ),
                 trailing: const Icon(Icons.calendar_month_outlined),
                 onTap: _pickBirthDate,
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.clientFormSectionContact),
+              SectionTitle(l10n.clientFormSectionContact),
               TextFormField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
@@ -250,11 +260,12 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _profession,
-                decoration:
-                    InputDecoration(labelText: l10n.clientFormProfession),
+                decoration: InputDecoration(
+                  labelText: l10n.clientFormProfession,
+                ),
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.clientFormSectionAddress),
+              SectionTitle(l10n.clientFormSectionAddress),
               TextFormField(
                 controller: _street,
                 decoration: InputDecoration(labelText: l10n.clientFormStreet),
@@ -262,8 +273,9 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _complement,
-                decoration:
-                    InputDecoration(labelText: l10n.clientFormComplement),
+                decoration: InputDecoration(
+                  labelText: l10n.clientFormComplement,
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -299,26 +311,27 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _country,
-                decoration:
-                    InputDecoration(labelText: l10n.clientFormCountry),
+                decoration: InputDecoration(labelText: l10n.clientFormCountry),
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.clientFormSectionHealth),
+              SectionTitle(l10n.clientFormSectionHealth),
               TextFormField(
                 controller: _healthNotes,
                 maxLines: 4,
-                decoration:
-                    InputDecoration(labelText: l10n.clientFormHealthNotes),
+                decoration: InputDecoration(
+                  labelText: l10n.clientFormHealthNotes,
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _freeNotes,
                 maxLines: 4,
-                decoration:
-                    InputDecoration(labelText: l10n.clientFormFreeNotes),
+                decoration: InputDecoration(
+                  labelText: l10n.clientFormFreeNotes,
+                ),
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.clientFormSectionConsent),
+              SectionTitle(l10n.clientFormSectionConsent),
               CheckboxListTile(
                 value: _consentRgpd,
                 onChanged: (v) => setState(() => _consentRgpd = v ?? false),
@@ -334,8 +347,7 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
               ),
               CheckboxListTile(
                 value: _consentReminder,
-                onChanged: (v) =>
-                    setState(() => _consentReminder = v ?? false),
+                onChanged: (v) => setState(() => _consentReminder = v ?? false),
                 title: Text(l10n.clientFormConsentReminder),
                 controlAffinity: ListTileControlAffinity.leading,
               ),
@@ -367,18 +379,3 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
 }
 
 final RegExp _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-  final String text;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-    );
-  }
-}

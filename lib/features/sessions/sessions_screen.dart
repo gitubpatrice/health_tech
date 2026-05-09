@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/session.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/date_format.dart';
 import '../../widgets/adaptive_scaffold.dart';
 import '../../widgets/breakpoints.dart';
 import 'session_detail_screen.dart';
@@ -119,7 +120,7 @@ class _SessionTile extends ConsumerWidget {
         ),
       ),
       title: Text(
-        '${_formatDate(session.startAt)} · ${_formatTime(session.startAt)}',
+        '${formatDayMonth(session.startAt)} · ${formatTime(session.startAt)}',
       ),
       subtitle: Text(
         '${kindLabel(l10n, session.kind)} · '
@@ -129,10 +130,4 @@ class _SessionTile extends ConsumerWidget {
     );
   }
 
-  static String _formatDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/'
-      '${d.month.toString().padLeft(2, '0')}';
-  static String _formatTime(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:'
-      '${d.minute.toString().padLeft(2, '0')}';
 }

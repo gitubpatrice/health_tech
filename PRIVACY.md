@@ -1,6 +1,6 @@
 # Politique de confidentialité — Health Tech
 
-_Version 0.1.0 — 9 mai 2026_
+_Version 0.7.0 — 9 mai 2026_
 
 ## En une phrase
 
@@ -58,7 +58,7 @@ contact@files-tech.com
 
 # Privacy Policy — Health Tech (English)
 
-_Version 0.1.0 — 9 May 2026_
+_Version 0.7.0 — 9 May 2026_
 
 ## In one sentence
 

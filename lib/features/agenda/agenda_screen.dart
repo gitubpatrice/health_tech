@@ -5,6 +5,7 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../../domain/appointment.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/date_format.dart';
 import '../sessions/session_l10n.dart';
 import 'appointment_form_screen.dart';
 import 'appointment_providers.dart';
@@ -269,11 +270,11 @@ class _AppointmentTile extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            _formatTime(appointment.startAt),
+            formatTime(appointment.startAt),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           Text(
-            _formatTime(appointment.endAt),
+            formatTime(appointment.endAt),
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
@@ -298,7 +299,4 @@ class _AppointmentTile extends ConsumerWidget {
     );
   }
 
-  static String _formatTime(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:'
-      '${d.minute.toString().padLeft(2, '0')}';
 }

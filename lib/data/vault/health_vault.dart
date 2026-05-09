@@ -79,11 +79,12 @@ class HealthVault {
       throw StateError('Vault already initialised');
     }
     final salt = _randomBytes(_saltLen);
+    final iterations = await _calibrateIterations(salt: salt);
     final masterKey = await _deriveMasterKey(
       passphrase: passphrase,
       salt: salt,
       memoryKb: _defaultMemoryKb,
-      iterations: _defaultIterations,
+      iterations: iterations,
       parallelism: _defaultParallelism,
     );
     final vek = _randomBytes(_vekLen);
@@ -92,12 +93,35 @@ class HealthVault {
     await _storage.write(key: _kWrappedVek, value: base64Encode(wrapped));
     await _storage.write(key: _kKdfSalt, value: base64Encode(salt));
     await _storage.write(key: _kKdfMemory, value: '$_defaultMemoryKb');
-    await _storage.write(key: _kKdfIterations, value: '$_defaultIterations');
+    await _storage.write(key: _kKdfIterations, value: '$iterations');
     await _storage.write(key: _kKdfParallelism, value: '$_defaultParallelism');
 
     masterKey.fillRange(0, masterKey.length, 0);
     _vek = vek;
     _crypto = FieldCrypto(Uint8List.fromList(vek));
+  }
+
+  /// Calibrates Argon2id iterations to target ~750 ms on the current device.
+  /// Starts at the configured default; if a single-iteration probe finishes
+  /// faster than expected we keep more iterations, slower we keep fewer
+  /// (with a hard floor of 2 iterations and ceiling of 6).
+  Future<int> _calibrateIterations({
+    required Uint8List salt,
+    int targetMs = 750,
+  }) async {
+    final probeKey = utf8.encode('calibration-probe');
+    final stopwatch = Stopwatch()..start();
+    final probe = await Argon2id(
+      memory: _defaultMemoryKb,
+      parallelism: _defaultParallelism,
+      iterations: 1,
+      hashLength: 32,
+    ).deriveKey(secretKey: SecretKey(probeKey), nonce: salt);
+    await probe.extractBytes();
+    stopwatch.stop();
+    final perIter = stopwatch.elapsedMilliseconds.clamp(50, 4000);
+    final estimated = (targetMs / perIter).round();
+    return estimated.clamp(2, 6);
   }
 
   /// Returns true on success, false if the passphrase was wrong.

@@ -123,20 +123,13 @@ class RgpdExportService {
       );
     }
 
-    final clientAppointments = await appointments
-        .watchInRange(
-          DateTime(2000),
-          DateTime(2100),
-        )
-        .first;
-    final filtered = clientAppointments
-        .where((a) => a.clientId == clientId)
-        .toList();
-    if (filtered.isNotEmpty) {
+    final clientAppointments =
+        await appointments.watchByClient(clientId).first;
+    if (clientAppointments.isNotEmpty) {
       _addJson(
         archive,
         'appointments.json',
-        filtered.map(_appointmentToJson).toList(),
+        clientAppointments.map(_appointmentToJson).toList(),
       );
     }
 

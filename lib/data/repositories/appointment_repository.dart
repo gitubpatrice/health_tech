@@ -59,6 +59,15 @@ class AppointmentRepository {
         );
   }
 
+  Stream<List<Appointment>> watchByClient(String clientId) {
+    final select = _db.select(_db.appointments)
+      ..where((t) => t.deletedAt.isNull() & t.clientId.equals(clientId))
+      ..orderBy([(t) => OrderingTerm.desc(t.startAt)]);
+    return select.watch().map(
+          (rows) => rows.map(_fromRowLight).toList(growable: false),
+        );
+  }
+
   Stream<List<Appointment>> watchUpcoming({int limit = 50}) {
     final nowS = nowEpochSeconds();
     final select = _db.select(_db.appointments)

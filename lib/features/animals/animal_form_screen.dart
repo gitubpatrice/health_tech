@@ -4,15 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../domain/animal.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/date_format.dart';
+import '../../widgets/section_title.dart';
 import '../clients/client_providers.dart';
 import 'animal_l10n.dart';
 
 class AnimalFormScreen extends ConsumerStatefulWidget {
-  const AnimalFormScreen({
-    super.key,
-    this.initial,
-    this.defaultClientId,
-  });
+  const AnimalFormScreen({super.key, this.initial, this.defaultClientId});
 
   final Animal? initial;
 
@@ -58,8 +56,9 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
     );
     _chip = TextEditingController(text: a?.identifiers.chipNumber ?? '');
     _tattoo = TextEditingController(text: a?.identifiers.tattooNumber ?? '');
-    _pedigree =
-        TextEditingController(text: a?.identifiers.pedigreeNumber ?? '');
+    _pedigree = TextEditingController(
+      text: a?.identifiers.pedigreeNumber ?? '',
+    );
     _vetName = TextEditingController(text: a?.identifiers.vetName ?? '');
     _vetPhone = TextEditingController(text: a?.identifiers.vetPhone ?? '');
     _vetEmail = TextEditingController(text: a?.identifiers.vetEmail ?? '');
@@ -75,10 +74,18 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
   @override
   void dispose() {
     for (final c in [
-      _name, _breed, _color, _weightKg,
-      _chip, _tattoo, _pedigree,
-      _vetName, _vetPhone, _vetEmail,
-      _healthNotes, _behaviorNotes,
+      _name,
+      _breed,
+      _color,
+      _weightKg,
+      _chip,
+      _tattoo,
+      _pedigree,
+      _vetName,
+      _vetPhone,
+      _vetEmail,
+      _healthNotes,
+      _behaviorNotes,
     ]) {
       c.dispose();
     }
@@ -104,9 +111,9 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
   Future<void> _save() async {
     final l10n = AppL10n.of(context);
     if (_clientId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.sessionFormSelectClient)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.sessionFormSelectClient)));
       return;
     }
     if (!_formKey.currentState!.validate()) return;
@@ -181,21 +188,16 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _SectionTitle(l10n.animalFormSectionIdentity),
+              SectionTitle(l10n.animalFormSectionIdentity),
               clients.when(
                 loading: () => const LinearProgressIndicator(),
                 error: (e, _) => Text('$e'),
                 data: (list) => DropdownButtonFormField<String>(
                   initialValue: _clientId,
-                  decoration: InputDecoration(
-                    labelText: l10n.animalFormClient,
-                  ),
+                  decoration: InputDecoration(labelText: l10n.animalFormClient),
                   items: [
                     for (final c in list)
-                      DropdownMenuItem(
-                        value: c.id,
-                        child: Text(c.fullName),
-                      ),
+                      DropdownMenuItem(value: c.id, child: Text(c.fullName)),
                   ],
                   onChanged: (v) => setState(() => _clientId = v),
                   validator: (v) =>
@@ -213,8 +215,7 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: _species,
-                decoration:
-                    InputDecoration(labelText: l10n.animalFormSpecies),
+                decoration: InputDecoration(labelText: l10n.animalFormSpecies),
                 items: [
                   for (final s in Species.all)
                     DropdownMenuItem(
@@ -255,14 +256,13 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
                     child: Text(l10n.sexUnknown),
                   ),
                 ],
-                onChanged: (v) =>
-                    setState(() => _sex = v ?? AnimalSex.unknown),
+                onChanged: (v) => setState(() => _sex = v ?? AnimalSex.unknown),
               ),
               const SizedBox(height: 12),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.animalFormBirthDate),
-                subtitle: Text(_formatDate(_birthDate) ?? '—'),
+                subtitle: Text(_birthDate == null ? '—' : formatDate(_birthDate!)),
                 trailing: const Icon(Icons.calendar_month_outlined),
                 onTap: () => _pickDate(
                   context,
@@ -296,7 +296,7 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
                 ],
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.animalFormSectionIdentifiers),
+              SectionTitle(l10n.animalFormSectionIdentifiers),
               TextFormField(
                 controller: _chip,
                 decoration: InputDecoration(labelText: l10n.animalFormChip),
@@ -309,14 +309,13 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _pedigree,
-                decoration:
-                    InputDecoration(labelText: l10n.animalFormPedigree),
+                decoration: InputDecoration(labelText: l10n.animalFormPedigree),
               ),
               const SizedBox(height: 12),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.animalFormLastVaccination),
-                subtitle: Text(_formatDate(_lastVaccin) ?? '—'),
+                subtitle: Text(_lastVaccin == null ? '—' : formatDate(_lastVaccin!)),
                 trailing: const Icon(Icons.vaccines_outlined),
                 onTap: () => _pickDate(
                   context,
@@ -325,40 +324,39 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
                 ),
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.animalFormSectionVet),
+              SectionTitle(l10n.animalFormSectionVet),
               TextFormField(
                 controller: _vetName,
-                decoration:
-                    InputDecoration(labelText: l10n.animalFormVetName),
+                decoration: InputDecoration(labelText: l10n.animalFormVetName),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _vetPhone,
                 keyboardType: TextInputType.phone,
-                decoration:
-                    InputDecoration(labelText: l10n.animalFormVetPhone),
+                decoration: InputDecoration(labelText: l10n.animalFormVetPhone),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _vetEmail,
                 keyboardType: TextInputType.emailAddress,
-                decoration:
-                    InputDecoration(labelText: l10n.animalFormVetEmail),
+                decoration: InputDecoration(labelText: l10n.animalFormVetEmail),
               ),
               const Divider(height: 32),
-              _SectionTitle(l10n.animalFormSectionHealth),
+              SectionTitle(l10n.animalFormSectionHealth),
               TextFormField(
                 controller: _healthNotes,
                 maxLines: 4,
-                decoration:
-                    InputDecoration(labelText: l10n.animalFormHealthNotes),
+                decoration: InputDecoration(
+                  labelText: l10n.animalFormHealthNotes,
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _behaviorNotes,
                 maxLines: 4,
-                decoration:
-                    InputDecoration(labelText: l10n.animalFormBehaviorNotes),
+                decoration: InputDecoration(
+                  labelText: l10n.animalFormBehaviorNotes,
+                ),
               ),
               const SizedBox(height: 24),
               FilledButton.icon(
@@ -379,23 +377,4 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
     );
   }
 
-  static String? _formatDate(DateTime? d) {
-    if (d == null) return null;
-    return '${d.day.toString().padLeft(2, '0')}/'
-        '${d.month.toString().padLeft(2, '0')}/'
-        '${d.year}';
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-  final String text;
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Text(
-          text,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-      );
 }

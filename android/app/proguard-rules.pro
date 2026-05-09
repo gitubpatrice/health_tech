@@ -13,8 +13,5 @@
 -keep class org.bouncycastle.** { *; }
 -dontwarn org.bouncycastle.**
 
-# Local auth biometrics
--keep class androidx.biometric.** { *; }
-
 # Stripped reflection-using libs
 -keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses

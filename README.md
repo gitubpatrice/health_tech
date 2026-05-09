@@ -6,7 +6,7 @@ Application Android (téléphone + tablette) de gestion d'agenda, clients humain
 
 ## Statut
 
-`v0.1.0` — squelette en cours de construction. Voir [`SECURITY.md`](SECURITY.md) et [`PRIVACY.md`](PRIVACY.md).
+`v0.7.0` — fonctionnel de bout en bout (clients, animaux, séances, agenda, pièces jointes, RGPD), audité. Voir [`SECURITY.md`](SECURITY.md) et [`PRIVACY.md`](PRIVACY.md).
 
 ## Pile technique
 
