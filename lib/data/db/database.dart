@@ -110,11 +110,18 @@ class HealthDb extends _$HealthDb {
     }
   }
 
-  /// Opens the encrypted database with the master passphrase.
+  /// Opens the encrypted database, keyed with the raw 32-byte VEK.
   ///
-  /// The passphrase is held only in memory during open and immediately wiped
-  /// from local strings (caller must wipe theirs).
-  static Future<HealthDb> open({required String passphrase}) async {
+  /// The hex projection of the VEK only exists inside the SQLCipher `setup`
+  /// callback. Outside of it, no String holds the key material — the
+  /// caller passes the raw [Uint8List] which can be wiped after the call.
+  /// This shrinks the lifetime of an immutable, GC-bound copy of the key
+  /// (Dart `String`s cannot be zeroed) to a single `db.execute` call.
+  static Future<HealthDb> open({required Uint8List vek}) async {
+    if (vek.length != 32) {
+      throw ArgumentError.value(vek.length, 'vek.length',
+          'SQLCipher raw key must be exactly 32 bytes');
+    }
     await applyWorkaroundToOpenSqlCipherOnOldAndroidVersions();
 
     final dir = await getApplicationSupportDirectory();
@@ -124,21 +131,27 @@ class HealthDb extends _$HealthDb {
     }
     final dbFile = File(p.join(dbDir.path, 'health.db'));
 
-    // The vault hands us a stable hex(VEK) (64 hex chars). We pass it to
-    // SQLCipher as a *raw* key via the `x'…'` syntax: this skips SQLCipher's
-    // internal PBKDF2 (we already did Argon2id ourselves), and removes any
-    // need for string quoting. Anything other than 64 hex chars would be an
-    // invariant violation — assert it loudly.
-    assert(
-      RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(passphrase),
-      'SQLCipher raw key must be 64 hex chars',
-    );
+    // Take a defensive copy so the caller can wipe its own buffer the
+    // moment open() returns, without the setup callback (which may run
+    // later, on the SQLite background isolate) seeing zeroed bytes.
+    final keyCopy = Uint8List.fromList(vek);
+
     final executor = NativeDatabase.createInBackground(
       dbFile,
       setup: (db) {
         db.config.doubleQuotedStringLiterals = false;
-        db.execute("PRAGMA key = \"x'$passphrase'\";");
+        // Build the hex string strictly inside the callback. It becomes
+        // GC-eligible as soon as `db.execute` returns. We can't zero the
+        // String itself (Dart immutability) but we can avoid keeping it
+        // referenced anywhere reachable afterwards.
+        final buf = StringBuffer();
+        for (final b in keyCopy) {
+          buf.write(b.toRadixString(16).padLeft(2, '0'));
+        }
+        db.execute("PRAGMA key = \"x'${buf.toString()}'\";");
         db.execute('PRAGMA cipher_memory_security = ON;');
+        // Wipe the local key copy now that SQLCipher has internalised it.
+        keyCopy.fillRange(0, keyCopy.length, 0);
       },
     );
     return HealthDb(executor);

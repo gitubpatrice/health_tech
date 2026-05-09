@@ -10,6 +10,7 @@ import '../data/repositories/session_repository.dart';
 import '../data/repositories/tag_repository.dart';
 import '../data/services/purge_service.dart';
 import '../data/services/rgpd_export_service.dart';
+import '../data/services/system_calendar_bridge.dart';
 import '../data/vault/health_vault.dart';
 
 /// Single instance of the vault for the app lifetime.
@@ -68,9 +69,14 @@ final databaseProvider = FutureProvider<HealthDb>((ref) async {
     throw StateError('Database requested while vault is locked');
   }
   final vault = ref.read(vaultProvider);
-  final db = await HealthDb.open(passphrase: vault.sqlCipherPassphrase());
-  ref.onDispose(db.close);
-  return db;
+  final keyBytes = vault.sqlCipherKeyBytes();
+  try {
+    final db = await HealthDb.open(vek: keyBytes);
+    ref.onDispose(db.close);
+    return db;
+  } finally {
+    keyBytes.fillRange(0, keyBytes.length, 0);
+  }
 });
 
 /// Repository providers — depend on the unlocked database AND the vault's
@@ -124,6 +130,13 @@ final purgeServiceProvider = Provider((ref) {
     sessions: ref.watch(sessionRepositoryProvider),
     attachments: ref.watch(attachmentRepositoryProvider),
   );
+});
+
+/// System calendar bridge — opt-in. The user must tick "Add to system
+/// calendar" in the appointment form for [SystemCalendarBridge.push] to
+/// actually be invoked.
+final systemCalendarBridgeProvider = Provider<SystemCalendarBridge>((ref) {
+  return SystemCalendarBridge();
 });
 
 final rgpdExportServiceProvider = Provider((ref) {

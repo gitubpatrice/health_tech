@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:health_tech/core/errors.dart';
 import 'package:health_tech/data/db/database.dart';
 import 'package:health_tech/data/repositories/appointment_repository.dart';
 import 'package:health_tech/data/vault/field_crypto.dart';
@@ -37,7 +38,10 @@ void main() {
   test('rejects appointments where end <= start', () async {
     final start = DateTime.now();
     final invalid = Appointment(id: '', startAt: start, endAt: start);
-    expect(() => repo.create(invalid), throwsArgumentError);
+    expect(
+      () => repo.create(invalid),
+      throwsA(isA<ValidationError>()),
+    );
   });
 
   test('round-trip preserves encrypted notes', () async {

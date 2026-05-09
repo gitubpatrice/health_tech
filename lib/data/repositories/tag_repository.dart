@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/errors.dart';
 import '../../domain/tag.dart';
 import '../db/database.dart';
 
@@ -13,7 +14,7 @@ class TagRepository {
   Future<Tag> upsert({String? id, required String label, int? colorArgb}) async {
     final normalised = label.trim();
     if (normalised.isEmpty) {
-      throw ArgumentError.value(label, 'label', 'Tag label must not be empty');
+      throw const ValidationError('tag_label_empty', 'label');
     }
     if (id == null) {
       // Reuse an existing tag with the same label (case-insensitive) instead

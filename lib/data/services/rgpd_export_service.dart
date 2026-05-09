@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../../core/errors.dart';
+
 import '../../domain/animal.dart';
 import '../../domain/appointment.dart';
 import '../../domain/attachment.dart';
@@ -42,7 +44,7 @@ class RgpdExportService {
   Future<Uint8List> exportClient(String clientId) async {
     final client = await clients.getById(clientId);
     if (client == null) {
-      throw ArgumentError.value(clientId, 'clientId', 'Client not found');
+      throw const ValidationError('client_not_found', 'clientId');
     }
 
     final clientAnimals = await animals.watchByClient(clientId).first;

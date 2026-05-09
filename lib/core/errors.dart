@@ -1,10 +1,9 @@
-/// Typed application errors. Strings stay in the UI layer (l10n).
+/// Typed application errors with stable, machine-readable codes.
 ///
-/// Roadmap: today the codebase still raises stdlib `StateError` /
-/// `ArgumentError` in repositories and the vault. v0.9 will route them
-/// through these typed variants and add an `errorView(BuildContext, Object)`
-/// helper that maps `code → l10n string`. The class is kept here so callers
-/// don't have to wait for that refactor before adopting it.
+/// UI layer turns codes into l10n strings via `errorView`. Repositories
+/// and the vault throw subclasses of [HealthError] so the UI never has
+/// to inspect `runtimeType` or string-match exception messages — anything
+/// not matched falls back to a localised generic message.
 sealed class HealthError implements Exception {
   const HealthError(this.code);
   final String code;
@@ -15,6 +14,10 @@ sealed class HealthError implements Exception {
 
 class VaultLockedError extends HealthError {
   const VaultLockedError() : super('vault_locked');
+}
+
+class VaultNotInitialisedError extends HealthError {
+  const VaultNotInitialisedError() : super('vault_not_initialised');
 }
 
 class VaultWrongPassphraseError extends HealthError {

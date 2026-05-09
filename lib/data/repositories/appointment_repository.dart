@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/errors.dart';
 import '../../domain/appointment.dart';
 import '../../utils/clock.dart';
 import '../db/database.dart';
@@ -16,11 +17,7 @@ class AppointmentRepository {
 
   Future<Appointment> create(Appointment draft) async {
     if (!draft.endAt.isAfter(draft.startAt)) {
-      throw ArgumentError.value(
-        draft.endAt,
-        'endAt',
-        'Appointment end must be after start',
-      );
+      throw const ValidationError('appointment_end_before_start', 'endAt');
     }
     final id = draft.id.isEmpty ? _uuid.v4() : draft.id;
     final epoch = nowEpochSeconds();

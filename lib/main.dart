@@ -1,3 +1,4 @@
+import 'package:cryptography_flutter/cryptography_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -12,6 +13,13 @@ import 'l10n/generated/app_localizations.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Importing `cryptography_flutter` is enough — it auto-registers itself
+  // as the active provider, so AES-GCM and Argon2id run on the platform's
+  // native crypto (BoringSSL via JNI on Android) rather than the pure-Dart
+  // fallback. We keep an explicit reference here to make the intent
+  // visible to readers and guard against a future tree-shaker mistake.
+  // ignore: unnecessary_statements
+  FlutterCryptography;
   SystemChrome.setPreferredOrientations(const [
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,

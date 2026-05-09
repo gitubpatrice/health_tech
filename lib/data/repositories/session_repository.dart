@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/errors.dart';
 import '../../domain/session.dart';
 import '../../utils/clock.dart';
 import '../db/database.dart';
@@ -18,11 +19,7 @@ class SessionRepository {
 
   Future<Session> create(Session draft) async {
     if (!draft.endAt.isAfter(draft.startAt)) {
-      throw ArgumentError.value(
-        draft.endAt,
-        'endAt',
-        'Session end must be after start',
-      );
+      throw const ValidationError('session_end_before_start', 'endAt');
     }
     final id = draft.id.isEmpty ? _uuid.v4() : draft.id;
     final now = nowEpochSeconds();

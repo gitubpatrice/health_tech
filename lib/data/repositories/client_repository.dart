@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/errors.dart';
 import '../../domain/address.dart';
 import '../../domain/client.dart';
 import '../../domain/consent.dart';
@@ -25,9 +26,7 @@ class ClientRepository {
   /// is responsible for collecting them.
   Future<Client> create(Client draft) async {
     if (!draft.consents.hasMandatory) {
-      throw ArgumentError(
-        'Client cannot be created without RGPD and disclaimer consent.',
-      );
+      throw const ValidationError('client_consent_missing', 'consents');
     }
     final id = draft.id.isEmpty ? _uuid.v4() : draft.id;
     final now = nowEpochSeconds();

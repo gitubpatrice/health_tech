@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../data/services/system_calendar_bridge.dart';
 import '../../domain/animal.dart';
 import '../../domain/appointment.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -40,6 +41,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
   late DateTime _start;
   late DateTime _end;
   String _status = AppointmentStatus.planned;
+  bool _addToSystemCalendar = false;
   bool _busy = false;
 
   @override
@@ -59,6 +61,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
         _roundToNextHalfHour(DateTime.now());
     _end = a?.endAt ?? _start.add(const Duration(hours: 1));
     _status = a?.status ?? AppointmentStatus.planned;
+    _addToSystemCalendar = a?.externalCalendarEventId != null;
   }
 
   @override
@@ -126,11 +129,42 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
     );
 
     final repo = ref.read(appointmentRepositoryProvider);
+    final bridge = ref.read(systemCalendarBridgeProvider);
+    final messenger = ScaffoldMessenger.of(context);
     try {
+      Appointment saved;
       if (widget.initial == null) {
-        await repo.create(draft);
+        saved = await repo.create(draft);
       } else {
-        await repo.update(draft);
+        saved = await repo.update(draft);
+      }
+      // Opt-in: push to system calendar AFTER the row is durable, then
+      // persist the returned event ids on the row so a future edit knows
+      // it can update / remove the system event.
+      if (_addToSystemCalendar &&
+          saved.externalCalendarEventId == null) {
+        try {
+          final pushed = await bridge.push(saved);
+          if (pushed != null) {
+            await repo.update(saved.copyWith(
+              externalCalendarId: pushed.calendarId,
+              externalCalendarEventId: pushed.eventId,
+            ));
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text(l10n.appointmentFormSyncedToCalendar),
+              ),
+            );
+          }
+        } on CalendarPermissionDenied {
+          messenger.showSnackBar(SnackBar(
+            content: Text(l10n.appointmentFormCalendarPermissionDenied),
+          ));
+        } on CalendarUnavailable {
+          messenger.showSnackBar(SnackBar(
+            content: Text(l10n.appointmentFormCalendarMissing),
+          ));
+        }
       }
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -281,7 +315,17 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                 decoration:
                     InputDecoration(labelText: l10n.appointmentFormNotes),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _addToSystemCalendar,
+                onChanged: widget.initial?.externalCalendarEventId != null
+                    ? null // already synced — read-only for this iteration
+                    : (v) => setState(() => _addToSystemCalendar = v ?? false),
+                title: Text(l10n.appointmentFormAddToCalendar),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+              const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: _busy ? null : _save,
                 icon: _busy

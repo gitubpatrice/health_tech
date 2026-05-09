@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../core/errors.dart';
 import 'field_crypto.dart';
 
 /// Single source of truth for the master key lifecycle.
@@ -39,6 +40,16 @@ class HealthVault {
   static const _kKdfMemory = 'health_vault.kdf_memory_v1';
   static const _kKdfIterations = 'health_vault.kdf_iterations_v1';
   static const _kKdfParallelism = 'health_vault.kdf_parallelism_v1';
+  /// Backend tag persisted alongside the KDF parameters. When the user
+  /// upgrades the app and the underlying Argon2id implementation switches
+  /// (pure Dart → native JNI), unlock takes a fraction of the previous
+  /// time which would weaken the brute-force budget. We re-calibrate
+  /// lazily on the next successful unlock when this tag changes.
+  static const _kKdfBackend = 'health_vault.kdf_backend_v1';
+
+  /// Identifier for the active Argon2id backend (`native` when
+  /// `cryptography_flutter` is wired, `dart` otherwise).
+  static String get _currentBackend => 'flutter';
 
   // Argon2id default cost — tuned for mid-range Android phones (Galaxy S9 era).
   // Adjust upward as devices get faster.
@@ -72,7 +83,7 @@ class HealthVault {
   FieldCrypto get crypto {
     final c = _crypto;
     if (c == null) {
-      throw StateError('Vault is locked');
+      throw const VaultLockedError();
     }
     return c;
   }
@@ -100,7 +111,7 @@ class HealthVault {
 
   Future<void> _setupLocked(String passphrase) async {
     if (await isInitialised()) {
-      throw StateError('Vault already initialised');
+      throw const VaultAlreadyInitialisedError();
     }
     final salt = _randomBytes(_saltLen);
     final iterations = await _calibrateIterations(salt: salt);
@@ -119,10 +130,27 @@ class HealthVault {
     await _storage.write(key: _kKdfMemory, value: '$_defaultMemoryKb');
     await _storage.write(key: _kKdfIterations, value: '$iterations');
     await _storage.write(key: _kKdfParallelism, value: '$_defaultParallelism');
+    await _storage.write(key: _kKdfBackend, value: _currentBackend);
 
     masterKey.fillRange(0, masterKey.length, 0);
     _vek = vek;
     _crypto = FieldCrypto(Uint8List.fromList(vek));
+  }
+
+  /// Background task: when the active backend differs from the one we
+  /// calibrated against, re-derive the iteration count so unlock keeps a
+  /// stable wall-clock cost (and brute-force budget). Persists the new
+  /// values + the backend tag.
+  Future<void> _maybeRecalibrate({required Uint8List salt}) async {
+    try {
+      final stored = await _storage.read(key: _kKdfBackend);
+      if (stored == _currentBackend) return;
+      final iterations = await _calibrateIterations(salt: salt);
+      await _storage.write(key: _kKdfIterations, value: '$iterations');
+      await _storage.write(key: _kKdfBackend, value: _currentBackend);
+    } on Object {
+      // Best-effort only.
+    }
   }
 
   /// Calibrates Argon2id iterations to target ~750 ms on the current device.
@@ -156,7 +184,7 @@ class HealthVault {
     final wrappedB64 = await _storage.read(key: _kWrappedVek);
     final saltB64 = await _storage.read(key: _kKdfSalt);
     if (wrappedB64 == null || saltB64 == null) {
-      throw StateError('Vault not initialised');
+      throw const VaultNotInitialisedError();
     }
     final memoryKb = int.parse(
         await _storage.read(key: _kKdfMemory) ?? '$_defaultMemoryKb');
@@ -176,6 +204,11 @@ class HealthVault {
       final vek = await _unwrapVek(base64Decode(wrappedB64), masterKey);
       _vek = vek;
       _crypto = FieldCrypto(Uint8List.fromList(vek));
+      // Lazy re-calibration: if the Argon2id backend changed since last
+      // setup (e.g. native plugin enabled), bump iterations to keep the
+      // unlock cost in the same wall-clock target. Best-effort, errors are
+      // swallowed so a calibration hiccup never blocks a valid unlock.
+      unawaited(_maybeRecalibrate(salt: base64Decode(saltB64)));
       return true;
     } on SecretBoxAuthenticationError {
       return false;
@@ -184,18 +217,15 @@ class HealthVault {
     }
   }
 
-  /// Returns the master passphrase as a SQLCipher-ready hex key derived from
-  /// the VEK. Must only be called when [isUnlocked] is true.
-  String sqlCipherPassphrase() {
+  /// Returns a defensive copy of the raw 32-byte VEK. Used to key the
+  /// database without ever creating a Dart String that holds the VEK
+  /// outside of the SQLCipher setup callback.
+  ///
+  /// The caller is expected to wipe the returned buffer when done.
+  Uint8List sqlCipherKeyBytes() {
     final vek = _vek;
-    if (vek == null) throw StateError('Vault is locked');
-    // SQLCipher accepts a passphrase or a raw key. We pass the VEK encoded
-    // as hex (deterministic, stable across sessions).
-    final hex = StringBuffer();
-    for (final b in vek) {
-      hex.write(b.toRadixString(16).padLeft(2, '0'));
-    }
-    return hex.toString();
+    if (vek == null) throw const VaultLockedError();
+    return Uint8List.fromList(vek);
   }
 
   void lock() {

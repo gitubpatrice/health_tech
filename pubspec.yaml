@@ -28,6 +28,7 @@ dependencies:
   pointycastle: ^3.9.1
   crypto: ^3.0.6
   cryptography: ^2.7.0
+  cryptography_flutter: ^2.3.2
 
   # Preferences
   shared_preferences: ^2.3.4

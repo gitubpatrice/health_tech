@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:health_tech/core/errors.dart';
 import 'package:health_tech/data/db/database.dart';
 import 'package:health_tech/data/repositories/tag_repository.dart';
 import 'package:health_tech/domain/tag.dart';
@@ -23,7 +24,10 @@ void main() {
   });
 
   test('rejects empty labels', () async {
-    expect(() => repo.upsert(label: '   '), throwsArgumentError);
+    expect(
+      () => repo.upsert(label: '   '),
+      throwsA(isA<ValidationError>()),
+    );
   });
 
   test('link / unlink toggles ownership', () async {

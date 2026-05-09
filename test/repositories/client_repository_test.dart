@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:health_tech/core/errors.dart';
 import 'package:health_tech/data/db/database.dart';
 import 'package:health_tech/data/repositories/client_repository.dart';
 import 'package:health_tech/data/vault/field_crypto.dart';
@@ -40,7 +41,10 @@ void main() {
 
   test('create rejects clients without mandatory consents', () async {
     const draft = Client(id: '', firstName: 'X', lastName: 'Y');
-    expect(() => repo.create(draft), throwsArgumentError);
+    expect(
+      () => repo.create(draft),
+      throwsA(isA<ValidationError>()),
+    );
   });
 
   test('create then getById returns decrypted sensitive fields', () async {

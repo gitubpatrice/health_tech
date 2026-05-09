@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:health_tech/core/errors.dart';
 import 'package:health_tech/data/vault/health_vault.dart';
 
 /// Minimal in-memory FlutterSecureStorage stand-in. Lets us drive the vault
@@ -80,15 +81,15 @@ void main() {
 
       await v1.setupWithPassphrase('correct horse battery staple');
       expect(v1.isUnlocked, isTrue);
-      final hex1 = v1.sqlCipherPassphrase();
-      expect(hex1, matches(RegExp(r'^[0-9a-f]{64}$')));
+      final key1 = v1.sqlCipherKeyBytes();
+      expect(key1.length, 32);
       v1.lock();
 
       // Same passphrase, fresh vault instance — must unwrap the same VEK.
       final v2 = HealthVault(secureStorage: storage);
       expect(await v2.isInitialised(), isTrue);
       expect(await v2.unlockWithPassphrase('correct horse battery staple'), isTrue);
-      expect(v2.sqlCipherPassphrase(), equals(hex1));
+      expect(v2.sqlCipherKeyBytes(), equals(key1));
     });
 
     test('rejects wrong passphrase without unlocking', () async {
@@ -103,14 +104,14 @@ void main() {
       expect(await v.unlockWithPassphrase('right one'), isTrue);
     });
 
-    test('setup throws when called on an already-initialised vault',
+    test('setup throws VaultAlreadyInitialisedError on second call',
         () async {
       final storage = _MemoryStorage();
       final v = HealthVault(secureStorage: storage);
       await v.setupWithPassphrase('first');
       expect(
         () => v.setupWithPassphrase('second'),
-        throwsStateError,
+        throwsA(isA<VaultAlreadyInitialisedError>()),
       );
     });
 
@@ -123,9 +124,12 @@ void main() {
       expect(await v.isInitialised(), isFalse);
     });
 
-    test('sqlCipherPassphrase requires an unlocked state', () {
+    test('sqlCipherKeyBytes throws VaultLockedError when locked', () {
       final v = HealthVault(secureStorage: _MemoryStorage());
-      expect(v.sqlCipherPassphrase, throwsStateError);
+      expect(
+        v.sqlCipherKeyBytes,
+        throwsA(isA<VaultLockedError>()),
+      );
     });
   });
 }

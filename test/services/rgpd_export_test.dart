@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:health_tech/core/errors.dart';
 import 'package:health_tech/data/db/database.dart';
 import 'package:health_tech/data/repositories/animal_repository.dart';
 import 'package:health_tech/data/repositories/appointment_repository.dart';
@@ -112,7 +113,7 @@ void main() {
   test('throws when the client does not exist', () async {
     expect(
       () => service.exportClient('does-not-exist'),
-      throwsArgumentError,
+      throwsA(isA<ValidationError>()),
     );
   });
 }
