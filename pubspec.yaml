@@ -17,11 +17,11 @@ dependencies:
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
 
-  # Database (encrypted)
+  # Database (encrypted) — sqlcipher_flutter_libs already bundles SQLite +
+  # SQLCipher; do NOT add sqlite3_flutter_libs (drift_flutter pulls it
+  # transitively, which collides with sqlcipher's plugin class at dexing).
   drift: ^2.21.0
-  drift_flutter: ^0.2.4
   sqlcipher_flutter_libs: ^0.6.4
-  sqlite3: ^2.4.7
 
   # Crypto & secure storage
   flutter_secure_storage: ^9.2.2
