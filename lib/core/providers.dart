@@ -109,8 +109,11 @@ final attachmentRepositoryProvider = Provider<AttachmentRepository>((ref) {
   final crypto = ref.watch(vaultProvider).crypto;
   final repo = AttachmentRepository(db, crypto);
   // Sweep stale `.enc` files left behind by previous crashes / partial
-  // imports. Runs once per unlock, fire-and-forget so it doesn't block UI.
-  Future<void>.microtask(repo.purgeOrphans);
+  // imports. Runs once per unlock, after a short delay so we don't race
+  // with a user who immediately starts importing files (the sweep would
+  // otherwise see a fresh `.enc` written but not yet inserted in the DB
+  // and remove it as orphan).
+  Future.delayed(const Duration(seconds: 5), repo.purgeOrphans);
   return repo;
 });
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
@@ -56,6 +57,12 @@ class HealthVault {
   Uint8List? _vek;
   FieldCrypto? _crypto;
 
+  /// Mutex preventing concurrent setup/unlock/lock operations from
+  /// interleaving in unsafe ways (a double-tap on "Unlock" would otherwise
+  /// race two derivations and leave `_vek` and `_crypto` desynchronised —
+  /// `isUnlocked == true` but `crypto` raising `StateError`).
+  Future<void>? _gate;
+
   bool get isUnlocked => _vek != null;
 
   /// True when the vault has been initialised at least once on this device.
@@ -74,7 +81,24 @@ class HealthVault {
   ///
   /// Throws [StateError] if the vault is already initialised; callers must
   /// reset explicitly to avoid accidental data loss.
-  Future<void> setupWithPassphrase(String passphrase) async {
+  Future<T> _serialize<T>(Future<T> Function() body) async {
+    final previous = _gate;
+    final completer = Completer<void>();
+    _gate = completer.future;
+    try {
+      if (previous != null) {
+        await previous;
+      }
+      return await body();
+    } finally {
+      completer.complete();
+    }
+  }
+
+  Future<void> setupWithPassphrase(String passphrase) =>
+      _serialize(() => _setupLocked(passphrase));
+
+  Future<void> _setupLocked(String passphrase) async {
     if (await isInitialised()) {
       throw StateError('Vault already initialised');
     }
@@ -125,7 +149,10 @@ class HealthVault {
   }
 
   /// Returns true on success, false if the passphrase was wrong.
-  Future<bool> unlockWithPassphrase(String passphrase) async {
+  Future<bool> unlockWithPassphrase(String passphrase) =>
+      _serialize(() => _unlockLocked(passphrase));
+
+  Future<bool> _unlockLocked(String passphrase) async {
     final wrappedB64 = await _storage.read(key: _kWrappedVek);
     final saltB64 = await _storage.read(key: _kKdfSalt);
     if (wrappedB64 == null || saltB64 == null) {

@@ -54,8 +54,10 @@ class PurgeService {
     for (final a in clientAnimals) {
       await purgeAnimal(a.id);
     }
+    // After purging animals, only sessions WITHOUT an animal are left to
+    // process — animal-bound ones were already cascaded by purgeAnimal.
     final clientSessions = await sessions.watchByClient(clientId).first;
-    for (final s in clientSessions) {
+    for (final s in clientSessions.where((x) => x.animalId == null)) {
       await purgeSession(s.id);
     }
     await attachments.purgeAllForOwner(

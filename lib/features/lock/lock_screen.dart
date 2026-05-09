@@ -12,9 +12,13 @@ class LockScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final init = ref.watch(vaultInitialisedProvider);
+    final l10n = AppL10n.of(context);
     return init.when(
       loading: () => const _Loading(),
-      error: (e, _) => _Error(message: e.toString()),
+      // The lock screen is reached BEFORE auth, so any raw exception text
+      // is exposed to a hostile observer. Show a generic, localised message
+      // and rely on logs / crash reporting for the underlying detail.
+      error: (e, _) => _Error(message: l10n.lockStorageError),
       data: (initialised) =>
           initialised ? const _UnlockForm() : const _SetupForm(),
     );
@@ -59,8 +63,13 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
       _busy = true;
       _error = null;
     });
+    final passphrase = _ctrl.text;
     final ok =
-        await ref.read(vaultSessionProvider.notifier).unlock(_ctrl.text);
+        await ref.read(vaultSessionProvider.notifier).unlock(passphrase);
+    // Best-effort: blank the controller as soon as possible. This won't
+    // wipe the underlying Dart String (immutable, GC-eligible only) but
+    // releases the controller-held reference so the next GC can reclaim it.
+    _ctrl.clear();
     if (!mounted) return;
     setState(() => _busy = false);
     if (!ok) {
@@ -151,9 +160,12 @@ class _SetupFormState extends ConsumerState<_SetupForm> {
       _busy = true;
       _error = null;
     });
+    final passphrase = _passCtrl.text;
     await ref
         .read(vaultSessionProvider.notifier)
-        .setupAndUnlock(_passCtrl.text);
+        .setupAndUnlock(passphrase);
+    _passCtrl.clear();
+    _confirmCtrl.clear();
     if (!mounted) return;
     ref.invalidate(vaultInitialisedProvider);
     setState(() => _busy = false);

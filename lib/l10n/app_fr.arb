@@ -14,6 +14,7 @@
   "lockSetupMismatch": "Les phrases ne correspondent pas.",
   "lockSetupTooShort": "La phrase doit faire au moins 12 caractères.",
   "lockWrongPassphrase": "Phrase secrète incorrecte.",
+  "lockStorageError": "Le coffre sécurisé est indisponible. Réessaye ; si le problème persiste, vérifie l’état du keystore de ton appareil.",
 
   "navHome": "Accueil",
   "navClients": "Clients",

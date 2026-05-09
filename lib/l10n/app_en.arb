@@ -14,6 +14,7 @@
   "lockSetupMismatch": "Passphrases do not match.",
   "lockSetupTooShort": "Passphrase must be at least 12 characters.",
   "lockWrongPassphrase": "Wrong passphrase.",
+  "lockStorageError": "Secure storage is unavailable. Please retry; if the issue persists, check your device's keystore status.",
 
   "navHome": "Home",
   "navClients": "Clients",

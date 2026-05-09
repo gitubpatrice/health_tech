@@ -134,6 +134,10 @@ class RgpdExportService {
     }
 
     // Attachments — write decrypted bytes under a stable folder per owner.
+    // The recipient of this archive (client, DPO, regulator) extracts it on
+    // their own machine, so we MUST sanitise filename to defeat zip-slip:
+    // a malicious filename like `../../../Downloads/x.pdf` would otherwise
+    // let an extracted entry escape the destination directory.
     for (final att in allAttachments) {
       final bytes = await attachments.readBytes(att.id);
       final folder = switch (att.ownerType) {
@@ -142,8 +146,12 @@ class RgpdExportService {
         AttachmentOwner.session => 'attachments/session-${att.ownerId}',
         _ => 'attachments/other',
       };
+      final safeName = att.filename
+          .split(RegExp(r'[\\/]'))
+          .last
+          .replaceAll(RegExp(r'[^\w\s\-.]'), '_');
       archive.addFile(
-        ArchiveFile('$folder/${att.id}-${att.filename}', bytes.length, bytes),
+        ArchiveFile('$folder/${att.id}-$safeName', bytes.length, bytes),
       );
     }
 
