@@ -66,9 +66,9 @@ dependencies:
   uuid: ^4.5.1
   cupertino_icons: ^1.0.8
 
-  # Internal shared module (audited primitives: vault, atomic_write, panic, image_bounds)
-  files_tech_core:
-    path: ../files_tech_core
+  # Note: audited primitives (atomic_write, image_bounds) are in-tree under
+  # lib/utils/ rather than pulled from files_tech_core, so the project
+  # builds standalone on a CI runner without the sibling repo checked out.
 
 dev_dependencies:
   flutter_test:
