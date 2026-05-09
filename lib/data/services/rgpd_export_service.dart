@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../domain/animal.dart';
 import '../../domain/appointment.dart';
@@ -88,8 +89,9 @@ class RgpdExportService {
     final archive = Archive();
 
     // Manifest first, useful for any RGPD recipient.
+    final pkg = await _packageInfo();
     final manifest = <String, dynamic>{
-      'health_tech_version': '0.6.0',
+      'health_tech_version': '${pkg.version}+${pkg.buildNumber}',
       'exported_at_utc': DateTime.now().toUtc().toIso8601String(),
       'gdpr_article': 15,
       'subject_client_id': clientId,
@@ -234,6 +236,15 @@ class RgpdExportService {
         'status': a.status,
         'reminder_minutes_before': a.reminderMinutesBefore,
       };
+
+  /// Tests can override this to avoid plugin init in unit tests.
+  Future<PackageInfo> Function() _packageInfo = PackageInfo.fromPlatform;
+
+  /// For tests: replace the PackageInfo loader with a deterministic stub.
+  // ignore: use_setters_to_change_properties
+  void overridePackageInfoLoader(Future<PackageInfo> Function() loader) {
+    _packageInfo = loader;
+  }
 
   void _addJson(Archive archive, String path, Object data) {
     final json = const JsonEncoder.withIndent('  ').convert(data);

@@ -1,0 +1,1 @@
+Manage clients, animals, sessions. 100% local and encrypted.

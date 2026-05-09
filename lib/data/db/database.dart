@@ -124,15 +124,20 @@ class HealthDb extends _$HealthDb {
     }
     final dbFile = File(p.join(dbDir.path, 'health.db'));
 
+    // The vault hands us a stable hex(VEK) (64 hex chars). We pass it to
+    // SQLCipher as a *raw* key via the `x'…'` syntax: this skips SQLCipher's
+    // internal PBKDF2 (we already did Argon2id ourselves), and removes any
+    // need for string quoting. Anything other than 64 hex chars would be an
+    // invariant violation — assert it loudly.
+    assert(
+      RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(passphrase),
+      'SQLCipher raw key must be 64 hex chars',
+    );
     final executor = NativeDatabase.createInBackground(
       dbFile,
       setup: (db) {
         db.config.doubleQuotedStringLiterals = false;
-        // Keying MUST be the very first statement issued to the connection.
-        // Quoting via x'...' would require a hex-encoded key; we pass the raw
-        // passphrase wrapped per SQLCipher conventions.
-        final escaped = passphrase.replaceAll("'", "''");
-        db.execute("PRAGMA key = '$escaped';");
+        db.execute("PRAGMA key = \"x'$passphrase'\";");
         db.execute('PRAGMA cipher_memory_security = ON;');
       },
     );

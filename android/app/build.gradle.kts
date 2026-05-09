@@ -13,7 +13,7 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.filestech.afc_tech"
+    namespace = "com.filestech.health_tech"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -27,7 +27,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.filestech.afc_tech"
+        applicationId = "com.filestech.health_tech"
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

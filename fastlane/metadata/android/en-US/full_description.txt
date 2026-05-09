@@ -1,0 +1,27 @@
+Health Tech is the professional tool for energetic / Reiki practitioners and wellness facilitators working with humans and animals. It brings your whole practice — clients, animals, sessions, agenda, attachments — into a fully offline Android application, encrypted by default.
+
+🛡️ Built-in security
+• Passphrase + biometric unlock (Argon2id 64 MiB, AES-256-GCM).
+• SQLCipher database + per-field encryption for health data.
+• Configurable auto-lock, FLAG_SECURE enabled (no screenshots).
+• No Android auto-backup. No data ever leaves your device.
+
+🐾 Humans and animals
+• Client records: identity, contact, address, health history, GDPR consents.
+• Animal records: species, breed, identifiers (chip, tattoo, pedigree), vet, behavior.
+• Structured sessions: 9-section report (before state, observations, energetic, advice, etc.).
+• Agenda: list and monthly view, reminders, status (planned, confirmed, done).
+
+📎 Encrypted attachments
+• Photos, prescriptions, consents, scans — AES-256-GCM at rest.
+• Automatic detection of malicious images (image bombs).
+• Built-in viewer, share via Android system.
+
+📤 GDPR compliance
+• Article 15: full ZIP export of a client (records + decrypted attachments).
+• Article 17: cascading permanent erasure (client + animals + sessions + attachments).
+• Medical disclaimer prompted before every record creation.
+
+🌍 Bilingual FR / EN, optimized for phones and tablets.
+
+🔓 Open source — Apache 2.0 — files-tech.com

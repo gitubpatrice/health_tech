@@ -1,0 +1,12 @@
+v0.7.0 — First public release of Health Tech.
+
+• Full practice management: clients, animals, sessions, agenda.
+• End-to-end encryption: SQLCipher + per-field AES-GCM.
+• Encrypted attachments with image-bomb detection.
+• PDF session export. Full GDPR ZIP export.
+• Auto-lock. Permanent GDPR erasure.
+• Tags + AND filter on clients and animals.
+• Monthly agenda view.
+• Bilingual FR / EN. Phone + tablet.
+
+40 unit tests passing. 0 analyze issue.

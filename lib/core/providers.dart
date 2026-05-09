@@ -10,6 +10,7 @@ import '../data/repositories/session_repository.dart';
 import '../data/repositories/tag_repository.dart';
 import '../data/services/purge_service.dart';
 import '../data/services/rgpd_export_service.dart';
+import '../data/services/system_calendar_bridge.dart';
 import '../data/vault/health_vault.dart';
 
 /// Single instance of the vault for the app lifetime.
@@ -119,6 +120,10 @@ final purgeServiceProvider = Provider((ref) {
   );
 });
 
+final systemCalendarBridgeProvider = Provider<SystemCalendarBridge>((ref) {
+  return SystemCalendarBridge();
+});
+
 final rgpdExportServiceProvider = Provider((ref) {
   return RgpdExportService(
     clients: ref.watch(clientRepositoryProvider),
@@ -129,13 +134,14 @@ final rgpdExportServiceProvider = Provider((ref) {
   );
 });
 
-/// SecureWindow channel — lets us toggle FLAG_SECURE for screenshots if ever
-/// needed (e.g. presenting a redacted demo). ON by default in MainActivity.
+/// SecureWindow channel — `enable` is idempotent. `disable` is intentionally
+/// not exposed: FLAG_SECURE is non-negotiable for medical/wellness data and
+/// removing it would let screenshots leak sensitive content into the OS
+/// recents carousel and accessibility recorders.
 const _secureChannel =
-    MethodChannel('com.filestech.afc_tech/secure_window');
+    MethodChannel('com.filestech.health_tech/secure_window');
 
 class SecureWindow {
   const SecureWindow._();
   static Future<void> enable() => _secureChannel.invokeMethod('enable');
-  static Future<void> disable() => _secureChannel.invokeMethod('disable');
 }

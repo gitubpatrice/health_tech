@@ -26,7 +26,7 @@ class AnimalDetailScreen extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('$e')),
       data: (animal) => animal == null
-          ? Center(child: Text(l10n.clientDetailNoSelection))
+          ? Center(child: Text(l10n.animalDetailNoSelection))
           : _AnimalTabbed(animal: animal),
     );
   }
@@ -51,8 +51,8 @@ class _AnimalTabbed extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.clientDetailDeleteTitle),
-        content: Text(l10n.clientDetailDeleteBody),
+        title: Text(l10n.animalDetailDeleteTitle),
+        content: Text(l10n.animalDetailDeleteBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),

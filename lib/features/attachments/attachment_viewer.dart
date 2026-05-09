@@ -38,9 +38,21 @@ class _ImageBody extends StatelessWidget {
   final Uint8List bytes;
   @override
   Widget build(BuildContext context) {
+    // cacheWidth caps the decoded bitmap size so a 12 MP photo doesn't allocate
+    // ~48 MB of RGBA on low-end devices. Users can zoom via InteractiveViewer
+    // for fine detail without paying full-resolution decode upfront.
+    final size = MediaQuery.sizeOf(context);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheWidth = (size.width * dpr).round();
     return InteractiveViewer(
       maxScale: 6,
-      child: Center(child: Image.memory(bytes)),
+      child: Center(
+        child: Image.memory(
+          bytes,
+          cacheWidth: cacheWidth,
+          filterQuality: FilterQuality.medium,
+        ),
+      ),
     );
   }
 }

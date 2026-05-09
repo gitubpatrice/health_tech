@@ -15,6 +15,7 @@ import 'package:health_tech/domain/animal.dart';
 import 'package:health_tech/domain/client.dart';
 import 'package:health_tech/domain/consent.dart';
 import 'package:health_tech/domain/session.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 void main() {
   late HealthDb db;
@@ -36,7 +37,14 @@ void main() {
       sessions: sessions,
       appointments: AppointmentRepository(db, crypto),
       attachments: AttachmentRepository(db, crypto),
-    );
+    )..overridePackageInfoLoader(
+        () async => PackageInfo(
+          appName: 'Health Tech',
+          packageName: 'com.filestech.health_tech',
+          version: '0.7.0',
+          buildNumber: '1',
+        ),
+      );
   });
 
   tearDown(() async {

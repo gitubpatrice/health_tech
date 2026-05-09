@@ -1,0 +1,27 @@
+Health Tech est l'outil professionnel des praticiens en soins énergétiques, Reiki, et accompagnement bien-être humain et animal. Il regroupe tout votre cabinet — clients, animaux, séances, agenda, pièces jointes — dans une application Android entièrement hors-ligne, chiffrée par défaut.
+
+🛡️ Sécurité native
+• Verrouillage par phrase secrète + biométrie (Argon2id 64 Mio, AES-256-GCM).
+• Base SQLCipher chiffrée + chiffrement par champ pour les données de santé.
+• Verrouillage automatique paramétrable, FLAG_SECURE actif (anti-captures d'écran).
+• Aucune sauvegarde Android automatique. Aucune donnée transmise sur Internet.
+
+🐾 Cabinet humain et animal
+• Fiches clients : identité, contact, adresse, antécédents santé, consentements RGPD.
+• Fiches animaux : espèce, race, identifiants (puce, tatouage, pedigree), vétérinaire, comportement.
+• Séances structurées : 9 sections de compte rendu (état avant, observations, énergétique, conseils, etc.).
+• Agenda : vue liste et vue mensuelle, rappels, statuts (prévu, confirmé, terminé).
+
+📎 Pièces jointes chiffrées
+• Photos, ordonnances, consentements, scans — chiffrés au repos AES-256-GCM.
+• Détection automatique des images malveillantes (image bombs).
+• Visualiseur intégré, partage via le système Android.
+
+📤 Conformité RGPD
+• Article 15 : export ZIP complet d'un client (données + pièces jointes en clair).
+• Article 17 : effacement définitif en cascade (client + animaux + séances + pièces jointes).
+• Article médical : avertissement explicite avant chaque création de fiche.
+
+🌍 Bilingue FR / EN, optimisé téléphone et tablette.
+
+🔓 Open source — Apache 2.0 — files-tech.com

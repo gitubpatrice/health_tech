@@ -30,7 +30,7 @@ class AutoLockController {
       _allowed = Duration(minutes: stored);
     }
     _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(seconds: 30), (_) => _tick());
+    _ticker = Timer.periodic(const Duration(seconds: 10), (_) => _tick());
   }
 
   Duration get duration => _allowed;
@@ -44,8 +44,11 @@ class AutoLockController {
   }
 
   /// Resets the inactivity stopwatch. Called on every pointer event AND on
-  /// app resume.
+  /// app resume. Throttled — pointer events fire at ~120 Hz during scroll,
+  /// resetting the stopwatch every microsecond is wasteful (and creates
+  /// pointless GC pressure). We only reset when at least 5 s have elapsed.
   void onUserActivity() {
+    if (_stopwatch.elapsed.inSeconds < 5 && _stopwatch.isRunning) return;
     _stopwatch
       ..reset()
       ..start();
@@ -102,6 +105,10 @@ class _AutoLockGuardState extends ConsumerState<AutoLockGuard> {
     );
     Future<void>.microtask(() async {
       await ref.read(autoLockControllerProvider).init();
+      // Reset the stopwatch the very first time we land in the guarded tree.
+      // Without this, a stale stopwatch from a previous session could relock
+      // the user immediately after unlock.
+      ref.read(autoLockControllerProvider).onUserActivity();
       if (mounted) setState(() => _initialised = true);
     });
   }

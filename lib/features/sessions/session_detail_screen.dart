@@ -25,7 +25,7 @@ class SessionDetailScreen extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('$e')),
       data: (s) => s == null
-          ? Center(child: Text(l10n.clientDetailNoSelection))
+          ? Center(child: Text(l10n.sessionDetailNoSelection))
           : _SessionBody(session: s),
     );
   }
@@ -50,8 +50,8 @@ class _SessionBody extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.clientDetailDeleteTitle),
-        content: Text(l10n.clientDetailDeleteBody),
+        title: Text(l10n.sessionDetailDeleteTitle),
+        content: Text(l10n.sessionDetailDeleteBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),

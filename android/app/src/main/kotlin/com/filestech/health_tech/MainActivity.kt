@@ -8,7 +8,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterFragmentActivity() {
 
-    private val secureChannel = "com.filestech.afc_tech/secure_window"
+    private val secureChannel = "com.filestech.health_tech/secure_window"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,8 +33,8 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(true)
                     }
                     "disable" -> {
-                        runOnUiThread { window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
-                        result.success(true)
+                        // FLAG_SECURE is non-negotiable for medical / wellness data.
+                        result.error("forbidden", "FLAG_SECURE cannot be cleared", null)
                     }
                     else -> result.notImplemented()
                 }

@@ -29,12 +29,11 @@ dependencies:
   crypto: ^3.0.6
   cryptography: ^2.7.0
 
-  # Auth
-  local_auth: ^2.3.0
-  local_auth_android: ^1.0.46
-
   # Preferences
   shared_preferences: ^2.3.4
+
+  # Runtime app metadata (version is read from PackageInfo, not hardcoded)
+  package_info_plus: ^8.1.4
 
   # Files & paths
   path_provider: ^2.1.5
@@ -49,8 +48,10 @@ dependencies:
   pdf: ^3.11.3
   printing: ^5.13.4
 
-  # Calendar integration (system bridge — wired in a later release)
+  # Calendar integration (system bridge)
   device_calendar: ^4.3.3
+  timezone: ^0.9.4
+  flutter_timezone: ^3.0.1
 
   # Monthly calendar widget
   table_calendar: ^3.1.3

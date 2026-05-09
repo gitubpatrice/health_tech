@@ -1,0 +1,12 @@
+v0.7.0 — Première release publique de Health Tech.
+
+• Cabinet complet : clients, animaux, séances, agenda.
+• Chiffrement bout-en-bout SQLCipher + AES-GCM par champ.
+• Pièces jointes chiffrées avec détection d'images malveillantes.
+• Export PDF des séances. Export ZIP RGPD complet d'un client.
+• Verrouillage automatique. Effacement définitif RGPD.
+• Tags + filtre AND sur clients et animaux.
+• Vue agenda mensuelle.
+• Bilingue FR / EN. Téléphone + tablette.
+
+40 tests unitaires passants. 0 issue analyze.
