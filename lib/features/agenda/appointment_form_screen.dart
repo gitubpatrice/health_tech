@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../domain/animal.dart';
 import '../../domain/appointment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../animals/animal_providers.dart';
@@ -142,7 +143,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
     final l10n = AppL10n.of(context);
     final clients = ref.watch(clientsStreamProvider);
     final animals = _clientId == null
-        ? const AsyncValue.data(<dynamic>[])
+        ? const AsyncValue<List<Animal>>.data(<Animal>[])
         : ref.watch(animalsByClientProvider(_clientId!));
     final isEdit = widget.initial != null;
     return Scaffold(
@@ -236,12 +237,10 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                         value: null,
                         child: Text('—'),
                       ),
-                      for (final dynamic a in list)
+                      for (final a in list)
                         DropdownMenuItem<String?>(
-                          // ignore: avoid_dynamic_calls
-                          value: a.id as String,
-                          // ignore: avoid_dynamic_calls
-                          child: Text(a.name as String),
+                          value: a.id,
+                          child: Text(a.name),
                         ),
                     ],
                     onChanged: (v) => setState(() => _animalId = v),

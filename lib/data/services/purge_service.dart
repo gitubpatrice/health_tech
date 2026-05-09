@@ -22,6 +22,31 @@ class PurgeService {
   final SessionRepository sessions;
   final AttachmentRepository attachments;
 
+  /// Soft-deletes a client and cascades to their animals + sessions
+  /// (attachments stay, since soft-delete is reversible — they will be wiped
+  /// only when the user calls [purgeClient]).
+  Future<void> softDeleteClient(String clientId) async {
+    final clientAnimals = await animals.watchByClient(clientId).first;
+    for (final a in clientAnimals) {
+      await softDeleteAnimal(a.id);
+    }
+    final clientSessions = await sessions.watchByClient(clientId).first;
+    for (final s in clientSessions) {
+      await sessions.softDelete(s.id);
+    }
+    await clients.softDelete(clientId);
+  }
+
+  /// Soft-deletes an animal and cascades to its sessions only (the parent
+  /// client stays untouched).
+  Future<void> softDeleteAnimal(String animalId) async {
+    final animalSessions = await sessions.watchByAnimal(animalId).first;
+    for (final s in animalSessions) {
+      await sessions.softDelete(s.id);
+    }
+    await animals.softDelete(animalId);
+  }
+
   /// Permanently erases a client, all their animals, all their sessions and
   /// every related attachment. Used for the GDPR right-to-erasure button.
   Future<void> purgeClient(String clientId) async {

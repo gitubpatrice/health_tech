@@ -2,8 +2,10 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/appointment.dart';
+import '../../utils/clock.dart';
 import '../db/database.dart';
 import '../vault/field_crypto.dart';
+import '_helpers.dart';
 
 class AppointmentRepository {
   AppointmentRepository(this._db, this._crypto);
@@ -21,7 +23,7 @@ class AppointmentRepository {
       );
     }
     final id = draft.id.isEmpty ? _uuid.v4() : draft.id;
-    final epoch = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final epoch = nowEpochSeconds();
     final companion =
         await _toCompanion(draft.copyWith(id: id), isInsert: true, epoch: epoch);
     await _db.into(_db.appointments).insert(companion);
@@ -29,7 +31,7 @@ class AppointmentRepository {
   }
 
   Future<Appointment> update(Appointment a) async {
-    final epoch = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final epoch = nowEpochSeconds();
     final companion = await _toCompanion(a, isInsert: false, epoch: epoch);
     await (_db.update(_db.appointments)..where((t) => t.id.equals(a.id)))
         .write(companion);
@@ -58,7 +60,7 @@ class AppointmentRepository {
   }
 
   Stream<List<Appointment>> watchUpcoming({int limit = 50}) {
-    final nowS = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final nowS = nowEpochSeconds();
     final select = _db.select(_db.appointments)
       ..where((t) =>
           t.deletedAt.isNull() & t.startAt.isBiggerOrEqualValue(nowS))
@@ -70,7 +72,7 @@ class AppointmentRepository {
   }
 
   Future<void> softDelete(String id) async {
-    final epoch = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final epoch = nowEpochSeconds();
     await (_db.update(_db.appointments)..where((t) => t.id.equals(id))).write(
       AppointmentsCompanion(
         deletedAt: Value(epoch),
@@ -90,9 +92,7 @@ class AppointmentRepository {
     required bool isInsert,
     required int epoch,
   }) async {
-    final notes = a.notes.isEmpty
-        ? const Value<String?>(null)
-        : Value(await _crypto.encryptString(a.notes));
+    final notes = await encryptOptional(_crypto, a.notes);
     return AppointmentsCompanion(
       id: Value(a.id),
       clientId: Value(a.clientId),

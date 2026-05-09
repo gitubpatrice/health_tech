@@ -6,6 +6,7 @@ import '../../core/providers.dart';
 import '../../data/repositories/attachment_repository.dart';
 import '../../domain/attachment.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/date_format.dart';
 import 'attachment_viewer.dart';
 
 /// Reusable attachments section embedded in client / animal / session detail
@@ -140,15 +141,18 @@ class _AttachmentTile extends ConsumerWidget {
         attachment.isImage ? Icons.image_outlined : Icons.description_outlined,
       ),
       title: Text(attachment.filename),
-      subtitle: Text(_formatSize(attachment.sizeBytes)),
+      subtitle: Text(formatByteSize(attachment.sizeBytes)),
       trailing: PopupMenuButton<String>(
         onSelected: (action) async {
           if (action == 'delete') {
             await ref.read(attachmentRepositoryProvider).purge(attachment.id);
           }
         },
-        itemBuilder: (_) => const [
-          PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+        itemBuilder: (_) => [
+          PopupMenuItem(
+            value: 'delete',
+            child: Text(AppL10n.of(context).actionDelete),
+          ),
         ],
       ),
       onTap: () {
@@ -161,11 +165,6 @@ class _AttachmentTile extends ConsumerWidget {
     );
   }
 
-  static String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
-    return '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
-  }
 }
 
 typedef _OwnerKey = ({String ownerType, String ownerId});

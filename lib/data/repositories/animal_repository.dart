@@ -2,8 +2,10 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/animal.dart';
+import '../../utils/clock.dart';
 import '../db/database.dart';
 import '../vault/field_crypto.dart';
+import '_helpers.dart';
 
 class AnimalRepository {
   AnimalRepository(this._db, this._crypto);
@@ -14,7 +16,7 @@ class AnimalRepository {
 
   Future<Animal> create(Animal draft) async {
     final id = draft.id.isEmpty ? _uuid.v4() : draft.id;
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final now = nowEpochSeconds();
     final companion =
         await _toCompanion(draft.copyWith(id: id), isInsert: true, epoch: now);
     await _db.into(_db.animals).insert(companion);
@@ -22,7 +24,7 @@ class AnimalRepository {
   }
 
   Future<Animal> update(Animal animal) async {
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final now = nowEpochSeconds();
     final companion = await _toCompanion(animal, isInsert: false, epoch: now);
     await (_db.update(_db.animals)..where((t) => t.id.equals(animal.id)))
         .write(companion);
@@ -63,7 +65,7 @@ class AnimalRepository {
   }
 
   Future<void> softDelete(String id) async {
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final now = nowEpochSeconds();
     await (_db.update(_db.animals)..where((t) => t.id.equals(id))).write(
       AnimalsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
     );
@@ -80,12 +82,8 @@ class AnimalRepository {
     required bool isInsert,
     required int epoch,
   }) async {
-    final health = a.healthNotes.isEmpty
-        ? const Value<String?>(null)
-        : Value(await _crypto.encryptString(a.healthNotes));
-    final behavior = a.behaviorNotes.isEmpty
-        ? const Value<String?>(null)
-        : Value(await _crypto.encryptString(a.behaviorNotes));
+    final health = await encryptOptional(_crypto, a.healthNotes);
+    final behavior = await encryptOptional(_crypto, a.behaviorNotes);
     return AnimalsCompanion(
       id: Value(a.id),
       clientId: Value(a.clientId),

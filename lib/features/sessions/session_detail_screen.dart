@@ -8,6 +8,9 @@ import '../../domain/attachment.dart';
 import '../../domain/session.dart';
 import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/date_format.dart';
+import '../../widgets/confirm_delete_dialog.dart';
+import '../../widgets/detail_section_card.dart';
 import '../attachments/attachments_section.dart';
 import '../tags/tag_editor.dart';
 import 'session_form_screen.dart';
@@ -47,24 +50,12 @@ class _SessionBody extends ConsumerWidget {
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final l10n = AppL10n.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.sessionDetailDeleteTitle),
-        content: Text(l10n.sessionDetailDeleteBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.actionCancel),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.actionDelete),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDeleteDialog(
+      context,
+      title: l10n.sessionDetailDeleteTitle,
+      body: l10n.sessionDetailDeleteBody,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await ref.read(sessionRepositoryProvider).softDelete(session.id);
     ref.read(selectedSessionIdProvider.notifier).state = null;
   }
@@ -110,7 +101,7 @@ class _SessionBody extends ConsumerWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_formatDate(session.startAt)),
+          title: Text(formatDate(session.startAt)),
           actions: [
             IconButton(
               icon: const Icon(Icons.picture_as_pdf_outlined),
@@ -159,17 +150,23 @@ class _SessionBody extends ConsumerWidget {
             ownerId: session.id,
           ),
           const SizedBox(height: 12),
-          _row(Icons.schedule,
-              '${_formatTime(session.startAt)} – ${_formatTime(session.endAt)}'),
-          _row(Icons.category_outlined, kindLabel(l10n, session.kind)),
-          _row(Icons.flag_outlined, statusLabel(l10n, session.status)),
+          DetailRow(
+              icon: Icons.schedule,
+              text:
+                  '${formatTime(session.startAt)} – ${formatTime(session.endAt)}'),
+          DetailRow(
+              icon: Icons.category_outlined,
+              text: kindLabel(l10n, session.kind)),
+          DetailRow(
+              icon: Icons.flag_outlined,
+              text: statusLabel(l10n, session.status)),
           if (session.location != null && session.location!.isNotEmpty)
-            _row(Icons.place_outlined, session.location!),
+            DetailRow(icon: Icons.place_outlined, text: session.location!),
           if (session.priceCents != null)
-            _row(
-              Icons.euro,
-              '${(session.priceCents! / 100).toStringAsFixed(2)} € · '
-              '${paymentStatusLabel(l10n, session.paymentStatus)}',
+            DetailRow(
+              icon: Icons.euro,
+              text: '${(session.priceCents! / 100).toStringAsFixed(2)} € · '
+                  '${paymentStatusLabel(l10n, session.paymentStatus)}',
             ),
           if (session.motives.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -184,7 +181,7 @@ class _SessionBody extends ConsumerWidget {
           ],
           const SizedBox(height: 16),
           if (!r.isEmpty)
-            _Section(
+            DetailSectionCard(
               title: l10n.sessionFormSectionReport,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,7 +210,7 @@ class _SessionBody extends ConsumerWidget {
             ),
           if (session.privateNote.isNotEmpty) ...[
             const SizedBox(height: 16),
-            _Section(
+            DetailSectionCard(
               title: l10n.sessionFormSectionPrivate,
               child: Text(session.privateNote),
             ),
@@ -221,17 +218,6 @@ class _SessionBody extends ConsumerWidget {
         ],
       );
   }
-
-  Widget _row(IconData icon, String text) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Icon(icon, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(text)),
-          ],
-        ),
-      );
 
   Widget _block(String label, String value) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -243,33 +229,6 @@ class _SessionBody extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(value),
           ],
-        ),
-      );
-
-  static String _formatDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/'
-      '${d.month.toString().padLeft(2, '0')}/${d.year}';
-  static String _formatTime(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:'
-      '${d.minute.toString().padLeft(2, '0')}';
-}
-
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
-  final String title;
-  final Widget child;
-  @override
-  Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              child,
-            ],
-          ),
         ),
       );
 }

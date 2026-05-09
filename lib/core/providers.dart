@@ -108,7 +108,11 @@ final tagRepositoryProvider = Provider<TagRepository>((ref) {
 final attachmentRepositoryProvider = Provider<AttachmentRepository>((ref) {
   final db = ref.watch(databaseProvider).requireValue;
   final crypto = ref.watch(vaultProvider).crypto;
-  return AttachmentRepository(db, crypto);
+  final repo = AttachmentRepository(db, crypto);
+  // Sweep stale `.enc` files left behind by previous crashes / partial
+  // imports. Runs once per unlock, fire-and-forget so it doesn't block UI.
+  Future<void>.microtask(repo.purgeOrphans);
+  return repo;
 });
 
 final purgeServiceProvider = Provider((ref) {

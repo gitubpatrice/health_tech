@@ -4,8 +4,10 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/session.dart';
+import '../../utils/clock.dart';
 import '../db/database.dart';
 import '../vault/field_crypto.dart';
+import '_helpers.dart';
 
 class SessionRepository {
   SessionRepository(this._db, this._crypto);
@@ -23,7 +25,7 @@ class SessionRepository {
       );
     }
     final id = draft.id.isEmpty ? _uuid.v4() : draft.id;
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final now = nowEpochSeconds();
     final companion = await _toCompanion(
       draft.copyWith(id: id),
       isInsert: true,
@@ -34,7 +36,7 @@ class SessionRepository {
   }
 
   Future<Session> update(Session session) async {
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final now = nowEpochSeconds();
     final companion =
         await _toCompanion(session, isInsert: false, epoch: now);
     await (_db.update(_db.sessions)..where((t) => t.id.equals(session.id)))
@@ -82,7 +84,7 @@ class SessionRepository {
   }
 
   Future<void> softDelete(String id) async {
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final now = nowEpochSeconds();
     await (_db.update(_db.sessions)..where((t) => t.id.equals(id))).write(
       SessionsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
     );
@@ -102,9 +104,8 @@ class SessionRepository {
     final reportEncrypted = s.report.isEmpty
         ? const Value<String?>(null)
         : Value(await _crypto.encryptString(jsonEncode(s.report.toJson())));
-    final privateEncrypted = s.privateNote.isEmpty
-        ? const Value<String?>(null)
-        : Value(await _crypto.encryptString(s.privateNote));
+    final privateEncrypted =
+        await encryptOptional(_crypto, s.privateNote);
     return SessionsCompanion(
       id: Value(s.id),
       clientId: Value(s.clientId),

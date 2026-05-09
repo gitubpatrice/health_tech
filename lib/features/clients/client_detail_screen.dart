@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../domain/attachment.dart';
 import '../../domain/client.dart';
+import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/confirm_delete_dialog.dart';
+import '../../widgets/detail_section_card.dart';
 import '../animals/animal_form_screen.dart';
 import '../animals/animal_l10n.dart';
 import '../animals/animal_providers.dart';
@@ -52,25 +55,13 @@ class _ClientTabbed extends ConsumerWidget {
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final l10n = AppL10n.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.clientDetailDeleteTitle),
-        content: Text(l10n.clientDetailDeleteBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.actionCancel),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.actionDelete),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDeleteDialog(
+      context,
+      title: l10n.clientDetailDeleteTitle,
+      body: l10n.clientDetailDeleteBody,
     );
-    if (confirmed != true) return;
-    await ref.read(clientRepositoryProvider).softDelete(client.id);
+    if (!confirmed) return;
+    await ref.read(purgeServiceProvider).softDeleteClient(client.id);
     ref.read(selectedClientIdProvider.notifier).state = null;
   }
 
@@ -135,59 +126,38 @@ class _InfoTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         TagEditor(
-          ownerType: AttachmentOwner.client,
+          ownerType: TagOwner.client,
           ownerId: client.id,
         ),
         const SizedBox(height: 12),
         if (client.profession != null && client.profession!.isNotEmpty)
-          _row(Icons.work_outline, client.profession!),
+          DetailRow(icon: Icons.work_outline, text: client.profession!),
         if (client.phone != null && client.phone!.isNotEmpty)
-          _row(Icons.phone_outlined, client.phone!),
+          DetailRow(icon: Icons.phone_outlined, text: client.phone!),
         if (client.email != null && client.email!.isNotEmpty)
-          _row(Icons.email_outlined, client.email!),
+          DetailRow(icon: Icons.email_outlined, text: client.email!),
         if (!client.address.isEmpty)
-          _row(Icons.location_on_outlined, _formatAddress(client)),
+          DetailRow(
+              icon: Icons.location_on_outlined,
+              text: _formatAddress(client)),
         if (client.ageYears != null)
-          _row(Icons.cake_outlined, '${client.ageYears} ans'),
+          DetailRow(
+              icon: Icons.cake_outlined, text: '${client.ageYears} ans'),
         if (client.healthNotes.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _section(
-              context, l10n.clientFormSectionHealth, Text(client.healthNotes)),
+          DetailSectionCard(
+              title: l10n.clientFormSectionHealth,
+              child: Text(client.healthNotes)),
         ],
         if (client.notes.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _section(
-              context, l10n.clientFormFreeNotes, Text(client.notes)),
+          DetailSectionCard(
+              title: l10n.clientFormFreeNotes, child: Text(client.notes)),
         ],
       ],
     );
   }
 
-  Widget _row(IconData icon, String text) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(text)),
-          ],
-        ),
-      );
-
-  Widget _section(BuildContext c, String title, Widget child) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(c).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              child,
-            ],
-          ),
-        ),
-      );
 
   String _formatAddress(Client c) {
     final parts = <String>[

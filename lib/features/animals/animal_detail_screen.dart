@@ -6,6 +6,8 @@ import '../../domain/animal.dart';
 import '../../domain/attachment.dart';
 import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/confirm_delete_dialog.dart';
+import '../../widgets/detail_section_card.dart';
 import '../attachments/attachments_section.dart';
 import '../sessions/session_form_screen.dart';
 import '../sessions/session_l10n.dart';
@@ -48,25 +50,13 @@ class _AnimalTabbed extends ConsumerWidget {
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final l10n = AppL10n.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.animalDetailDeleteTitle),
-        content: Text(l10n.animalDetailDeleteBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.actionCancel),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.actionDelete),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDeleteDialog(
+      context,
+      title: l10n.animalDetailDeleteTitle,
+      body: l10n.animalDetailDeleteBody,
     );
-    if (confirmed != true) return;
-    await ref.read(animalRepositoryProvider).softDelete(animal.id);
+    if (!confirmed) return;
+    await ref.read(purgeServiceProvider).softDeleteAnimal(animal.id);
     ref.read(selectedAnimalIdProvider.notifier).state = null;
   }
 
@@ -129,25 +119,27 @@ class _InfoTab extends StatelessWidget {
           ownerId: animal.id,
         ),
         const SizedBox(height: 12),
-        _row(
-          Icons.pets,
-          '${speciesLabel(l10n, animal.species)}'
-          '${animal.breed == null ? '' : ' · ${animal.breed}'}',
+        DetailRow(
+          icon: Icons.pets,
+          text: '${speciesLabel(l10n, animal.species)}'
+              '${animal.breed == null ? '' : ' · ${animal.breed}'}',
         ),
         if (animal.sex != null && animal.sex != AnimalSex.unknown)
-          _row(Icons.male, sexLabel(l10n, animal.sex)),
+          DetailRow(icon: Icons.male, text: sexLabel(l10n, animal.sex)),
         if (animal.ageYears != null)
-          _row(Icons.cake_outlined, '${animal.ageYears} ans'),
+          DetailRow(
+              icon: Icons.cake_outlined, text: '${animal.ageYears} ans'),
         if (animal.weightKg != null)
-          _row(Icons.monitor_weight_outlined,
-              '${animal.weightKg!.toStringAsFixed(1)} kg'),
-        if (animal.color != null) _row(Icons.palette_outlined, animal.color!),
+          DetailRow(
+              icon: Icons.monitor_weight_outlined,
+              text: '${animal.weightKg!.toStringAsFixed(1)} kg'),
+        if (animal.color != null)
+          DetailRow(icon: Icons.palette_outlined, text: animal.color!),
         if (!animal.identifiers.isEmpty) ...[
           const SizedBox(height: 16),
-          _section(
-            context,
-            l10n.animalFormSectionIdentifiers,
-            Column(
+          DetailSectionCard(
+            title: l10n.animalFormSectionIdentifiers,
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (animal.identifiers.chipNumber.isNotEmpty)
@@ -165,48 +157,21 @@ class _InfoTab extends StatelessWidget {
         ],
         if (animal.healthNotes.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _section(
-            context,
-            l10n.animalFormHealthNotes,
-            Text(animal.healthNotes),
+          DetailSectionCard(
+            title: l10n.animalFormHealthNotes,
+            child: Text(animal.healthNotes),
           ),
         ],
         if (animal.behaviorNotes.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _section(
-            context,
-            l10n.animalFormBehaviorNotes,
-            Text(animal.behaviorNotes),
+          DetailSectionCard(
+            title: l10n.animalFormBehaviorNotes,
+            child: Text(animal.behaviorNotes),
           ),
         ],
       ],
     );
   }
-
-  Widget _row(IconData icon, String text) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            Icon(icon, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(text)),
-          ],
-        ),
-      );
-
-  Widget _section(BuildContext c, String title, Widget child) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(c).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              child,
-            ],
-          ),
-        ),
-      );
 }
 
 class _SessionsTab extends ConsumerWidget {

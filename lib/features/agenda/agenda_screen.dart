@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../domain/appointment.dart';
@@ -134,8 +135,8 @@ class _MonthViewState extends ConsumerState<_MonthView> {
               eventLoader: (d) => _eventsFor(all, d),
               startingDayOfWeek: StartingDayOfWeek.monday,
               calendarFormat: CalendarFormat.month,
-              availableCalendarFormats: const {
-                CalendarFormat.month: 'Mois',
+              availableCalendarFormats: {
+                CalendarFormat.month: l10n.agendaViewMonth,
               },
               headerStyle: const HeaderStyle(
                 formatButtonVisible: false,
@@ -232,7 +233,7 @@ class _DaySection extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                _isToday ? l10n.agendaToday : _formatDay(day),
+                _isToday ? l10n.agendaToday : _formatDay(day, context),
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               if (_isToday) ...[
@@ -248,28 +249,11 @@ class _DaySection extends StatelessWidget {
     );
   }
 
-  static String _formatDay(DateTime d) {
-    return '${_weekdayShort(d.weekday)} ${d.day.toString().padLeft(2, '0')}/'
+  static String _formatDay(DateTime d, BuildContext context) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final weekday = DateFormat.E(locale).format(d).toLowerCase();
+    return '$weekday ${d.day.toString().padLeft(2, '0')}/'
         '${d.month.toString().padLeft(2, '0')}/${d.year}';
-  }
-
-  static String _weekdayShort(int w) {
-    switch (w) {
-      case DateTime.monday:
-        return 'lun.';
-      case DateTime.tuesday:
-        return 'mar.';
-      case DateTime.wednesday:
-        return 'mer.';
-      case DateTime.thursday:
-        return 'jeu.';
-      case DateTime.friday:
-        return 'ven.';
-      case DateTime.saturday:
-        return 'sam.';
-      default:
-        return 'dim.';
-    }
   }
 }
 

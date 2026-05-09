@@ -4,8 +4,10 @@ import 'package:uuid/uuid.dart';
 import '../../domain/address.dart';
 import '../../domain/client.dart';
 import '../../domain/consent.dart';
+import '../../utils/clock.dart';
 import '../db/database.dart';
 import '../vault/field_crypto.dart';
+import '_helpers.dart';
 
 /// Single read/write surface for client records.
 ///
@@ -28,7 +30,7 @@ class ClientRepository {
       );
     }
     final id = draft.id.isEmpty ? _uuid.v4() : draft.id;
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final now = nowEpochSeconds();
     final companion = await _toCompanion(
       draft.copyWith(id: id),
       isInsert: true,
@@ -39,7 +41,7 @@ class ClientRepository {
   }
 
   Future<Client> update(Client client) async {
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final now = nowEpochSeconds();
     final companion = await _toCompanion(
       client,
       isInsert: false,
@@ -84,7 +86,7 @@ class ClientRepository {
   /// Soft delete — keeps the row for cascading checks. Use [purge] for the
   /// RGPD right-to-erasure flow.
   Future<void> softDelete(String id) async {
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final now = nowEpochSeconds();
     await (_db.update(_db.clients)..where((t) => t.id.equals(id))).write(
       ClientsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
     );
@@ -103,12 +105,8 @@ class ClientRepository {
     required bool isInsert,
     required int epochSeconds,
   }) async {
-    final healthEncrypted = client.healthNotes.isEmpty
-        ? const Value<String?>(null)
-        : Value(await _crypto.encryptString(client.healthNotes));
-    final notesEncrypted = client.notes.isEmpty
-        ? const Value<String?>(null)
-        : Value(await _crypto.encryptString(client.notes));
+    final healthEncrypted = await encryptOptional(_crypto, client.healthNotes);
+    final notesEncrypted = await encryptOptional(_crypto, client.notes);
 
     return ClientsCompanion(
       id: Value(client.id),
