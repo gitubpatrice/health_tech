@@ -1,0 +1,87 @@
+name: health_tech
+description: "Health Tech - Gestion clients, animaux et seances pour praticiens bien-etre."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.5
+  flutter: ">=3.41.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Database (encrypted)
+  drift: ^2.21.0
+  drift_flutter: ^0.2.4
+  sqlcipher_flutter_libs: ^0.6.4
+  sqlite3: ^2.4.7
+
+  # Crypto & secure storage
+  flutter_secure_storage: ^9.2.2
+  pointycastle: ^3.9.1
+  crypto: ^3.0.6
+  cryptography: ^2.7.0
+
+  # Auth
+  local_auth: ^2.3.0
+  local_auth_android: ^1.0.46
+
+  # Preferences
+  shared_preferences: ^2.3.4
+
+  # Files & paths
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  file_picker: ^8.1.7
+  share_plus: ^10.1.3
+
+  # Images
+  image: ^4.5.4
+
+  # PDF export
+  pdf: ^3.11.3
+  printing: ^5.13.4
+
+  # Calendar integration (system bridge — wired in a later release)
+  device_calendar: ^4.3.3
+
+  # Monthly calendar widget
+  table_calendar: ^3.1.3
+
+  # Archive (ZIP) for GDPR data export
+  archive: ^4.0.4
+
+  # Utils
+  collection: ^1.19.0
+  intl: ^0.20.1
+  uuid: ^4.5.1
+  cupertino_icons: ^1.0.8
+
+  # Internal shared module (audited primitives: vault, atomic_write, panic, image_bounds)
+  files_tech_core:
+    path: ../files_tech_core
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Drift codegen
+  drift_dev: ^2.21.0
+  build_runner: ^2.4.13
+
+  # Riverpod codegen
+  riverpod_generator: ^2.6.3
+  custom_lint: ^0.7.0
+  riverpod_lint: ^2.6.3
+
+flutter:
+  uses-material-design: true
+  generate: true

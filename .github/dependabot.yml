@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "drift"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "drift_flutter"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "sqlcipher_flutter_libs"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "gradle"
+    directory: "/android"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

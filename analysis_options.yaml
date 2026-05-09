@@ -1,0 +1,63 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    invalid_annotation_target: ignore
+    todo: ignore
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/generated_plugin_registrant.dart"
+    - "lib/l10n/**"
+    - "build/**"
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_dynamic_calls
+    - avoid_empty_else
+    - avoid_print
+    - avoid_slow_async_io
+    - avoid_type_to_string
+    - avoid_unused_constructor_parameters
+    - avoid_void_async
+    - cancel_subscriptions
+    - close_sinks
+    - comment_references
+    - control_flow_in_finally
+    - directives_ordering
+    - empty_statements
+    - eol_at_end_of_file
+    - hash_and_equals
+    - implementation_imports
+    - join_return_with_assignment
+    - missing_whitespace_between_adjacent_strings
+    - no_adjacent_strings_in_list
+    - non_constant_identifier_names
+    - prefer_asserts_in_initializer_lists
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_fields
+    - prefer_final_in_for_each
+    - prefer_final_locals
+    - prefer_relative_imports
+    - prefer_single_quotes
+    - require_trailing_commas
+    - test_types_in_equals
+    - throw_in_finally
+    - unawaited_futures
+    - unnecessary_await_in_return
+    - unnecessary_lambdas
+    - unnecessary_null_aware_assignments
+    - unnecessary_null_checks
+    - unnecessary_parenthesis
+    - unnecessary_raw_strings
+    - unnecessary_statements
+    - unrelated_type_equality_checks
+    - use_build_context_synchronously
+    - use_key_in_widget_constructors
+    - use_super_parameters
