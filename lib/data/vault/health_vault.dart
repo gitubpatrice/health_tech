@@ -264,8 +264,17 @@ class HealthVault {
       unawaited(_maybeRecalibrate(salt: base64Decode(saltB64)));
       return true;
     } on SecretBoxAuthenticationError {
+      // Vraie tentative ratée : passphrase incorrecte. On incrémente le
+      // compteur d'échecs (déclenche le backoff exponentiel).
       await _registerFailedAttempt();
       return false;
+    } on FormatException {
+      // Wrapped VEK corrompu / tronqué (malware ayant manipulé l'Encrypted
+      // SharedPreferences). On NE compte PAS comme un échec de passphrase :
+      // l'utilisateur légitime ne doit pas être lockout pour un état DB
+      // cassé qu'il n'a pas causé. On rethrow pour que l'UI affiche un
+      // message d'erreur générique distinct du "wrong passphrase".
+      rethrow;
     } finally {
       masterKey.fillRange(0, masterKey.length, 0);
     }

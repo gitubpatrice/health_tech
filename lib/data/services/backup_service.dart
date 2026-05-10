@@ -464,8 +464,17 @@ class BackupService {
       // Remove the staging dir + sentinel as the LAST step. If we ever
       // throw above, the sentinel remains and recoverPartialRestore can
       // resume on next launch.
-      if (stagingDir.existsSync()) {
-        await stagingDir.delete(recursive: true);
+      // Best-effort sur le delete : si le FS refuse (file lock, race),
+      // on poursuit quand même la suppression du sentinel — sinon on
+      // laisserait un sentinel orphelin alors que la restauration a
+      // pourtant réussi (UX confuse "restauration interrompue" alors
+      // que tout va bien).
+      try {
+        if (stagingDir.existsSync()) {
+          await stagingDir.delete(recursive: true);
+        }
+      } on Object {
+        // ignore — staging orphelin sera wipe au prochain applyRestore
       }
       await prefs.remove(_kRestorePendingFlag);
     }
@@ -482,19 +491,35 @@ class BackupService {
     final stagingDb = File(p.join(stagingDir.path, 'db', 'health.db'));
     final stagingAtt = Directory(p.join(stagingDir.path, 'attachments'));
     final stagingVault = File(p.join(stagingDir.path, 'vault.json'));
-    if (!stagingDb.existsSync() || !stagingVault.existsSync()) {
+    // _commitStaging accepte d'être rejouée avec un staging partiellement
+    // consommé : tant que vault.json est présent (étape 4 jamais finalisée),
+    // on peut compléter Phase B. La DB en staging est optionnelle
+    // (peut-être déjà renommée à destination par une exécution précédente).
+    if (!stagingVault.existsSync()) {
       throw const ValidationError('backup_staging_incomplete', 'staging');
     }
 
-    // Si la phase A précédente a complété mais que Phase B s'est arrêtée
-    // après un partial rename, certains fichiers sont déjà à destination.
-    // Le `rename` Android écrase. On supprime explicitement ce qui pourrait
-    // gêner les renames (ex: WAL/SHM résiduels).
+    // **Ordre crucial pour idempotence + résistance au crash mid-Phase B**
+    // (audit F4) :
+    //   1. Wipe sidecars WAL/SHM + attachments existants
+    //   2. Rename ATTACHMENTS staging → final D'ABORD
+    //   3. Rename DB staging → final EN DERNIER (la présence de la DB
+    //      en place sert de sentinel "tout est commité")
+    //   4. Apply vault material
+    //
+    // Si l'OS kill entre (2) et (3) : staging contient encore la DB →
+    // recoverPartialRestore relance _commitStaging → l'étape (2) écrase
+    // les attachments déjà en place sans perte (ils proviennent du même
+    // staging) → étape (3) renomme la DB → succès.
+    //
+    // Si l'OS kill entre (3) et (4) : staging vide (DB déjà renommée),
+    // mais le vault material est toujours dans staging/vault.json →
+    // au resume, _commitStaging détecte stagingDb absent + stagingVault
+    // présent → applique uniquement le vault material → succès.
     final wal = File(p.join(dbFile.parent.path, 'health.db-wal'));
     final shm = File(p.join(dbFile.parent.path, 'health.db-shm'));
     if (wal.existsSync()) await wal.delete();
     if (shm.existsSync()) await shm.delete();
-    if (dbFile.existsSync()) await dbFile.delete();
 
     if (attDir.existsSync()) {
       await for (final entity in attDir.list()) {
@@ -512,18 +537,33 @@ class BackupService {
     }
     if (!attDir.existsSync()) await attDir.create(recursive: true);
 
-    await stagingDb.rename(dbFile.path);
+    // (2) Attachments d'abord — les renames sont idempotents (rename
+    // d'un fichier inexistant = no-op si le `existsSync` ne le voit
+    // plus, mais Dart File.rename throw FileSystemException → on guard).
     if (stagingAtt.existsSync()) {
       await for (final entity in stagingAtt.list()) {
         if (entity is File) {
-          await entity.rename(p.join(attDir.path, p.basename(entity.path)));
+          try {
+            await entity.rename(p.join(attDir.path, p.basename(entity.path)));
+          } on FileSystemException {
+            // best-effort : si un attachment est déjà à destination,
+            // l'autre n'est pas perdu pour autant.
+          }
         }
       }
     }
 
-    // Apply vault material LAST so a crash before this point leaves the
-    // user with the previous wrapped VEK + a fresh DB they cannot decrypt
-    // — fail-closed (they retry restore from the same .htbk).
+    // (3) DB en dernier — `dbFile.delete()` puis rename. Si on crash
+    // entre delete et rename : recoverPartialRestore voit dbFile absent
+    // mais stagingDb présent → relance le rename idempotent.
+    if (dbFile.existsSync()) await dbFile.delete();
+    if (stagingDb.existsSync()) {
+      await stagingDb.rename(dbFile.path);
+    }
+
+    // (4) Apply vault material LAST so a crash before this point leaves
+    // the user with the previous wrapped VEK + a fresh DB they cannot
+    // decrypt — fail-closed (they retry restore from the same .htbk).
     final vaultJson =
         jsonDecode(await stagingVault.readAsString()) as Map<String, dynamic>;
     for (final k in _vaultKeys) {
@@ -680,10 +720,15 @@ class BackupService {
   }
 
   /// Strips any path separator and any character that is not a UUID-shaped
-  /// `.enc` filename. Defends extraction against zip-slip.
+  /// `.enc` filename. Defends extraction against zip-slip. Refuse aussi
+  /// les noms commençant par `.` (`.htaccess`, `.nomedia`) — ils n'ont
+  /// pas leur place dans `attachments/` et pourraient être interprétés
+  /// par une future couche d'indexation Android comme un signal métier.
   String _safeName(String raw) {
     final base = raw.split(RegExp(r'[\\/]')).last;
-    return base.replaceAll(RegExp('[^A-Za-z0-9._-]'), '_');
+    final sanitized = base.replaceAll(RegExp('[^A-Za-z0-9._-]'), '_');
+    if (sanitized.startsWith('.')) return '_${sanitized.substring(1)}';
+    return sanitized;
   }
 
   static final Random _rng = Random.secure();

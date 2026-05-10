@@ -95,7 +95,7 @@ class BiometricBridge(
             // Keystore, un chemin natif ou une info de hardware (Samsung
             // Knox, Qualcomm StrongBox) qui finirait dans logcat. Code
             // générique côté Dart, log détaillé côté Kotlin gated debug.
-            android.util.Log.w("BiometricBridge", "wrap_init failed", e)
+            if (BuildConfig.DEBUG) android.util.Log.w("BiometricBridge", "wrap_init failed", e)
             return result.error("wrap_init_failed", "wrap init failed", null)
         }
         val iv = cipher.iv
@@ -131,7 +131,7 @@ class BiometricBridge(
                             ),
                         )
                     } catch (e: Exception) {
-                        android.util.Log.w("BiometricBridge", "wrap failed", e)
+                        if (BuildConfig.DEBUG) android.util.Log.w("BiometricBridge", "wrap failed", e)
                         result.error("wrap_failed", "wrap failed", null)
                     }
                 }
@@ -188,7 +188,7 @@ class BiometricBridge(
                 null,
             )
         } catch (e: Exception) {
-            android.util.Log.w("BiometricBridge", "cipher_init failed", e)
+            if (BuildConfig.DEBUG) android.util.Log.w("BiometricBridge", "cipher_init failed", e)
             return result.error("cipher_init", "cipher init failed", null)
         }
 
@@ -219,7 +219,7 @@ class BiometricBridge(
                         plaintext.fill(0)
                         result.success(outB64)
                     } catch (e: Exception) {
-                        android.util.Log.w("BiometricBridge", "decrypt failed", e)
+                        if (BuildConfig.DEBUG) android.util.Log.w("BiometricBridge", "decrypt failed", e)
                         result.error("decrypt_failed", "decrypt failed", null)
                     }
                 }

@@ -86,9 +86,14 @@ final requirePassphraseProvider = FutureProvider<bool>((ref) async {
   // premier déverrouillage de la session.
   final lastLocked = await ref.read(vaultProvider).lastLockedAtMs();
   if (lastLocked == null) return true;
-  // 3) Inactivité longue dépassée -> passphrase.
+  // 3) Inactivité longue dépassée OU clock système reculé (anti-rollback) -> passphrase.
+  // Un attaquant root pourrait reculer le clock pour faire passer une
+  // session expirée pour récente : `elapsed` deviendrait négatif et
+  // `> 1h` serait faux. On clamp + on force passphrase si négatif.
   final elapsed = DateTime.now().millisecondsSinceEpoch - lastLocked;
-  if (elapsed > _kBiometricSessionWindow.inMilliseconds) return true;
+  if (elapsed < 0 || elapsed > _kBiometricSessionWindow.inMilliseconds) {
+    return true;
+  }
   return false;
 });
 

@@ -17,6 +17,12 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    buildFeatures {
+        // Genere BuildConfig.DEBUG pour gater les Log.w cote Kotlin :
+        // sans cela, AGP 8+ ne genere plus BuildConfig par defaut.
+        buildConfig = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
