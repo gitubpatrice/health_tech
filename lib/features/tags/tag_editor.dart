@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/error_view.dart';
 
 /// Inline tag editor: shows current tags as deletable chips and an Autocomplete
 /// input that creates a new tag (or reuses an existing one) on submit.
@@ -20,10 +21,10 @@ class TagEditor extends ConsumerWidget {
     final attached = ref.watch(
       _attachedTagsProvider((ownerType: ownerType, ownerId: ownerId)),
     );
-    final all = ref.watch(_allTagsProvider);
+    final all = ref.watch(allTagsProvider);
     return attached.when(
       loading: () => const SizedBox(height: 32),
-      error: (e, _) => Text('$e'),
+      error: (e, _) => Text(localiseError(context, e)),
       data: (tags) {
         final attachedIds = tags.map((t) => t.id).toSet();
         return Wrap(
@@ -100,8 +101,4 @@ final _attachedTagsProvider = StreamProvider.family<List<Tag>, _OwnerKey>((
   return ref
       .watch(tagRepositoryProvider)
       .watchForOwner(ownerType: key.ownerType, ownerId: key.ownerId);
-});
-
-final _allTagsProvider = StreamProvider<List<Tag>>((ref) {
-  return ref.watch(tagRepositoryProvider).watchAll();
 });

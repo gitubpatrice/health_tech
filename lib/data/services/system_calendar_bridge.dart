@@ -54,8 +54,13 @@ class SystemCalendarBridge {
     return null;
   }
 
-  /// Creates a calendar event for [appointment] and returns the
+  /// Creates OR updates a calendar event for [appointment] and returns the
   /// `(calendarId, eventId)` pair the caller persists on the row.
+  ///
+  /// When the appointment already carries `externalCalendarEventId` /
+  /// `externalCalendarId`, those values are reused so the existing event
+  /// is updated in place (instead of creating a duplicate). When they are
+  /// null, a fresh event is created in the first writable calendar.
   Future<({String calendarId, String eventId})?> push(
     Appointment appointment,
   ) async {
@@ -63,12 +68,21 @@ class SystemCalendarBridge {
       throw const CalendarPermissionDenied();
     }
     await _ensureTimezones();
-    final cal = await _firstWritableCalendar();
-    if (cal == null || cal.id == null) {
-      throw const CalendarUnavailable();
+
+    final String calendarId;
+    if (appointment.externalCalendarId != null) {
+      calendarId = appointment.externalCalendarId!;
+    } else {
+      final cal = await _firstWritableCalendar();
+      if (cal == null || cal.id == null) {
+        throw const CalendarUnavailable();
+      }
+      calendarId = cal.id!;
     }
+
     final event = Event(
-      cal.id,
+      calendarId,
+      eventId: appointment.externalCalendarEventId,
       title: appointment.title ?? 'Health Tech',
       description: appointment.notes.isEmpty ? null : appointment.notes,
       start: tz.TZDateTime.from(appointment.startAt, tz.local),
@@ -80,10 +94,10 @@ class SystemCalendarBridge {
       },
     );
     final res = await _plugin.createOrUpdateEvent(event);
-    if (res == null || !res.isSuccess || res.data == null) return null;
+    if (res == null || !res.isSuccess) return null;
     final eventId = res.data;
     if (eventId == null) return null;
-    return (calendarId: cal.id!, eventId: eventId);
+    return (calendarId: calendarId, eventId: eventId);
   }
 
   Future<void> remove({

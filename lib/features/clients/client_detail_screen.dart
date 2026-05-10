@@ -6,8 +6,10 @@ import '../../domain/attachment.dart';
 import '../../domain/client.dart';
 import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/date_format.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
+import '../../widgets/error_view.dart';
 import '../animals/animal_form_screen.dart';
 import '../animals/animal_l10n.dart';
 import '../animals/animal_providers.dart';
@@ -31,7 +33,7 @@ class ClientDetailScreen extends ConsumerWidget {
     final selected = ref.watch(selectedClientProvider);
     return selected.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
+      error: (e, _) => ErrorView(error: e),
       data: (client) => client == null
           ? Center(child: Text(l10n.clientDetailNoSelection))
           : _ClientTabbed(client: client),
@@ -185,10 +187,13 @@ class _AnimalsTab extends ConsumerWidget {
       children: [
         list.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('$e')),
+          error: (e, _) => ErrorView(error: e),
           data: (animals) => animals.isEmpty
               ? Center(child: Text(l10n.animalsListEmpty))
               : ListView.separated(
+                  // Trailing space so the floating + button never sits on
+                  // top of the last row (it used to clip the tap target).
+                  padding: const EdgeInsets.only(bottom: 96),
                   itemCount: animals.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) {
@@ -236,10 +241,11 @@ class _SessionsTab extends ConsumerWidget {
       children: [
         list.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('$e')),
+          error: (e, _) => ErrorView(error: e),
           data: (sessions) => sessions.isEmpty
               ? Center(child: Text(l10n.sessionsListEmpty))
               : ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 96),
                   itemCount: sessions.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) {
@@ -248,11 +254,7 @@ class _SessionsTab extends ConsumerWidget {
                       leading: const CircleAvatar(
                         child: Icon(Icons.event_note),
                       ),
-                      title: Text(
-                        '${s.startAt.day.toString().padLeft(2, '0')}/'
-                        '${s.startAt.month.toString().padLeft(2, '0')}/'
-                        '${s.startAt.year}',
-                      ),
+                      title: Text(formatDate(s.startAt)),
                       subtitle: Text(
                         '${kindLabel(l10n, s.kind)} · '
                         '${statusLabel(l10n, s.status)}',

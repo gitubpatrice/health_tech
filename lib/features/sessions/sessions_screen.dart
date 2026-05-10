@@ -6,6 +6,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
 import '../../widgets/adaptive_scaffold.dart';
 import '../../widgets/breakpoints.dart';
+import '../../widgets/error_view.dart';
 import 'session_detail_screen.dart';
 import 'session_form_screen.dart';
 import 'session_l10n.dart';
@@ -60,7 +61,7 @@ class _SessionsList extends ConsumerWidget {
     final list = ref.watch(sessionsStreamProvider);
     return list.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
+      error: (e, _) => ErrorView(error: e),
       data: (sessions) => sessions.isEmpty
           ? Padding(
               padding: const EdgeInsets.all(32),

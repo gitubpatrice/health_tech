@@ -7,6 +7,7 @@ import '../../data/repositories/attachment_repository.dart';
 import '../../domain/attachment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../widgets/error_view.dart';
 import 'attachment_viewer.dart';
 
 /// Reusable attachments section embedded in client / animal / session detail
@@ -62,7 +63,7 @@ class AttachmentsSection extends ConsumerWidget {
         Expanded(
           child: stream.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('$e')),
+            error: (e, _) => ErrorView(error: e),
             data: (list) => list.isEmpty
                 ? Center(child: Text(l10n.attachmentsEmpty))
                 : ListView.separated(

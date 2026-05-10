@@ -5,6 +5,7 @@ import '../../domain/animal.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/adaptive_scaffold.dart';
 import '../../widgets/breakpoints.dart';
+import '../../widgets/error_view.dart';
 import '../tags/tag_filter_row.dart';
 import 'animal_detail_screen.dart';
 import 'animal_form_screen.dart';
@@ -101,7 +102,7 @@ class _AnimalsList extends ConsumerWidget {
         Expanded(
           child: list.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('$e')),
+            error: (e, _) => ErrorView(error: e),
             data: (animals) => animals.isEmpty
                 ? Padding(
                     padding: const EdgeInsets.all(32),

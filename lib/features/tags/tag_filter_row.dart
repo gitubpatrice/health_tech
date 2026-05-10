@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
-import '../../domain/tag.dart';
+import '../../widgets/error_view.dart';
 
 /// Horizontal scrollable row of FilterChips bound to a [StateProvider]
 /// of selected tag ids. Reusable across clients/animals/sessions lists.
@@ -14,11 +14,11 @@ class TagFilterRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tags = ref.watch(_allTagsProvider);
+    final tags = ref.watch(allTagsProvider);
     final selected = ref.watch(selectionProvider);
     return tags.when(
       loading: () => const SizedBox(height: 44),
-      error: (e, _) => Text('$e'),
+      error: (e, _) => Text(localiseError(context, e)),
       data: (list) {
         if (list.isEmpty) return const SizedBox.shrink();
         return SizedBox(
@@ -50,7 +50,3 @@ class TagFilterRow extends ConsumerWidget {
     );
   }
 }
-
-final _allTagsProvider = StreamProvider<List<Tag>>((ref) {
-  return ref.watch(tagRepositoryProvider).watchAll();
-});

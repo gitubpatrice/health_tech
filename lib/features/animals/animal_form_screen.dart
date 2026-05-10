@@ -5,6 +5,7 @@ import '../../core/providers.dart';
 import '../../domain/animal.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../widgets/error_view.dart';
 import '../../widgets/section_title.dart';
 import '../clients/client_providers.dart';
 import 'animal_l10n.dart';
@@ -191,7 +192,7 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
               SectionTitle(l10n.animalFormSectionIdentity),
               clients.when(
                 loading: () => const LinearProgressIndicator(),
-                error: (e, _) => Text('$e'),
+                error: (e, _) => Text(localiseError(context, e)),
                 data: (list) => DropdownButtonFormField<String>(
                   initialValue: _clientId,
                   decoration: InputDecoration(labelText: l10n.animalFormClient),

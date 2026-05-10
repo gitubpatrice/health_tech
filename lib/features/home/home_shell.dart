@@ -10,22 +10,17 @@ import '../sessions/sessions_screen.dart';
 import '../settings/settings_screen.dart';
 import 'home_screen.dart';
 
-/// Stable indexes used by the home shortcuts to jump to a tab.
-class HomeTab {
-  const HomeTab._();
-  static const int home = 0;
-  static const int clients = 1;
-  static const int animals = 2;
-  static const int sessions = 3;
-  static const int agenda = 4;
-  static const int settings = 5;
-}
+/// Bottom-nav / navigation-rail destination.
+///
+/// Order matches the order in `HomeShell.destinations` / `HomeShell.pages`
+/// and is the only source of truth for the index — no magic numbers.
+enum HomeTab { home, clients, animals, sessions, agenda, settings }
 
-/// Currently selected bottom-nav / rail index. Lives at the top so home
-/// shortcut cards can switch tabs without callback plumbing, and so the
-/// system back button can return us to Home (index 0) instead of leaving
-/// the app and forcing the user to re-enter their passphrase.
-final homeTabProvider = StateProvider<int>((_) => HomeTab.home);
+/// Currently selected destination. Lives at the top so home shortcut
+/// cards can switch tabs without callback plumbing, and so the system
+/// back button can return us to Home instead of leaving the app and
+/// forcing the user to re-enter their passphrase.
+final homeTabProvider = StateProvider<HomeTab>((_) => HomeTab.home);
 
 /// Top-level navigation shell. Adapts to phone (bottom bar) and tablet
 /// (navigation rail).
@@ -91,18 +86,18 @@ class HomeShell extends ConsumerWidget {
       },
       child: AdaptiveScaffold(
         destinations: destinations,
-        selectedIndex: index,
+        selectedIndex: index.index,
         onDestinationSelected: (i) =>
-            ref.read(homeTabProvider.notifier).state = i,
+            ref.read(homeTabProvider.notifier).state = HomeTab.values[i],
         title: Text(
           // Fall back to the settings label when the destination has none
           // (settings is icon-only in the bottom bar but still deserves a
           // proper page title).
-          destinations[index].label.isEmpty
+          destinations[index.index].label.isEmpty
               ? l10n.navSettings
-              : destinations[index].label,
+              : destinations[index.index].label,
         ),
-        body: IndexedStack(index: index, children: pages),
+        body: IndexedStack(index: index.index, children: pages),
       ),
     );
   }

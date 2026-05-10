@@ -6,8 +6,10 @@ import '../../domain/animal.dart';
 import '../../domain/attachment.dart';
 import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/date_format.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
+import '../../widgets/error_view.dart';
 import '../attachments/attachments_section.dart';
 import '../sessions/session_form_screen.dart';
 import '../sessions/session_l10n.dart';
@@ -26,7 +28,7 @@ class AnimalDetailScreen extends ConsumerWidget {
     final selected = ref.watch(selectedAnimalProvider);
     return selected.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
+      error: (e, _) => ErrorView(error: e),
       data: (animal) => animal == null
           ? Center(child: Text(l10n.animalDetailNoSelection))
           : _AnimalTabbed(animal: animal),
@@ -191,10 +193,11 @@ class _SessionsTab extends ConsumerWidget {
       children: [
         list.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('$e')),
+          error: (e, _) => ErrorView(error: e),
           data: (sessions) => sessions.isEmpty
               ? Center(child: Text(l10n.sessionsListEmpty))
               : ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 96),
                   itemCount: sessions.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) {
@@ -203,11 +206,7 @@ class _SessionsTab extends ConsumerWidget {
                       leading: const CircleAvatar(
                         child: Icon(Icons.event_note),
                       ),
-                      title: Text(
-                        '${s.startAt.day.toString().padLeft(2, '0')}/'
-                        '${s.startAt.month.toString().padLeft(2, '0')}/'
-                        '${s.startAt.year}',
-                      ),
+                      title: Text(formatDate(s.startAt)),
                       subtitle: Text(
                         '${kindLabel(l10n, s.kind)} · '
                         '${statusLabel(l10n, s.status)}',

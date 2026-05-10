@@ -6,6 +6,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/adaptive_scaffold.dart';
 import '../../widgets/breakpoints.dart';
 import '../../widgets/disclaimer_dialog.dart';
+import '../../widgets/error_view.dart';
 import '../tags/tag_filter_row.dart';
 import 'client_detail_screen.dart';
 import 'client_form_screen.dart';
@@ -76,7 +77,7 @@ class _ClientsList extends ConsumerWidget {
         Expanded(
           child: list.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('$e')),
+            error: (e, _) => ErrorView(error: e),
             data: (clients) => clients.isEmpty
                 ? _Empty(text: l10n.clientsListEmpty)
                 : ListView.separated(

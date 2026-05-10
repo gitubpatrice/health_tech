@@ -21,8 +21,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
     final scheme = Theme.of(context).colorScheme;
-    void goTo(int tab) =>
-        ref.read(homeTabProvider.notifier).state = tab;
+    void goTo(HomeTab tab) => ref.read(homeTabProvider.notifier).state = tab;
     final shortcuts = <_HomeShortcut>[
       _HomeShortcut(
         icon: Icons.person_outline,

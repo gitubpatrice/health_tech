@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../domain/attachment.dart';
+import '../../widgets/error_view.dart';
 
 /// Decrypts an attachment in memory and displays it. Used for both images
 /// (rendered with [Image.memory]) and other files (a placeholder + filename
@@ -22,7 +23,7 @@ class AttachmentViewer extends ConsumerWidget {
       appBar: AppBar(title: Text(attachment.filename)),
       body: future.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => ErrorView(error: e),
         data: (bytes) => attachment.isImage
             ? _ImageBody(bytes: bytes)
             : _OpaqueBody(attachment: attachment, bytes: bytes),

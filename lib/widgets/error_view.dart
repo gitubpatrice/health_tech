@@ -40,12 +40,19 @@ String localiseError(BuildContext context, Object error) {
 }
 
 /// Centred error tile suitable for use in `AsyncValue.when(error: ...)`.
+///
+/// `VaultLockedError` is treated as a transient state, not a failure: when
+/// the app pauses or the user manually locks, every stream that depends on
+/// the vault throws this until `LockScreen` swaps in (a few frames later).
+/// We render a blank space to avoid flashing a red "error" panel during
+/// that handoff.
 class ErrorView extends StatelessWidget {
   const ErrorView({super.key, required this.error});
   final Object error;
 
   @override
   Widget build(BuildContext context) {
+    if (error is VaultLockedError) return const SizedBox.shrink();
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),

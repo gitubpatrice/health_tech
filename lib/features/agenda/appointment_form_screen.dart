@@ -7,6 +7,8 @@ import '../../domain/animal.dart';
 import '../../domain/appointment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../widgets/confirm_delete_dialog.dart';
+import '../../widgets/error_view.dart';
 import '../animals/animal_providers.dart';
 import '../clients/client_providers.dart';
 import '../sessions/session_l10n.dart';
@@ -137,19 +139,23 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       } else {
         saved = await repo.update(draft);
       }
-      // Opt-in: push to system calendar AFTER the row is durable, then
-      // persist the returned event ids on the row so a future edit knows
-      // it can update / remove the system event.
-      if (_addToSystemCalendar && saved.externalCalendarEventId == null) {
+      // Opt-in: push to (or update in) the system calendar AFTER the row
+      // is durable. The bridge reuses externalCalendarEventId when present
+      // so an existing event is updated in place, not duplicated.
+      if (_addToSystemCalendar) {
         try {
           final pushed = await bridge.push(saved);
           if (pushed != null) {
-            await repo.update(
-              saved.copyWith(
-                externalCalendarId: pushed.calendarId,
-                externalCalendarEventId: pushed.eventId,
-              ),
-            );
+            // Persist the (calendarId, eventId) pair only on first sync;
+            // subsequent updates already carry it.
+            if (saved.externalCalendarEventId == null) {
+              await repo.update(
+                saved.copyWith(
+                  externalCalendarId: pushed.calendarId,
+                  externalCalendarEventId: pushed.eventId,
+                ),
+              );
+            }
             messenger.showSnackBar(
               SnackBar(content: Text(l10n.appointmentFormSyncedToCalendar)),
             );
@@ -173,6 +179,28 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
     }
   }
 
+  Future<void> _delete() async {
+    final initial = widget.initial;
+    if (initial == null) return;
+    final l10n = AppL10n.of(context);
+    final confirmed = await showConfirmDeleteDialog(
+      context,
+      title: l10n.sessionDetailDeleteTitle,
+      body: l10n.sessionDetailDeleteBody,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      // Cascades through PurgeService so the calendar event (if any) is
+      // also removed in one go.
+      await ref.read(purgeServiceProvider).softDeleteAppointment(initial.id);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppL10n.of(context);
@@ -187,6 +215,12 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
           isEdit ? l10n.appointmentFormTitleEdit : l10n.appointmentFormTitleNew,
         ),
         actions: [
+          if (isEdit)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: l10n.actionDelete,
+              onPressed: _busy ? null : _delete,
+            ),
           TextButton(
             onPressed: _busy ? null : _save,
             child: Text(l10n.actionSave),
@@ -235,7 +269,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
               const SizedBox(height: 12),
               clients.when(
                 loading: () => const LinearProgressIndicator(),
-                error: (e, _) => Text('$e'),
+                error: (e, _) => Text(localiseError(context, e)),
                 data: (list) => DropdownButtonFormField<String?>(
                   initialValue: _clientId,
                   decoration: InputDecoration(labelText: l10n.animalFormClient),
@@ -260,7 +294,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
               if (_clientId != null)
                 animals.when(
                   loading: () => const SizedBox.shrink(),
-                  error: (e, _) => Text('$e'),
+                  error: (e, _) => Text(localiseError(context, e)),
                   data: (list) => DropdownButtonFormField<String?>(
                     initialValue: _animalId,
                     decoration: InputDecoration(labelText: l10n.navAnimals),
@@ -318,9 +352,8 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _addToSystemCalendar,
-                onChanged: widget.initial?.externalCalendarEventId != null
-                    ? null // already synced — read-only for this iteration
-                    : (v) => setState(() => _addToSystemCalendar = v ?? false),
+                onChanged: (v) =>
+                    setState(() => _addToSystemCalendar = v ?? false),
                 title: Text(l10n.appointmentFormAddToCalendar),
                 controlAffinity: ListTileControlAffinity.leading,
               ),

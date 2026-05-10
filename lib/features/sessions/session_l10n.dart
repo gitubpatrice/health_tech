@@ -52,21 +52,6 @@ String paymentStatusLabel(AppL10n l, String? key) {
   }
 }
 
-String paymentMethodLabel(AppL10n l, String? key) {
-  switch (key) {
-    case PaymentMethod.cash:
-      return l.methodCash;
-    case PaymentMethod.card:
-      return l.methodCard;
-    case PaymentMethod.transfer:
-      return l.methodTransfer;
-    case PaymentMethod.check:
-      return l.methodCheck;
-    default:
-      return l.methodOther;
-  }
-}
-
 String motiveLabel(AppL10n l, String key) {
   switch (key) {
     case SessionMotives.reiki:

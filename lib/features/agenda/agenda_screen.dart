@@ -6,6 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../domain/appointment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../widgets/error_view.dart';
 import '../sessions/session_l10n.dart';
 import 'appointment_form_screen.dart';
 import 'appointment_providers.dart';
@@ -81,7 +82,7 @@ class _ListView extends ConsumerWidget {
     final upcoming = ref.watch(upcomingAppointmentsProvider);
     return upcoming.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
+      error: (e, _) => ErrorView(error: e),
       data: (list) => list.isEmpty
           ? Center(child: Text(l10n.agendaEmpty))
           : _GroupedByDay(appointments: list),
@@ -119,7 +120,7 @@ class _MonthViewState extends ConsumerState<_MonthView> {
     final stream = ref.watch(appointmentsRangeProvider((from: from, to: to)));
     return stream.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
+      error: (e, _) => ErrorView(error: e),
       data: (all) {
         final dayItems = _eventsFor(all, _selected);
         return Column(

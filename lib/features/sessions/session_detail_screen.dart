@@ -11,6 +11,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
+import '../../widgets/error_view.dart';
 import '../attachments/attachments_section.dart';
 import '../tags/tag_editor.dart';
 import 'session_form_screen.dart';
@@ -26,7 +27,7 @@ class SessionDetailScreen extends ConsumerWidget {
     final selected = ref.watch(selectedSessionProvider);
     return selected.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
+      error: (e, _) => ErrorView(error: e),
       data: (s) => s == null
           ? Center(child: Text(l10n.sessionDetailNoSelection))
           : _SessionBody(session: s),

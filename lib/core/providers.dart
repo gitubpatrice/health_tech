@@ -12,6 +12,7 @@ import '../data/services/purge_service.dart';
 import '../data/services/rgpd_export_service.dart';
 import '../data/services/system_calendar_bridge.dart';
 import '../data/vault/health_vault.dart';
+import '../domain/tag.dart';
 
 /// Single instance of the vault for the app lifetime.
 final vaultProvider = Provider<HealthVault>((ref) {
@@ -110,6 +111,14 @@ final tagRepositoryProvider = Provider<TagRepository>((ref) {
   return TagRepository(db);
 });
 
+/// Live list of every tag in the catalogue, sorted by label. Shared by
+/// `TagEditor` (suggestions during typing) and `TagFilterRow` (chips at
+/// the top of clients/animals lists) so a single Drift subscription
+/// serves both consumers.
+final allTagsProvider = StreamProvider<List<Tag>>((ref) {
+  return ref.watch(tagRepositoryProvider).watchAll();
+});
+
 final attachmentRepositoryProvider = Provider<AttachmentRepository>((ref) {
   final db = ref.watch(databaseProvider).requireValue;
   final crypto = ref.watch(vaultProvider).crypto;
@@ -128,7 +137,9 @@ final purgeServiceProvider = Provider((ref) {
     clients: ref.watch(clientRepositoryProvider),
     animals: ref.watch(animalRepositoryProvider),
     sessions: ref.watch(sessionRepositoryProvider),
+    appointments: ref.watch(appointmentRepositoryProvider),
     attachments: ref.watch(attachmentRepositoryProvider),
+    calendar: ref.watch(systemCalendarBridgeProvider),
   );
 });
 

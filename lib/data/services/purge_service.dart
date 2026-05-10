@@ -1,30 +1,41 @@
 import '../../domain/attachment.dart';
 import '../repositories/animal_repository.dart';
+import '../repositories/appointment_repository.dart';
 import '../repositories/attachment_repository.dart';
 import '../repositories/client_repository.dart';
 import '../repositories/session_repository.dart';
+import 'system_calendar_bridge.dart';
 
-/// Orchestrates cascading hard-delete (RGPD right to erasure).
+/// Orchestrates cascading soft- and hard-delete across all entities.
 ///
-/// SQLite cascades take care of row-level dependencies (e.g. animals when
-/// their client is dropped) but attachments are linked through a polymorphic
-/// `(owner_type, owner_id)` pair, so they need an explicit pass.
+/// SQLite foreign keys cover row-level dependencies, but several pieces
+/// live OUTSIDE the relational graph and must be cascaded explicitly:
+///   - **attachments** — linked via a polymorphic `(owner_type, owner_id)`
+///     pair, no FK at the DB level
+///   - **appointments** — survive the loss of their parent client/animal
+///     (FK is `setNull`), so we must soft-delete or purge them ourselves
+///   - **system calendar events** — sit in Google Calendar, oblivious to
+///     anything we do in our SQLite, so the bridge has to be told
 class PurgeService {
   PurgeService({
     required this.clients,
     required this.animals,
     required this.sessions,
+    required this.appointments,
     required this.attachments,
+    required this.calendar,
   });
 
   final ClientRepository clients;
   final AnimalRepository animals;
   final SessionRepository sessions;
+  final AppointmentRepository appointments;
   final AttachmentRepository attachments;
+  final SystemCalendarBridge calendar;
 
-  /// Soft-deletes a client and cascades to their animals + sessions
-  /// (attachments stay, since soft-delete is reversible — they will be wiped
-  /// only when the user calls [purgeClient]).
+  /// Soft-deletes a client and cascades to their animals, sessions and
+  /// appointments. Attachments stay on disk (soft-delete is reversible —
+  /// the user can still permanently erase the client later).
   Future<void> softDeleteClient(String clientId) async {
     final clientAnimals = await animals.watchByClient(clientId).first;
     for (final a in clientAnimals) {
@@ -34,21 +45,42 @@ class PurgeService {
     for (final s in clientSessions) {
       await sessions.softDelete(s.id);
     }
+    final clientAppointments = await appointments.watchByClient(clientId).first;
+    for (final apt in clientAppointments) {
+      await _softDeleteAppointment(
+        apt.id,
+        apt.externalCalendarId,
+        apt.externalCalendarEventId,
+      );
+    }
     await clients.softDelete(clientId);
   }
 
-  /// Soft-deletes an animal and cascades to its sessions only (the parent
-  /// client stays untouched).
+  /// Soft-deletes an animal and cascades to its sessions and appointments.
+  /// The parent client is left untouched.
   Future<void> softDeleteAnimal(String animalId) async {
     final animalSessions = await sessions.watchByAnimal(animalId).first;
     for (final s in animalSessions) {
       await sessions.softDelete(s.id);
     }
+    // Appointments owned by this animal — fetched via a one-shot range
+    // query because AppointmentRepository doesn't expose watchByAnimal yet.
+    final all = await appointments
+        .watchInRange(DateTime(1970), DateTime(2100))
+        .first;
+    for (final apt in all.where((a) => a.animalId == animalId)) {
+      await _softDeleteAppointment(
+        apt.id,
+        apt.externalCalendarId,
+        apt.externalCalendarEventId,
+      );
+    }
     await animals.softDelete(animalId);
   }
 
-  /// Permanently erases a client, all their animals, all their sessions and
-  /// every related attachment. Used for the GDPR right-to-erasure button.
+  /// Permanently erases a client, every animal/session/appointment of theirs
+  /// and every related attachment + the calendar events they had pushed.
+  /// This is the GDPR right-to-erasure path.
   Future<void> purgeClient(String clientId) async {
     final clientAnimals = await animals.watchByClient(clientId).first;
     for (final a in clientAnimals) {
@@ -59,6 +91,14 @@ class PurgeService {
     final clientSessions = await sessions.watchByClient(clientId).first;
     for (final s in clientSessions.where((x) => x.animalId == null)) {
       await purgeSession(s.id);
+    }
+    final clientAppointments = await appointments.watchByClient(clientId).first;
+    for (final apt in clientAppointments) {
+      await _purgeAppointment(
+        apt.id,
+        apt.externalCalendarId,
+        apt.externalCalendarEventId,
+      );
     }
     await attachments.purgeAllForOwner(
       ownerType: AttachmentOwner.client,
@@ -71,6 +111,16 @@ class PurgeService {
     final animalSessions = await sessions.watchByAnimal(animalId).first;
     for (final s in animalSessions) {
       await purgeSession(s.id);
+    }
+    final all = await appointments
+        .watchInRange(DateTime(1970), DateTime(2100))
+        .first;
+    for (final apt in all.where((a) => a.animalId == animalId)) {
+      await _purgeAppointment(
+        apt.id,
+        apt.externalCalendarId,
+        apt.externalCalendarEventId,
+      );
     }
     await attachments.purgeAllForOwner(
       ownerType: AttachmentOwner.animal,
@@ -85,5 +135,46 @@ class PurgeService {
       ownerId: sessionId,
     );
     await sessions.purge(sessionId);
+  }
+
+  /// Soft-deletes a single appointment and best-effort removes its
+  /// counterpart in the system calendar (if it had been pushed there).
+  Future<void> softDeleteAppointment(String appointmentId) async {
+    final apt = await appointments.getById(appointmentId);
+    if (apt == null) return;
+    await _softDeleteAppointment(
+      apt.id,
+      apt.externalCalendarId,
+      apt.externalCalendarEventId,
+    );
+  }
+
+  Future<void> _softDeleteAppointment(
+    String id,
+    String? calendarId,
+    String? eventId,
+  ) async {
+    await appointments.softDelete(id);
+    await _removeCalendarEvent(calendarId, eventId);
+  }
+
+  Future<void> _purgeAppointment(
+    String id,
+    String? calendarId,
+    String? eventId,
+  ) async {
+    await appointments.purge(id);
+    await _removeCalendarEvent(calendarId, eventId);
+  }
+
+  /// Calendar removal is best-effort: a revoked permission or a missing
+  /// calendar app must not break the local delete.
+  Future<void> _removeCalendarEvent(String? calendarId, String? eventId) async {
+    if (calendarId == null || eventId == null) return;
+    try {
+      await calendar.remove(calendarId: calendarId, eventId: eventId);
+    } on Object {
+      // ignore: caller already committed the local delete
+    }
   }
 }

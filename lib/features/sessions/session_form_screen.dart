@@ -6,6 +6,7 @@ import '../../domain/animal.dart';
 import '../../domain/session.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../widgets/error_view.dart';
 import '../../widgets/section_title.dart';
 import '../animals/animal_providers.dart';
 import '../clients/client_providers.dart';
@@ -225,7 +226,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
               SectionTitle(l10n.sessionFormSectionWho),
               clients.when(
                 loading: () => const LinearProgressIndicator(),
-                error: (e, _) => Text('$e'),
+                error: (e, _) => Text(localiseError(context, e)),
                 data: (list) => DropdownButtonFormField<String>(
                   initialValue: _clientId,
                   decoration: InputDecoration(labelText: l10n.animalFormClient),
@@ -244,7 +245,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
               const SizedBox(height: 12),
               animals.when(
                 loading: () => const SizedBox.shrink(),
-                error: (e, _) => Text('$e'),
+                error: (e, _) => Text(localiseError(context, e)),
                 data: (list) => DropdownButtonFormField<String?>(
                   initialValue: _animalId,
                   decoration: InputDecoration(labelText: l10n.navAnimals),

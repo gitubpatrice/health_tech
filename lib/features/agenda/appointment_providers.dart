@@ -16,19 +16,3 @@ final appointmentsRangeProvider =
           .watch(appointmentRepositoryProvider)
           .watchInRange(range.from, range.to);
     });
-
-/// Convenience: today's appointments.
-final todayAppointmentsProvider = StreamProvider<List<Appointment>>((ref) {
-  final now = DateTime.now();
-  final from = DateTime(now.year, now.month, now.day);
-  final to = from.add(const Duration(days: 1));
-  return ref.watch(appointmentRepositoryProvider).watchInRange(from, to);
-});
-
-/// Convenience: next 7 days.
-final weekAppointmentsProvider = StreamProvider<List<Appointment>>((ref) {
-  final now = DateTime.now();
-  final from = DateTime(now.year, now.month, now.day);
-  final to = from.add(const Duration(days: 7));
-  return ref.watch(appointmentRepositoryProvider).watchInRange(from, to);
-});
