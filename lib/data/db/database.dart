@@ -28,7 +28,7 @@ class HealthDb extends _$HealthDb {
   HealthDb(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -38,8 +38,12 @@ class HealthDb extends _$HealthDb {
       await _createFts();
     },
     onUpgrade: (m, from, to) async {
-      // Future migrations land here, version by version.
-      // Each upgrade MUST be tested in test/db/migration_test.dart.
+      // v1 → v2: introduce the `kind` column on clients (individual /
+      // business) so the form can switch into geobiology / EM survey mode.
+      // Existing rows default to 'individual'.
+      if (from < 2) {
+        await m.addColumn(clients, clients.kind);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON;');

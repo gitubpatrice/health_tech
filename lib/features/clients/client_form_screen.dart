@@ -35,10 +35,16 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
   late final TextEditingController _country;
   late final TextEditingController _healthNotes;
   late final TextEditingController _freeNotes;
+  late final TextEditingController _companyName;
+  late final TextEditingController _siret;
+  late final TextEditingController _siren;
 
+  String _kind = ClientKind.individual;
   String _civility = Civility.unspecified;
   DateTime? _birthDate;
 
+  bool _geobiology = false;
+  bool _emWaves = false;
   bool _consentRgpd = false;
   bool _consentDisclaimer = false;
   bool _consentReminder = false;
@@ -62,8 +68,20 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
     _country = TextEditingController(text: c?.address.country ?? 'FR');
     _healthNotes = TextEditingController(text: c?.healthNotes ?? '');
     _freeNotes = TextEditingController(text: c?.notes ?? '');
+    _companyName = TextEditingController(
+      text: (c?.business['company'] as String?) ?? '',
+    );
+    _siret = TextEditingController(
+      text: (c?.business['siret'] as String?) ?? '',
+    );
+    _siren = TextEditingController(
+      text: (c?.business['siren'] as String?) ?? '',
+    );
+    _kind = c?.kind ?? ClientKind.individual;
     _civility = c?.civility ?? Civility.unspecified;
     _birthDate = c?.birthDate;
+    _geobiology = (c?.profile['geobiology'] as bool?) ?? false;
+    _emWaves = (c?.profile['em_waves'] as bool?) ?? false;
     _consentRgpd = c?.consents.rgpdAt != null;
     _consentDisclaimer = c?.consents.disclaimerAt != null;
     _consentReminder = c?.consents.reminderAt != null;
@@ -86,6 +104,9 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
       _country,
       _healthNotes,
       _freeNotes,
+      _companyName,
+      _siret,
+      _siren,
     ]) {
       ctrl.dispose();
     }
@@ -115,12 +136,33 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
     setState(() => _busy = true);
 
     final now = DateTime.now();
+    final isBusiness = _kind == ClientKind.business;
+    final business = <String, dynamic>{
+      if (isBusiness && _companyName.text.trim().isNotEmpty)
+        'company': _companyName.text.trim(),
+      if (isBusiness && _siret.text.trim().isNotEmpty)
+        'siret': _siret.text.trim(),
+      if (isBusiness && _siren.text.trim().isNotEmpty)
+        'siren': _siren.text.trim(),
+    };
+    final profile = <String, dynamic>{
+      ...?widget.initial?.profile,
+      if (isBusiness) 'geobiology': _geobiology,
+      if (isBusiness) 'em_waves': _emWaves,
+    };
+
     final draft = Client(
       id: widget.initial?.id ?? '',
-      civility: _civility,
-      lastName: _lastName.text.trim(),
-      firstName: _firstName.text.trim(),
-      birthDate: _birthDate,
+      kind: _kind,
+      civility: isBusiness ? null : _civility,
+      // For a business client, lastName carries the company name and
+      // firstName stays empty; this keeps the search index (FTS5 on
+      // last/first/phone/email) functional without a dedicated column.
+      lastName: isBusiness
+          ? _companyName.text.trim()
+          : _lastName.text.trim(),
+      firstName: isBusiness ? '' : _firstName.text.trim(),
+      birthDate: isBusiness ? null : _birthDate,
       phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
       email: _email.text.trim().isEmpty ? null : _email.text.trim(),
       profession: _profession.text.trim().isEmpty
@@ -146,6 +188,8 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
             ? (widget.initial?.consents.newsletterAt ?? now)
             : null,
       ),
+      profile: profile,
+      business: business,
       healthNotes: _healthNotes.text,
       notes: _freeNotes.text,
     );
@@ -186,59 +230,125 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              SectionTitle(l10n.clientFormSectionIdentity),
-              DropdownButtonFormField<String>(
-                initialValue: _civility,
-                decoration: InputDecoration(labelText: l10n.clientFormCivility),
-                items: [
-                  DropdownMenuItem(
-                    value: Civility.mr,
-                    child: Text(l10n.civilityMr),
+              // Kind selector — drives which sections render below.
+              // Switching to "business" replaces civility/birthdate with
+              // company name + SIRET + SIREN + geobiology / EM checkboxes.
+              SegmentedButton<String>(
+                segments: [
+                  ButtonSegment(
+                    value: ClientKind.individual,
+                    icon: const Icon(Icons.person_outline),
+                    label: Text(l10n.clientKindIndividual),
                   ),
-                  DropdownMenuItem(
-                    value: Civility.mrs,
-                    child: Text(l10n.civilityMrs),
-                  ),
-                  DropdownMenuItem(
-                    value: Civility.unspecified,
-                    child: Text(l10n.civilityUnspecified),
+                  ButtonSegment(
+                    value: ClientKind.business,
+                    icon: const Icon(Icons.business_outlined),
+                    label: Text(l10n.clientKindBusiness),
                   ),
                 ],
-                onChanged: (v) =>
-                    setState(() => _civility = v ?? Civility.unspecified),
+                selected: {_kind},
+                onSelectionChanged: (s) =>
+                    setState(() => _kind = s.first),
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _lastName,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(labelText: l10n.clientFormLastName),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? l10n.fieldRequired : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _firstName,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: l10n.clientFormFirstName,
+              const SizedBox(height: 16),
+              if (_kind == ClientKind.individual) ...[
+                SectionTitle(l10n.clientFormSectionIdentity),
+                DropdownButtonFormField<String>(
+                  initialValue: _civility,
+                  decoration: InputDecoration(
+                    labelText: l10n.clientFormCivility,
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: Civility.mr,
+                      child: Text(l10n.civilityMr),
+                    ),
+                    DropdownMenuItem(
+                      value: Civility.mrs,
+                      child: Text(l10n.civilityMrs),
+                    ),
+                    DropdownMenuItem(
+                      value: Civility.unspecified,
+                      child: Text(l10n.civilityUnspecified),
+                    ),
+                  ],
+                  onChanged: (v) =>
+                      setState(() => _civility = v ?? Civility.unspecified),
                 ),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? l10n.fieldRequired : null,
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.clientFormBirthDate),
-                subtitle: Text(
-                  _birthDate == null
-                      ? '—'
-                      : '${_birthDate!.day.toString().padLeft(2, '0')}/'
-                            '${_birthDate!.month.toString().padLeft(2, '0')}/'
-                            '${_birthDate!.year}',
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _lastName,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: l10n.clientFormLastName,
+                  ),
+                  validator: (v) =>
+                      (v ?? '').trim().isEmpty ? l10n.fieldRequired : null,
                 ),
-                trailing: const Icon(Icons.calendar_month_outlined),
-                onTap: _pickBirthDate,
-              ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _firstName,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: l10n.clientFormFirstName,
+                  ),
+                  validator: (v) =>
+                      (v ?? '').trim().isEmpty ? l10n.fieldRequired : null,
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.clientFormBirthDate),
+                  subtitle: Text(
+                    _birthDate == null
+                        ? '—'
+                        : '${_birthDate!.day.toString().padLeft(2, '0')}/'
+                              '${_birthDate!.month.toString().padLeft(2, '0')}/'
+                              '${_birthDate!.year}',
+                  ),
+                  trailing: const Icon(Icons.calendar_month_outlined),
+                  onTap: _pickBirthDate,
+                ),
+              ] else ...[
+                SectionTitle(l10n.clientFormSectionBusiness),
+                TextFormField(
+                  controller: _companyName,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: l10n.clientFormCompanyName,
+                  ),
+                  validator: (v) =>
+                      (v ?? '').trim().isEmpty ? l10n.fieldRequired : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _siret,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: l10n.clientFormSiret),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _siren,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: l10n.clientFormSiren),
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _geobiology,
+                  onChanged: (v) =>
+                      setState(() => _geobiology = v ?? false),
+                  title: Text(l10n.clientFormGeobiology),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _emWaves,
+                  onChanged: (v) => setState(() => _emWaves = v ?? false),
+                  title: Text(l10n.clientFormEmWaves),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+              ],
               const Divider(height: 32),
               SectionTitle(l10n.clientFormSectionContact),
               TextFormField(
@@ -314,12 +424,18 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
                 decoration: InputDecoration(labelText: l10n.clientFormCountry),
               ),
               const Divider(height: 32),
-              SectionTitle(l10n.clientFormSectionHealth),
+              SectionTitle(
+                _kind == ClientKind.business
+                    ? l10n.clientFormSectionBusiness
+                    : l10n.clientFormSectionHealth,
+              ),
               TextFormField(
                 controller: _healthNotes,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  labelText: l10n.clientFormHealthNotes,
+                  labelText: _kind == ClientKind.business
+                      ? l10n.clientFormSurveyNotes
+                      : l10n.clientFormHealthNotes,
                 ),
               ),
               const SizedBox(height: 12),
@@ -327,7 +443,9 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
                 controller: _freeNotes,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  labelText: l10n.clientFormFreeNotes,
+                  labelText: _kind == ClientKind.business
+                      ? l10n.clientFormRecommendations
+                      : l10n.clientFormFreeNotes,
                 ),
               ),
               const Divider(height: 32),

@@ -10,6 +10,18 @@ class Civility {
   static const String unspecified = 'unspecified';
 }
 
+/// Client subject type. `individual` is the default human / pet owner,
+/// `business` swaps the form into a company/site profile suitable for
+/// geobiology and electromagnetic-wave assessments (no civility, no
+/// birth date — replaced by company name + SIRET + site address).
+class ClientKind {
+  const ClientKind._();
+  static const String individual = 'individual';
+  static const String business = 'business';
+
+  static const List<String> all = [individual, business];
+}
+
 /// Pure domain entity. No Drift, no Flutter — this is what the rest of the
 /// app manipulates. Maps to / from `ClientRow` in the data layer.
 class Client {
@@ -17,6 +29,7 @@ class Client {
     required this.id,
     required this.lastName,
     required this.firstName,
+    this.kind = ClientKind.individual,
     this.civility,
     this.birthDate,
     this.phone,
@@ -33,6 +46,10 @@ class Client {
   });
 
   final String id;
+
+  /// `ClientKind.individual` (a person) or `ClientKind.business` (company /
+  /// surveyed site). Drives which sections the form shows.
+  final String kind;
   final String? civility;
   final String lastName;
   final String firstName;
@@ -58,7 +75,13 @@ class Client {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  /// Display name. For an individual client this is `Firstname Lastname`;
+  /// for a business client `lastName` already carries the company / site
+  /// name and `firstName` is empty, so the same expression works without
+  /// branching.
   String get fullName => '$firstName $lastName'.trim();
+
+  bool get isBusiness => kind == ClientKind.business;
 
   int? get ageYears {
     final birth = birthDate;
@@ -74,6 +97,7 @@ class Client {
 
   Client copyWith({
     String? id,
+    String? kind,
     String? civility,
     String? lastName,
     String? firstName,
@@ -91,6 +115,7 @@ class Client {
     DateTime? updatedAt,
   }) => Client(
     id: id ?? this.id,
+    kind: kind ?? this.kind,
     civility: civility ?? this.civility,
     lastName: lastName ?? this.lastName,
     firstName: firstName ?? this.firstName,

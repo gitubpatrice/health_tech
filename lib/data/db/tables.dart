@@ -14,6 +14,10 @@ mixin _AuditCols on Table {
 @DataClassName('ClientRow')
 class Clients extends Table with _AuditCols {
   TextColumn get id => text().clientDefault(genId)();
+  /// `'individual'` (a person) or `'business'` (company / surveyed site).
+  /// Drives which form sections render and what `business_json` carries.
+  TextColumn get kind =>
+      text().withDefault(const Constant('individual'))();
   TextColumn get civility => text().nullable()();
   TextColumn get lastName => text()();
   TextColumn get firstName => text()();

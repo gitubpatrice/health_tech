@@ -128,7 +128,29 @@ class _InfoTab extends StatelessWidget {
       children: [
         TagEditor(ownerType: TagOwner.client, ownerId: client.id),
         const SizedBox(height: 12),
-        if (client.profession != null && client.profession!.isNotEmpty)
+        if (client.isBusiness) ...[
+          if ((client.business['siret'] as String?)?.isNotEmpty ?? false)
+            DetailRow(
+              icon: Icons.business_outlined,
+              text: 'SIRET ${client.business['siret']}',
+            ),
+          if ((client.business['siren'] as String?)?.isNotEmpty ?? false)
+            DetailRow(
+              icon: Icons.business_outlined,
+              text: 'SIREN ${client.business['siren']}',
+            ),
+          if ((client.profile['geobiology'] as bool?) ?? false)
+            DetailRow(
+              icon: Icons.terrain_outlined,
+              text: l10n.clientFormGeobiology,
+            ),
+          if ((client.profile['em_waves'] as bool?) ?? false)
+            DetailRow(
+              icon: Icons.waves_outlined,
+              text: l10n.clientFormEmWaves,
+            ),
+        ] else if (client.profession != null &&
+            client.profession!.isNotEmpty)
           DetailRow(icon: Icons.work_outline, text: client.profession!),
         if (client.phone != null && client.phone!.isNotEmpty)
           DetailRow(icon: Icons.phone_outlined, text: client.phone!),
@@ -139,19 +161,23 @@ class _InfoTab extends StatelessWidget {
             icon: Icons.location_on_outlined,
             text: _formatAddress(client),
           ),
-        if (client.ageYears != null)
+        if (!client.isBusiness && client.ageYears != null)
           DetailRow(icon: Icons.cake_outlined, text: '${client.ageYears} ans'),
         if (client.healthNotes.isNotEmpty) ...[
           const SizedBox(height: 16),
           DetailSectionCard(
-            title: l10n.clientFormSectionHealth,
+            title: client.isBusiness
+                ? l10n.clientFormSurveyNotes
+                : l10n.clientFormSectionHealth,
             child: Text(client.healthNotes),
           ),
         ],
         if (client.notes.isNotEmpty) ...[
           const SizedBox(height: 16),
           DetailSectionCard(
-            title: l10n.clientFormFreeNotes,
+            title: client.isBusiness
+                ? l10n.clientFormRecommendations
+                : l10n.clientFormFreeNotes,
             child: Text(client.notes),
           ),
         ],

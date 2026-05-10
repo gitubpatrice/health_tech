@@ -112,6 +112,7 @@ class ClientRepository {
 
     return ClientsCompanion(
       id: Value(client.id),
+      kind: Value(client.kind),
       civility: Value(client.civility),
       lastName: Value(client.lastName),
       firstName: Value(client.firstName),
@@ -155,6 +156,7 @@ class ClientRepository {
 
   Client _baseFromRow(ClientRow row) => Client(
     id: row.id,
+    kind: row.kind,
     civility: row.civility,
     lastName: row.lastName,
     firstName: row.firstName,
