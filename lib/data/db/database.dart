@@ -53,7 +53,11 @@ class HealthDb extends _$HealthDb {
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON;');
       await customStatement('PRAGMA journal_mode = WAL;');
-      await customStatement('PRAGMA synchronous = NORMAL;');
+      // FULL plutôt que NORMAL : pour des données santé, on accepte ~10%
+      // de perte de perf en écriture pour garantir qu'aucune transaction
+      // n'est marquée durable sans avoir réellement été flushée sur disque
+      // (NORMAL peut perdre les dernières transactions en cas de power-loss).
+      await customStatement('PRAGMA synchronous = FULL;');
       await customStatement('PRAGMA temp_store = MEMORY;');
     },
   );

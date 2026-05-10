@@ -176,9 +176,17 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
             body: l10n.notifBody,
             bodyWithLocation: l10n.notifBodyWithLocation,
           );
-          await ref
+          final outcome = await ref
               .read(notificationServiceProvider)
               .scheduleFor(saved, strings);
+          // Si le rappel tombait dans le passé, on le dit explicitement à
+          // l'utilisateur — sinon il aurait pensé que la notif arriverait
+          // et se serait plaint que "le rappel n'a pas marché".
+          if (outcome == ScheduleOutcome.skippedPastDue) {
+            messenger.showSnackBar(
+              SnackBar(content: Text(l10n.appointmentFormReminderPastDue)),
+            );
+          }
         } on Object {
           // Best-effort — un échec de rappel ne doit pas bloquer la sauvegarde.
         }

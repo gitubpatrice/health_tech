@@ -154,8 +154,15 @@ class _AutoLockGuardState extends ConsumerState<AutoLockGuard> {
       onHide: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
       // onDetach means the app is being torn down — lock immediately, no grace.
       onDetach: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
-      onResume: () =>
-          ref.read(autoLockControllerProvider.notifier).cancelBackgroundLock(),
+      onResume: () {
+        ref.read(autoLockControllerProvider.notifier).cancelBackgroundLock();
+        // L'utilisateur peut avoir modifié ses empreintes Android dans
+        // les Réglages système pendant que l'app était en background.
+        // On invalide le statut biométrique au retour pour que le
+        // toggle Settings reflète la réalité (auto-cleanup côté provider
+        // si enrolled && !available).
+        ref.invalidate(biometricStatusProvider);
+      },
     );
     Future<void>.microtask(() async {
       await ref.read(autoLockControllerProvider.notifier).init();

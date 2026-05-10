@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/errors.dart';
 import '../../core/providers.dart';
 import '../../data/services/backup_service.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -205,7 +206,22 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
       _error = null;
     });
     final passphrase = _ctrl.text;
-    final ok = await ref.read(vaultSessionProvider.notifier).unlock(passphrase);
+    bool ok;
+    try {
+      ok = await ref.read(vaultSessionProvider.notifier).unlock(passphrase);
+    } on VaultLockedOutError catch (e) {
+      // Trop d'essais consécutifs : afficher le délai restant à l'écran
+      // (snack ne convient pas, l'utilisateur doit voir l'erreur sur le
+      // formulaire — le bouton restera actif mais le user comprend qu'il
+      // doit attendre).
+      _ctrl.clear();
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = l10n.errorVaultLockedOut(e.remainingSeconds);
+      });
+      return;
+    }
     // Best-effort: blank the controller as soon as possible. This won't
     // wipe the underlying Dart String (immutable, GC-eligible only) but
     // releases the controller-held reference so the next GC can reclaim it.

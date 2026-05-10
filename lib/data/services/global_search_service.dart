@@ -23,13 +23,20 @@ class GlobalSearchService {
     int limit = 80,
     String appointmentDefaultTitle = 'Rendez-vous',
   }) async {
+    // Cap d'entrée : un user qui colle accidentellement un paragraphe
+    // (CV client, mail entier) ne doit pas faire courir 1000+ tokens × 4
+    // entités × 4-5 LIKE non-indexés à SQLCipher. 200 caractères + 8
+    // tokens couvrent largement les cas légitimes ("Jean Dupont chien
+    // Labrador noir 2024").
+    final cleanQuery = query.length > 200 ? query.substring(0, 200) : query;
     // Strip d'abord les wildcards SQL, filtre ensuite : sinon "%" tout
     // seul (ou "%%%") deviendrait "%%" et matcherait toutes les lignes.
-    final tokens = query
+    final tokens = cleanQuery
         .trim()
         .split(RegExp(r'\s+'))
         .map((t) => t.replaceAll(RegExp(r'[%_\\]'), ''))
         .where((t) => t.isNotEmpty)
+        .take(8)
         .map((t) => '%$t%')
         .toList(growable: false);
     if (tokens.isEmpty) return const [];

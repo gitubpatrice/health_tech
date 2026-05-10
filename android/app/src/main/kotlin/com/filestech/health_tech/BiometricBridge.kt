@@ -91,7 +91,12 @@ class BiometricBridge(
             cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.ENCRYPT_MODE, key)
         } catch (e: Exception) {
-            return result.error("wrap_init_failed", e.message ?: e.toString(), null)
+            // On ne renvoie PAS e.message : il peut contenir un alias
+            // Keystore, un chemin natif ou une info de hardware (Samsung
+            // Knox, Qualcomm StrongBox) qui finirait dans logcat. Code
+            // générique côté Dart, log détaillé côté Kotlin gated debug.
+            android.util.Log.w("BiometricBridge", "wrap_init failed", e)
+            return result.error("wrap_init_failed", "wrap init failed", null)
         }
         val iv = cipher.iv
 
@@ -126,11 +131,8 @@ class BiometricBridge(
                             ),
                         )
                     } catch (e: Exception) {
-                        result.error(
-                            "wrap_failed",
-                            e.message ?: e.toString(),
-                            null,
-                        )
+                        android.util.Log.w("BiometricBridge", "wrap failed", e)
+                        result.error("wrap_failed", "wrap failed", null)
                     }
                 }
             },
@@ -186,7 +188,8 @@ class BiometricBridge(
                 null,
             )
         } catch (e: Exception) {
-            return result.error("cipher_init", e.message, null)
+            android.util.Log.w("BiometricBridge", "cipher_init failed", e)
+            return result.error("cipher_init", "cipher init failed", null)
         }
 
         val executor = ContextCompat.getMainExecutor(activity)
@@ -216,7 +219,8 @@ class BiometricBridge(
                         plaintext.fill(0)
                         result.success(outB64)
                     } catch (e: Exception) {
-                        result.error("decrypt_failed", e.message, null)
+                        android.util.Log.w("BiometricBridge", "decrypt failed", e)
+                        result.error("decrypt_failed", "decrypt failed", null)
                     }
                 }
             },

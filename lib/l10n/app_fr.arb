@@ -317,6 +317,10 @@
   "lockBiometricFallback": "Utiliser la phrase secrète",
   "lockBiometricButton": "Déverrouiller avec la biométrie",
   "lockBiometricFailed": "Authentification biométrique refusée.",
+  "errorVaultLockedOut": "Trop d'essais. Réessaie dans {seconds} s.",
+  "@errorVaultLockedOut": {
+    "placeholders": {"seconds": {"type": "int"}}
+  },
   "lockPartialRestoreBanner": "Une restauration a été interrompue précédemment. Si tes données sont incomplètes, recommence-la depuis Paramètres → Sauvegarde chiffrée.",
   "lockPartialRestoreResumed": "Une restauration interrompue a été achevée au démarrage. Tes données sont à jour.",
 
@@ -351,6 +355,7 @@
   },
 
   "appointmentFormReminderHelper": "Notification locale envoyée avant le rendez-vous.",
+  "appointmentFormReminderPastDue": "Rappel ignoré : l'horaire de rappel est déjà passé.",
   "appointmentFormReminderNone": "Aucun rappel",
   "appointmentFormReminderMinutes": "{n} min avant",
   "@appointmentFormReminderMinutes": {

@@ -317,6 +317,10 @@
   "lockBiometricFallback": "Use passphrase",
   "lockBiometricButton": "Unlock with biometrics",
   "lockBiometricFailed": "Biometric authentication refused.",
+  "errorVaultLockedOut": "Too many attempts. Retry in {seconds} s.",
+  "@errorVaultLockedOut": {
+    "placeholders": {"seconds": {"type": "int"}}
+  },
   "lockPartialRestoreBanner": "A previous restore was interrupted. If your data looks incomplete, retry from Settings → Encrypted backup.",
   "lockPartialRestoreResumed": "An interrupted restore was completed at startup. Your data is up to date.",
 
@@ -351,6 +355,7 @@
   },
 
   "appointmentFormReminderHelper": "Local notification sent before the appointment.",
+  "appointmentFormReminderPastDue": "Reminder skipped: the reminder time has already passed.",
   "appointmentFormReminderNone": "No reminder",
   "appointmentFormReminderMinutes": "{n} min before",
   "@appointmentFormReminderMinutes": {

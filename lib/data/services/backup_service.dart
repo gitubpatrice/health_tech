@@ -174,6 +174,12 @@ class BackupService {
       return out.toBytes();
     } finally {
       key.fillRange(0, key.length, 0);
+      // Le inner ZIP en clair contenait : la DB SQLCipher (déjà chiffrée
+      // mais sa structure révèle quelque chose), les .enc (chiffrés), ET
+      // le vault.json (wrapped VEK + KDF salt — chiffré sous master key
+      // mais sensible). On wipe le buffer pour réduire la fenêtre où il
+      // serait dump-able via une fuite RAM root post-export.
+      inner.fillRange(0, inner.length, 0);
     }
   }
 
@@ -340,11 +346,21 @@ class BackupService {
     if (dbReader() != null) {
       throw StateError('applyRestore requires the vault to be locked first');
     }
+    // Sentinel posé AVANT toute mutation (cancelAll notifs ou wipe staging).
+    // Si l'OS kill entre cancelAll et set sentinel, la version précédente
+    // perdait silencieusement les alarmes sans aucun marqueur de récupération
+    // → utilisateur en mode "mes rappels ne marchent plus, pourquoi ?".
+    // Avec le sentinel posé en tête, recoverPartialRestore détecte au moins
+    // qu'une opération restore a démarré (et le banner s'affiche).
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+      _kRestorePendingFlag,
+      DateTime.now().millisecondsSinceEpoch,
+    );
     // Flush every alarm before swapping the DB. Without this, the previous
     // device's reminders would still fire — pointing at appointments whose
     // ids no longer match anything in the restored DB. Boot-receiver replay
-    // would resurrect them after every reboot too. La re-population se fait
-    // côté HomeShell au prochain unlock (le DB sera la nouvelle base).
+    // would resurrect them after every reboot too.
     try {
       await notifications.cancelAll();
     } on Object {
@@ -407,14 +423,9 @@ class BackupService {
     }
 
     // ------------ Phase B: commit (atomic-ish swap) ---------------------
-    // Mark the in-flight restore in SharedPreferences. If the OS kills us
-    // anywhere below, the next launch will see the flag and offer recovery
-    // rather than silently observe an inconsistent state.
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(
-      _kRestorePendingFlag,
-      DateTime.now().millisecondsSinceEpoch,
-    );
+    // Le sentinel _kRestorePendingFlag a été posé en tête de applyRestore
+    // (avant cancelAll) et reste set pendant Phase B. Si l'OS kill ici,
+    // recoverPartialRestore au prochain boot rejouera _commitStaging.
     try {
       // Delete current DB sidecars (WAL/SHM) so SQLCipher does not try to
       // recover from them against the new main file.

@@ -33,6 +33,14 @@ class StorageError extends HealthError {
   final Object cause;
 }
 
+/// Trop d'échecs consécutifs sur la phrase secrète : un backoff exponentiel
+/// est en cours. La UI affiche le délai restant et désactive le bouton de
+/// déverrouillage.
+class VaultLockedOutError extends HealthError {
+  const VaultLockedOutError(this.remainingSeconds) : super('vault_locked_out');
+  final int remainingSeconds;
+}
+
 class ValidationError extends HealthError {
   const ValidationError(super.code, this.field);
   final String field;

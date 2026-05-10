@@ -58,9 +58,32 @@ class HealthVault {
   static const _kBioIv = 'health_vault.bio_iv_v1';
   static const _kBioCipher = 'health_vault.bio_ct_v1';
 
+  /// Compteur d'échecs consécutifs + timestamp du dernier échec, persistés
+  /// dans EncryptedSharedPreferences (donc résistent à un kill d'app mais
+  /// PAS à un reset du device — acceptable car un attaquant qui factory-reset
+  /// efface aussi le wrapped VEK et n'a plus rien à brute-force).
+  static const _kFailCount = 'health_vault.fail_count_v1';
+  static const _kFailAt = 'health_vault.fail_at_ms_v1';
+
   /// Identifier for the active Argon2id backend (`native` when
   /// `cryptography_flutter` is wired, `dart` otherwise).
-  static String get _currentBackend => 'flutter';
+  /// Identifiant du backend Argon2id réellement actif. Avant ce fix, la
+  /// valeur était la constante `'flutter'`, ce qui rendait
+  /// [_maybeRecalibrate] inopérant : si on basculait un jour vers
+  /// `cryptography_flutter` natif (Argon2id ~10× plus rapide via JNI
+  /// BoringSSL), le tag stocké restait identique → pas de recalibration
+  /// → unlock 75ms au lieu de 750ms → budget brute-force divisé par 10.
+  ///
+  /// Détection :
+  ///   - On vérifie `Cryptography.instance` à chaud — si ça retourne
+  ///     une instance de `FlutterCryptography`, le natif est routé.
+  ///   - On versionne le tag (`-v2`) pour que le bump d'app force une
+  ///     recalibration sur les coffres existants.
+  static String get _currentBackend {
+    final inst = Cryptography.instance;
+    final isNative = inst.runtimeType.toString().contains('Flutter');
+    return isNative ? 'native-v2' : 'dart-v2';
+  }
 
   // Argon2id default cost — tuned for mid-range Android phones (Galaxy S9 era).
   // Adjust upward as devices get faster.
@@ -198,6 +221,14 @@ class HealthVault {
     if (wrappedB64 == null || saltB64 == null) {
       throw const VaultNotInitialisedError();
     }
+    // Backoff anti-bruteforce on-device : si le user a échoué N fois
+    // récemment, refuse de dériver Argon2id avant que le délai ne soit
+    // écoulé. Sans ce garde-fou, un attaquant ADB sur device perdu peut
+    // tenter ~115k passphrases/jour (Argon2id 750ms/tentative).
+    final remaining = await _lockoutRemainingSeconds();
+    if (remaining > 0) {
+      throw VaultLockedOutError(remaining);
+    }
     final memoryKb = int.parse(
       await _storage.read(key: _kKdfMemory) ?? '$_defaultMemoryKb',
     );
@@ -219,17 +250,66 @@ class HealthVault {
       final vek = await _unwrapVek(base64Decode(wrappedB64), masterKey);
       _vek = vek;
       _crypto = FieldCrypto(Uint8List.fromList(vek));
-      // Lazy re-calibration: if the Argon2id backend changed since last
-      // setup (e.g. native plugin enabled), bump iterations to keep the
-      // unlock cost in the same wall-clock target. Best-effort, errors are
-      // swallowed so a calibration hiccup never blocks a valid unlock.
+      // Reset des compteurs d'échec sur succès.
+      await _storage.delete(key: _kFailCount);
+      await _storage.delete(key: _kFailAt);
       unawaited(_maybeRecalibrate(salt: base64Decode(saltB64)));
       return true;
     } on SecretBoxAuthenticationError {
+      await _registerFailedAttempt();
       return false;
     } finally {
       masterKey.fillRange(0, masterKey.length, 0);
     }
+  }
+
+  /// Calcule le nombre de secondes restantes avant qu'un nouveau unlock
+  /// puisse être tenté. 0 = pas de lockout actif.
+  ///
+  /// Le `lastFailedAt` stocké est comparé au max(stored, now) pour
+  /// résister à un rollback du clock système (cf. notes Pass Tech /
+  /// Notes Tech : un attaquant root pourrait sinon backdater le clock
+  /// pour court-circuiter le délai).
+  Future<int> _lockoutRemainingSeconds() async {
+    final countStr = await _storage.read(key: _kFailCount);
+    final atStr = await _storage.read(key: _kFailAt);
+    if (countStr == null || atStr == null) return 0;
+    final count = int.tryParse(countStr) ?? 0;
+    final at = int.tryParse(atStr) ?? 0;
+    final delaySec = _backoffSecondsFor(count);
+    if (delaySec == 0) return 0;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final unlockAtMs = at + delaySec * 1000;
+    final remainingMs = unlockAtMs - nowMs;
+    if (remainingMs <= 0) return 0;
+    return (remainingMs / 1000).ceil();
+  }
+
+  /// Backoff exponentiel pas trop agressif : aucun délai pour les 2
+  /// premiers échecs (la phrase secrète est vraiment longue, l'humain se
+  /// trompe au clavier mobile), puis 10s / 60s / 5min / 1h. À 10+ échecs,
+  /// l'attaquant cumule déjà > 1h pour 1 essai = brute-force impossible.
+  static int _backoffSecondsFor(int failCount) {
+    if (failCount < 3) return 0;
+    if (failCount < 5) return 10;
+    if (failCount < 8) return 60;
+    if (failCount < 10) return 300;
+    return 3600;
+  }
+
+  Future<void> _registerFailedAttempt() async {
+    final prevStr = await _storage.read(key: _kFailCount);
+    final prev = int.tryParse(prevStr ?? '') ?? 0;
+    final next = prev + 1;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    // Anti rollback clock : on garde le max entre le timestamp en mémoire
+    // et `now`. Un attaquant root qui set le clock dans le passé ne peut
+    // pas raccourcir le délai en attendant.
+    final atStr = await _storage.read(key: _kFailAt);
+    final prevAt = int.tryParse(atStr ?? '') ?? 0;
+    final at = nowMs > prevAt ? nowMs : prevAt;
+    await _storage.write(key: _kFailCount, value: '$next');
+    await _storage.write(key: _kFailAt, value: '$at');
   }
 
   /// Returns a defensive copy of the raw 32-byte VEK. Used to key the
@@ -262,6 +342,8 @@ class HealthVault {
     await _storage.delete(key: _kKdfMemory);
     await _storage.delete(key: _kKdfIterations);
     await _storage.delete(key: _kKdfParallelism);
+    await _storage.delete(key: _kFailCount);
+    await _storage.delete(key: _kFailAt);
     await disableBiometric();
   }
 

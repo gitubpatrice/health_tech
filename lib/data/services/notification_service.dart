@@ -6,6 +6,29 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../../domain/appointment.dart';
 
+/// Résultat de [NotificationService.scheduleFor] — permet à la UI
+/// d'informer l'utilisateur quand un rappel n'a pas pu être planifié
+/// (cas le plus visible : `skippedPastDue` quand le délai avant RDV est
+/// déjà passé au moment de la sauvegarde).
+enum ScheduleOutcome {
+  /// Rappel programmé avec succès dans la file AlarmManager.
+  scheduled,
+
+  /// L'appointment n'avait pas de `reminderMinutesBefore` (ou 0). Aucune
+  /// alarme posée — c'est le cas par défaut, pas une erreur.
+  noReminder,
+
+  /// Le statut du RDV (cancelled / done) interdit le scheduling. Une
+  /// alarme précédente sur le même id a été cancelée.
+  skippedStatus,
+
+  /// Le délai-avant calculé tombe dans le passé : l'utilisateur a créé
+  /// un RDV à 14h00 alors qu'il était 13h50 avec rappel "15 min avant".
+  /// La UI doit informer l'utilisateur (sinon il pense que la notif
+  /// arrivera et ne comprend pas pourquoi rien ne fire).
+  skippedPastDue,
+}
+
 /// Localised strings injected into [NotificationService] from the UI layer.
 /// Keeps the service free of `AppL10n` dependencies (no `BuildContext` in
 /// services) while still letting the lockscreen + notification shade pick
@@ -76,11 +99,18 @@ class NotificationService {
   static const _channelId = 'health_tech_appointments_v1';
 
   Future<void> _ensureTimezones() async {
-    if (_tzReady) return;
-    tzdata.initializeTimeZones();
+    // tzdata.initializeTimeZones est idempotent et coûteux uniquement la
+    // première fois. setLocalLocation est en revanche réévalué à chaque
+    // appel : si l'utilisateur voyage et change de fuseau pendant que
+    // l'app tourne (ou redort en background), on veut que le prochain
+    // scheduleFor utilise la TZ courante, sinon les notifs partent à
+    // l'heure murale de l'ancien fuseau (bug F7 audit failles).
+    if (!_tzReady) {
+      tzdata.initializeTimeZones();
+      _tzReady = true;
+    }
     final name = await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(name));
-    _tzReady = true;
   }
 
   /// Idempotent — call once at app start. Initialises plugin defaults
@@ -113,7 +143,12 @@ class NotificationService {
   /// Schedule (or reschedule) the reminder for [appointment]. Always cancels
   /// the previous alarm first so an edit doesn't leave a stale notification
   /// in the queue.
-  Future<void> scheduleFor(
+  ///
+  /// Retourne [ScheduleOutcome] pour que la UI puisse informer l'utilisateur
+  /// quand un rappel est ignoré (statut cancelled/done, ou délai déjà passé).
+  /// Sans cette info, l'utilisateur croyait que son rappel était actif et
+  /// se plaignait que "la notif n'arrive jamais".
+  Future<ScheduleOutcome> scheduleFor(
     Appointment appointment,
     NotificationStrings strings,
   ) async {
@@ -122,16 +157,18 @@ class NotificationService {
     await _plugin.cancel(id);
 
     final minutesBefore = appointment.reminderMinutesBefore;
-    if (minutesBefore == null || minutesBefore <= 0) return;
+    if (minutesBefore == null || minutesBefore <= 0) {
+      return ScheduleOutcome.noReminder;
+    }
     if (appointment.status == AppointmentStatus.cancelled ||
         appointment.status == AppointmentStatus.done) {
-      return;
+      return ScheduleOutcome.skippedStatus;
     }
     final fireAt = appointment.startAt.subtract(
       Duration(minutes: minutesBefore),
     );
     if (fireAt.isBefore(DateTime.now())) {
-      return;
+      return ScheduleOutcome.skippedPastDue;
     }
     await requestPermission();
     final tzDate = tz.TZDateTime.from(fireAt, tz.local);
@@ -170,6 +207,7 @@ class NotificationService {
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: appointment.id,
     );
+    return ScheduleOutcome.scheduled;
   }
 
   Future<void> cancelFor(String appointmentId) async {

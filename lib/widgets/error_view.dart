@@ -22,6 +22,11 @@ String localiseError(BuildContext context, Object error) {
         return l10n.errorVaultAlreadyInitialised;
       case 'vault_wrong_passphrase':
         return l10n.errorVaultWrongPassphrase;
+      case 'vault_locked_out':
+        if (error is VaultLockedOutError) {
+          return l10n.errorVaultLockedOut(error.remainingSeconds);
+        }
+        return l10n.errorGeneric;
       case 'client_consent_missing':
         return l10n.errorValidationConsent;
       case 'session_end_before_start':
