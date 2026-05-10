@@ -6,6 +6,7 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
+import 'package:sqlite3/open.dart' as sqlite3_open;
 
 import 'converters.dart';
 import 'tables.dart';
@@ -149,6 +150,17 @@ class HealthDb extends _$HealthDb {
 
     final executor = NativeDatabase.createInBackground(
       dbFile,
+      // CRITICAL: NativeDatabase.createInBackground spawns its own isolate
+      // and that isolate does NOT inherit the open.overrideFor() set in
+      // main(). Without this re-registration, the worker isolate falls back
+      // to the system libsqlite3.so (which doesn't ship on Android) and
+      // every DB-backed screen crashes with "libsqlite3.so not found".
+      isolateSetup: () async {
+        sqlite3_open.open.overrideFor(
+          sqlite3_open.OperatingSystem.android,
+          openCipherOnAndroid,
+        );
+      },
       setup: (db) {
         db.config.doubleQuotedStringLiterals = false;
         // Build the hex string strictly inside the callback. It becomes

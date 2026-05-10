@@ -17,17 +17,19 @@ import 'l10n/generated/app_localizations.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Importing `cryptography_flutter` is enough — it auto-registers itself
-  // as the active provider, so AES-GCM and Argon2id run on the platform's
-  // native crypto (BoringSSL via JNI on Android) rather than the pure-Dart
-  // fallback. We keep an explicit reference here to make the intent
-  // visible to readers and guard against a future tree-shaker mistake.
-  // ignore: unnecessary_statements
-  FlutterCryptography;
+  // Route AES-GCM and Argon2id to the platform's native crypto provider
+  // (BoringSSL via JNI on Android) instead of the pure-Dart fallback.
+  // The package now auto-registers via the Flutter plugin discovery
+  // mechanism — the import alone is what wires it. We keep the explicit
+  // call (deprecated but harmless) for the next reader's sake: it makes
+  // the dependency on native crypto visible at the entry point.
+  // ignore: deprecated_member_use
+  FlutterCryptography.enable();
   // Redirect package:sqlite3 (used by Drift) to the SQLCipher .so bundled
-  // with sqlcipher_flutter_libs. Without this, runtime tries to load the
-  // system libsqlite3.so which (a) doesn't exist on Android and (b) would
-  // not understand the encrypted database.
+  // with sqlcipher_flutter_libs. NOTE: this only sets the override on the
+  // main isolate — the actual database opens in a worker isolate spawned
+  // by NativeDatabase.createInBackground, which re-applies the override
+  // through `isolateSetup` (see HealthDb.open).
   if (Platform.isAndroid) {
     open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
   }
