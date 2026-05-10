@@ -140,19 +140,20 @@ class _AutoLockGuardState extends ConsumerState<AutoLockGuard> {
   void initState() {
     super.initState();
     _lifecycleListener = AppLifecycleListener(
-      // onPause = a transient overlay (file picker, biometric prompt, share
-      // sheet, system dialog, notification shade pull-down). Defer the lock
-      // with a grace period so ordinary user actions do not force a
-      // re-unlock every time.
+      // **IMPORTANT — leçon v1.2.0 → v1.2.2** : Android fire `onHide`
+      // chaque fois qu'une nouvelle activity prend l'écran, y compris
+      // le **file picker** (DocumentsUI), le BiometricPrompt et le
+      // share sheet. Si on locke immédiatement sur onHide, choisir une
+      // photo provoque un écran noir au retour (vault locked → DB
+      // fermée → ErrorView SizedBox.shrink dans le viewer). Donc :
+      // onPause ET onHide passent tous deux par la grace de 2 min.
+      // Seul onDetach (app vraiment tuée par l'OS) locke immédiatement.
       onPause: () => ref
           .read(autoLockControllerProvider.notifier)
           .scheduleBackgroundLock(),
-      // onHide = the app window is no longer visible to the user (Android
-      // sends this when the user actually backgrounds the app, not for
-      // mere overlays). Lock immediately — no reason to leave the vault
-      // unlocked once the practitioner has switched away.
-      onHide: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
-      // onDetach means the app is being torn down — lock immediately, no grace.
+      onHide: () => ref
+          .read(autoLockControllerProvider.notifier)
+          .scheduleBackgroundLock(),
       onDetach: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
       onResume: () {
         ref.read(autoLockControllerProvider.notifier).cancelBackgroundLock();
