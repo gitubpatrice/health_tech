@@ -8,10 +8,12 @@ import 'package:uuid/uuid.dart';
 
 import '../../domain/attachment.dart';
 import '../../utils/atomic_write.dart';
+import '../../utils/clock.dart';
 import '../../utils/image_bounds.dart';
 import '../../utils/image_compress.dart';
 import '../db/database.dart';
 import '../vault/field_crypto.dart';
+import '_helpers.dart';
 
 /// Maximum attachment size accepted by the import flow. Above this we refuse
 /// to load the file in memory at all (the picker still streams to a path,
@@ -105,7 +107,7 @@ class AttachmentRepository {
     final file = await _fileFor(storagePath);
     await atomicWriteBytes(file, encrypted);
 
-    final epoch = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final epoch = nowEpochSeconds();
     await _db
         .into(_db.attachments)
         .insert(
@@ -132,7 +134,7 @@ class AttachmentRepository {
       mimeType: workingMime,
       sizeBytes: workingBytes.length,
       storagePath: storagePath,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(epoch * 1000),
+      createdAt: secondsToDate(epoch),
     );
   }
 
@@ -250,6 +252,6 @@ class AttachmentRepository {
     mimeType: r.mimeType,
     sizeBytes: r.sizeBytes,
     storagePath: r.storagePath,
-    createdAt: DateTime.fromMillisecondsSinceEpoch(r.createdAt * 1000),
+    createdAt: secondsToDate(r.createdAt),
   );
 }

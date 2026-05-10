@@ -68,10 +68,8 @@ class PurgeService {
     }
     // Appointments owned by this animal — fetched via a one-shot range
     // query because AppointmentRepository doesn't expose watchByAnimal yet.
-    final all = await appointments
-        .watchInRange(DateTime(1970), DateTime(2100))
-        .first;
-    for (final apt in all.where((a) => a.animalId == animalId)) {
+    final animalAppointments = await appointments.watchByAnimal(animalId).first;
+    for (final apt in animalAppointments) {
       await _softDeleteAppointment(
         apt.id,
         apt.externalCalendarId,
@@ -115,10 +113,8 @@ class PurgeService {
     for (final s in animalSessions) {
       await purgeSession(s.id);
     }
-    final all = await appointments
-        .watchInRange(DateTime(1970), DateTime(2100))
-        .first;
-    for (final apt in all.where((a) => a.animalId == animalId)) {
+    final animalAppointments = await appointments.watchByAnimal(animalId).first;
+    for (final apt in animalAppointments) {
       await _purgeAppointment(
         apt.id,
         apt.externalCalendarId,

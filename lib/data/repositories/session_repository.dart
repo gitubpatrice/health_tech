@@ -68,8 +68,8 @@ class SessionRepository {
   }
 
   Stream<List<Session>> watchInRange(DateTime from, DateTime to) {
-    final fromS = from.millisecondsSinceEpoch ~/ 1000;
-    final toS = to.millisecondsSinceEpoch ~/ 1000;
+    final fromS = dateToSeconds(from);
+    final toS = dateToSeconds(to);
     final select = _db.select(_db.sessions)
       ..where(
         (t) => t.deletedAt.isNull() & t.startAt.isBetweenValues(fromS, toS),
@@ -106,8 +106,8 @@ class SessionRepository {
       id: Value(s.id),
       clientId: Value(s.clientId),
       animalId: Value(s.animalId),
-      startAt: Value(s.startAt.millisecondsSinceEpoch ~/ 1000),
-      endAt: Value(s.endAt.millisecondsSinceEpoch ~/ 1000),
+      startAt: Value(dateToSeconds(s.startAt)),
+      endAt: Value(dateToSeconds(s.endAt)),
       kind: Value(s.kind),
       location: Value(s.location),
       status: Value(s.status),
@@ -119,9 +119,7 @@ class SessionRepository {
       privateNoteEncrypted: privateEncrypted,
       improvementLevel: Value(s.improvementLevel),
       nextSuggestedAt: Value(
-        s.nextSuggestedAt == null
-            ? null
-            : s.nextSuggestedAt!.millisecondsSinceEpoch ~/ 1000,
+        s.nextSuggestedAt == null ? null : dateToSeconds(s.nextSuggestedAt!),
       ),
       updatedAt: Value(epoch),
       createdAt: isInsert ? Value(epoch) : const Value.absent(),
@@ -147,8 +145,8 @@ class SessionRepository {
     id: row.id,
     clientId: row.clientId,
     animalId: row.animalId,
-    startAt: DateTime.fromMillisecondsSinceEpoch(row.startAt * 1000),
-    endAt: DateTime.fromMillisecondsSinceEpoch(row.endAt * 1000),
+    startAt: secondsToDate(row.startAt),
+    endAt: secondsToDate(row.endAt),
     kind: row.kind,
     location: row.location,
     status: row.status,
@@ -159,8 +157,8 @@ class SessionRepository {
     improvementLevel: row.improvementLevel,
     nextSuggestedAt: row.nextSuggestedAt == null
         ? null
-        : DateTime.fromMillisecondsSinceEpoch(row.nextSuggestedAt! * 1000),
-    createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt * 1000),
-    updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt * 1000),
+        : secondsToDate(row.nextSuggestedAt!),
+    createdAt: secondsToDate(row.createdAt),
+    updatedAt: secondsToDate(row.updatedAt),
   );
 }

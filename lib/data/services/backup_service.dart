@@ -10,6 +10,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/errors.dart';
 import '../../utils/atomic_write.dart';
@@ -87,6 +88,12 @@ class BackupService {
   static const int _kdfParallelism = 1;
 
   static const int _bundleSchemaVersion = 1;
+
+  /// SharedPreferences key signalling that a restore reached Phase B but
+  /// did not complete cleanly. Read once at app start by
+  /// [recoverPartialRestore]; cleared by [applyRestore] on the happy path.
+  static const String _kRestorePendingFlag =
+      'health_tech.restore_pending_at_v1';
 
   // Vault material keys mirrored from [HealthVault]. Centralised here so
   // backup format remains stable even if the vault's storage layout shifts.
@@ -275,6 +282,18 @@ class BackupService {
   /// previously-validated [BackupPreview]. The vault MUST be locked: we are
   /// about to overwrite the DB file and the attachments directory, and any
   /// open SQLCipher handle would corrupt mid-write.
+  ///
+  /// Two-phase restore:
+  ///   - **Phase A (preparation)**: write every restored file into a
+  ///     `restore_staging/` directory under appSupport, and parse the vault
+  ///     material out of the bundle. Current device data is **untouched**;
+  ///     if anything fails here, the user retries with no harm done.
+  ///   - **Phase B (commit)**: tight delete-old / rename-staging / write-vault
+  ///     loop. A crash inside Phase B can leave the device in a partial
+  ///     state — but the SharedPref sentinel `_kRestorePendingFlag` survives
+  ///     and is checked by the LockScreen at next launch (see
+  ///     [BackupService.recoverPartialRestore]) so the user gets a clear
+  ///     "retry restore" path instead of silent data loss.
   Future<void> applyRestore(BackupPreview preview) async {
     if (dbReader() != null) {
       throw StateError('applyRestore requires the vault to be locked first');
@@ -291,70 +310,141 @@ class BackupService {
     final support = await getApplicationSupportDirectory();
     final dbDir = Directory(p.join(support.path, 'db'));
     final attDir = Directory(p.join(support.path, 'attachments'));
+    final stagingDir = Directory(p.join(support.path, 'restore_staging'));
+    final stagingDb = Directory(p.join(stagingDir.path, 'db'));
+    final stagingAtt = Directory(p.join(stagingDir.path, 'attachments'));
 
-    // Wipe current state. We delete only files we own (db/health.db* and
-    // attachments/*.enc) so any other app data living under appSupport is
-    // left untouched.
-    final dbFile = File(p.join(dbDir.path, 'health.db'));
-    if (dbFile.existsSync()) await dbFile.delete();
-    final wal = File(p.join(dbDir.path, 'health.db-wal'));
-    if (wal.existsSync()) await wal.delete();
-    final shm = File(p.join(dbDir.path, 'health.db-shm'));
-    if (shm.existsSync()) await shm.delete();
-    if (attDir.existsSync()) {
-      await for (final entity in attDir.list()) {
-        if (entity is File) {
-          try {
-            await entity.delete();
-          } on FileSystemException {
-            // best-effort: a leftover doesn't compromise the restore.
-          }
-        }
-      }
+    // ------------ Phase A: prepare staging directory --------------------
+    // If a previous restore left a half-baked staging dir (e.g. the user
+    // killed the app mid-Phase A), wipe it clean before starting over.
+    if (stagingDir.existsSync()) {
+      await stagingDir.delete(recursive: true);
     }
+    await stagingDb.create(recursive: true);
+    await stagingAtt.create(recursive: true);
 
-    if (!dbDir.existsSync()) await dbDir.create(recursive: true);
-    if (!attDir.existsSync()) await attDir.create(recursive: true);
-
+    Map<String, dynamic>? vaultJson;
+    var dbWritten = false;
     for (final f in preview._archive.files) {
       if (!f.isFile) continue;
       final name = f.name;
       final bytes = Uint8List.fromList(f.content as List<int>);
       // Strict allow-list: ANY entry whose name does not match exactly
-      // `db/health.db` or `attachments/<safeName>` is silently dropped.
-      // Defends against zip-slip — a forged bundle that named an entry
-      // `db/../../../shared_prefs/com.filestech.evil.xml` would otherwise
-      // escape the destination directory.
+      // `db/health.db`, `attachments/<safeName>`, or `vault.json` is
+      // silently dropped. Defends against zip-slip — a forged bundle
+      // that named an entry `db/../../../shared_prefs/com.filestech.evil.xml`
+      // would otherwise escape the destination directory.
       if (name == 'db/health.db') {
-        await atomicWriteBytes(dbFile, bytes);
+        await atomicWriteBytes(
+          File(p.join(stagingDb.path, 'health.db')),
+          bytes,
+        );
+        dbWritten = true;
       } else if (name.startsWith('attachments/')) {
         final basename = p.basename(name);
         final safe = _safeName(basename);
-        // Reject any path traversal attempt inside attachments/ too.
         if (safe.isEmpty || safe.contains('..') || safe != basename) {
           continue;
         }
-        await atomicWriteBytes(File(p.join(attDir.path, safe)), bytes);
+        await atomicWriteBytes(File(p.join(stagingAtt.path, safe)), bytes);
+      } else if (name == 'vault.json') {
+        vaultJson = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       }
+    }
+    if (!dbWritten || vaultJson == null) {
+      await stagingDir.delete(recursive: true);
+      throw const ValidationError('backup_incomplete', 'bundle');
     }
 
-    // Restore vault material last so a crash mid-restore leaves the device
-    // without a wrapped VEK to unlock partial DB writes — fail-closed.
-    final vaultEntry = preview._archive.findFile('vault.json');
-    if (vaultEntry == null) {
-      throw const ValidationError('backup_vault_missing', 'bundle');
-    }
-    final vaultJson =
-        jsonDecode(utf8.decode(vaultEntry.content as List<int>))
-            as Map<String, dynamic>;
-    for (final k in _vaultKeys) {
-      final v = vaultJson[k];
-      if (v == null) {
-        await _storage.delete(key: k);
-      } else if (v is String) {
-        await _storage.write(key: k, value: v);
+    // ------------ Phase B: commit (atomic-ish swap) ---------------------
+    // Mark the in-flight restore in SharedPreferences. If the OS kills us
+    // anywhere below, the next launch will see the flag and offer recovery
+    // rather than silently observe an inconsistent state.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+      _kRestorePendingFlag,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+    try {
+      // Delete current DB sidecars (WAL/SHM) so SQLCipher does not try to
+      // recover from them against the new main file.
+      final dbFile = File(p.join(dbDir.path, 'health.db'));
+      final wal = File(p.join(dbDir.path, 'health.db-wal'));
+      final shm = File(p.join(dbDir.path, 'health.db-shm'));
+      if (wal.existsSync()) await wal.delete();
+      if (shm.existsSync()) await shm.delete();
+      if (dbFile.existsSync()) await dbFile.delete();
+
+      // Wipe current attachments — we own this directory entirely.
+      if (attDir.existsSync()) {
+        await for (final entity in attDir.list()) {
+          if (entity is File) {
+            try {
+              await entity.delete();
+            } on FileSystemException {
+              // best-effort: a leftover doesn't compromise the restore.
+            }
+          }
+        }
       }
+      if (!dbDir.existsSync()) await dbDir.create(recursive: true);
+      if (!attDir.existsSync()) await attDir.create(recursive: true);
+
+      // Rename staging files into place. Same-volume renames are atomic at
+      // the inode level on Android.
+      await File(p.join(stagingDb.path, 'health.db')).rename(dbFile.path);
+      await for (final entity in stagingAtt.list()) {
+        if (entity is File) {
+          await entity.rename(p.join(attDir.path, p.basename(entity.path)));
+        }
+      }
+
+      // Apply vault material LAST so a crash before this point leaves the
+      // user with the previous wrapped VEK + a fresh DB they cannot decrypt
+      // — fail-closed (they retry restore from the same .htbk).
+      for (final k in _vaultKeys) {
+        final v = vaultJson[k];
+        if (v == null) {
+          await _storage.delete(key: k);
+        } else if (v is String) {
+          await _storage.write(key: k, value: v);
+        }
+      }
+    } finally {
+      // Remove the staging dir + sentinel as the LAST step. If we ever
+      // throw above, the sentinel remains and recoverPartialRestore can
+      // resume on next launch.
+      if (stagingDir.existsSync()) {
+        await stagingDir.delete(recursive: true);
+      }
+      await prefs.remove(_kRestorePendingFlag);
     }
+  }
+
+  /// Recovery hook for a Phase B crash. The LockScreen calls this once at
+  /// app start: if the sentinel from a previous interrupted restore is
+  /// present, we know the device is in an indeterminate state — the safest
+  /// move is to surface the situation rather than silently move on.
+  ///
+  /// Returns true when a partial restore was detected (caller decides how
+  /// to inform the user — typically a banner inviting them to retry the
+  /// restore from their .htbk file). Best-effort cleans up the staging
+  /// dir so the next attempt starts fresh.
+  Future<bool> recoverPartialRestore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final timestamp = prefs.getInt(_kRestorePendingFlag);
+    if (timestamp == null) return false;
+    try {
+      final support = await getApplicationSupportDirectory();
+      final stagingDir = Directory(p.join(support.path, 'restore_staging'));
+      if (stagingDir.existsSync()) {
+        await stagingDir.delete(recursive: true);
+      }
+    } on Object {
+      // best-effort cleanup
+    }
+    await prefs.remove(_kRestorePendingFlag);
+    return true;
   }
 
   // -- Helpers --------------------------------------------------------------

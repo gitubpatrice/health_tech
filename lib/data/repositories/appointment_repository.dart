@@ -48,8 +48,8 @@ class AppointmentRepository {
   }
 
   Stream<List<Appointment>> watchInRange(DateTime from, DateTime to) {
-    final fromS = from.millisecondsSinceEpoch ~/ 1000;
-    final toS = to.millisecondsSinceEpoch ~/ 1000;
+    final fromS = dateToSeconds(from);
+    final toS = dateToSeconds(to);
     final select = _db.select(_db.appointments)
       ..where(
         (t) => t.deletedAt.isNull() & t.startAt.isBetweenValues(fromS, toS),
@@ -63,6 +63,18 @@ class AppointmentRepository {
   Stream<List<Appointment>> watchByClient(String clientId) {
     final select = _db.select(_db.appointments)
       ..where((t) => t.deletedAt.isNull() & t.clientId.equals(clientId))
+      ..orderBy([(t) => OrderingTerm.desc(t.startAt)]);
+    return select.watch().map(
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
+  }
+
+  /// Variante filtrée par animal — utilisée par PurgeService.softDeleteAnimal
+  /// pour éviter de charger 50 ans de RDV en mémoire juste pour les filtrer
+  /// côté Dart.
+  Stream<List<Appointment>> watchByAnimal(String animalId) {
+    final select = _db.select(_db.appointments)
+      ..where((t) => t.deletedAt.isNull() & t.animalId.equals(animalId))
       ..orderBy([(t) => OrderingTerm.desc(t.startAt)]);
     return select.watch().map(
       (rows) => rows.map(_fromRowLight).toList(growable: false),
@@ -106,8 +118,8 @@ class AppointmentRepository {
       clientId: Value(a.clientId),
       animalId: Value(a.animalId),
       sessionId: Value(a.sessionId),
-      startAt: Value(a.startAt.millisecondsSinceEpoch ~/ 1000),
-      endAt: Value(a.endAt.millisecondsSinceEpoch ~/ 1000),
+      startAt: Value(dateToSeconds(a.startAt)),
+      endAt: Value(dateToSeconds(a.endAt)),
       title: Value(a.title),
       location: Value(a.location),
       kind: Value(a.kind),
@@ -135,8 +147,8 @@ class AppointmentRepository {
     clientId: r.clientId,
     animalId: r.animalId,
     sessionId: r.sessionId,
-    startAt: DateTime.fromMillisecondsSinceEpoch(r.startAt * 1000),
-    endAt: DateTime.fromMillisecondsSinceEpoch(r.endAt * 1000),
+    startAt: secondsToDate(r.startAt),
+    endAt: secondsToDate(r.endAt),
     title: r.title,
     location: r.location,
     kind: r.kind,
@@ -144,7 +156,7 @@ class AppointmentRepository {
     reminderMinutesBefore: r.reminderMinutesBefore,
     externalCalendarEventId: r.externalCalendarEventId,
     externalCalendarId: r.externalCalendarId,
-    createdAt: DateTime.fromMillisecondsSinceEpoch(r.createdAt * 1000),
-    updatedAt: DateTime.fromMillisecondsSinceEpoch(r.updatedAt * 1000),
+    createdAt: secondsToDate(r.createdAt),
+    updatedAt: secondsToDate(r.updatedAt),
   );
 }

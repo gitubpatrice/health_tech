@@ -160,9 +160,7 @@ class ClientRepository {
     civility: row.civility,
     lastName: row.lastName,
     firstName: row.firstName,
-    birthDate: row.birthDateMs == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(row.birthDateMs!),
+    birthDate: msToDate(row.birthDateMs),
     phone: row.phone,
     email: row.email,
     profession: row.profession,
@@ -170,17 +168,14 @@ class ClientRepository {
         ? const Address()
         : Address.fromJson(row.addressJson),
     consents: ConsentSet(
-      rgpdAt: _msToDate(row.consentRgpdAt),
-      disclaimerAt: _msToDate(row.consentDisclaimerAt),
-      reminderAt: _msToDate(row.consentReminderAt),
-      newsletterAt: _msToDate(row.consentNewsletterAt),
+      rgpdAt: msToDate(row.consentRgpdAt),
+      disclaimerAt: msToDate(row.consentDisclaimerAt),
+      reminderAt: msToDate(row.consentReminderAt),
+      newsletterAt: msToDate(row.consentNewsletterAt),
     ),
     profile: row.profileJson,
     business: row.businessJson,
-    createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt * 1000),
-    updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt * 1000),
+    createdAt: secondsToDate(row.createdAt),
+    updatedAt: secondsToDate(row.updatedAt),
   );
-
-  static DateTime? _msToDate(int? ms) =>
-      ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
 }

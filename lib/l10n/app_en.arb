@@ -317,11 +317,31 @@
   "lockBiometricFallback": "Use passphrase",
   "lockBiometricButton": "Unlock with biometrics",
   "lockBiometricFailed": "Biometric authentication refused.",
+  "lockPartialRestoreBanner": "A previous restore was interrupted. If your data looks incomplete, retry from Settings → Encrypted backup.",
 
   "searchTitle": "Search",
   "searchHint": "Search across records…",
   "searchEmptyHint": "Type a name, an address, a species, a session type… Encrypted notes (health, reports) are not indexed by design.",
   "searchNoResults": "No results.",
+
+  "notifChannelName": "Appointments",
+  "notifChannelDescription": "Reminders before each scheduled appointment.",
+  "notifDefaultTitle": "Appointment",
+  "notifBody": "In {minutes} min · {time}",
+  "@notifBody": {
+    "placeholders": {
+      "minutes": {"type": "int"},
+      "time": {"type": "String"}
+    }
+  },
+  "notifBodyWithLocation": "In {minutes} min · {time} · {location}",
+  "@notifBodyWithLocation": {
+    "placeholders": {
+      "minutes": {"type": "int"},
+      "time": {"type": "String"},
+      "location": {"type": "String"}
+    }
+  },
 
   "appointmentFormReminderHelper": "Local notification sent before the appointment.",
   "appointmentFormReminderNone": "No reminder",

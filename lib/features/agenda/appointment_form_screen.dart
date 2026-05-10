@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../data/services/notification_service.dart';
 import '../../data/services/system_calendar_bridge.dart';
 import '../../domain/animal.dart';
 import '../../domain/appointment.dart';
@@ -161,13 +162,20 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       } else {
         saved = await repo.update(draft);
       }
-      // Schedule (or reschedule) the local reminder. scheduleFor cancels
-      // the previous alarm before queuing the new one, so an edit that
-      // changes the time / minutesBefore / status updates cleanly.
+      // Replanifie le rappel local. scheduleFor cancel l'ancienne alarm
+      // avant d'en poser une nouvelle, donc une édition qui change l'heure
+      // ou la durée avant met à jour proprement la file.
       try {
-        await ref.read(notificationServiceProvider).scheduleFor(saved);
+        final strings = NotificationStrings.fromL10n(
+          channelName: l10n.notifChannelName,
+          channelDescription: l10n.notifChannelDescription,
+          defaultTitle: l10n.notifDefaultTitle,
+          body: l10n.notifBody,
+          bodyWithLocation: l10n.notifBodyWithLocation,
+        );
+        await ref.read(notificationServiceProvider).scheduleFor(saved, strings);
       } on Object {
-        // Best-effort — a reminder failure must not block the save.
+        // Best-effort — un échec de rappel ne doit pas bloquer la sauvegarde.
       }
       // Opt-in: push to (or update in) the system calendar AFTER the row
       // is durable. The bridge reuses externalCalendarEventId when present

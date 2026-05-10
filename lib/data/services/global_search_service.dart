@@ -18,7 +18,11 @@ class GlobalSearchService {
   /// Returns a flat list of hits sorted by entity kind then by relevance
   /// proxy (alphabetical for now). The query is split on whitespace and
   /// every token must match at least one indexed column (AND semantics).
-  Future<List<SearchHit>> search(String query, {int limit = 80}) async {
+  Future<List<SearchHit>> search(
+    String query, {
+    int limit = 80,
+    String appointmentDefaultTitle = 'Rendez-vous',
+  }) async {
     final tokens = query
         .trim()
         .split(RegExp(r'\s+'))
@@ -36,7 +40,9 @@ class GlobalSearchService {
     hits.addAll(await _searchClients(tokens, limit));
     hits.addAll(await _searchAnimals(tokens, limit));
     hits.addAll(await _searchSessions(tokens, limit));
-    hits.addAll(await _searchAppointments(tokens, limit));
+    hits.addAll(
+      await _searchAppointments(tokens, limit, appointmentDefaultTitle),
+    );
     return hits;
   }
 
@@ -137,6 +143,7 @@ class GlobalSearchService {
   Future<List<SearchHit>> _searchAppointments(
     List<String> tokens,
     int limit,
+    String defaultTitle,
   ) async {
     final select = _db.select(_db.appointments)
       ..where((t) => t.deletedAt.isNull());
@@ -153,7 +160,7 @@ class GlobalSearchService {
           kind: SearchHitKind.appointment,
           id: r.id,
           ownerId: r.clientId,
-          title: r.title ?? 'Rendez-vous',
+          title: r.title ?? defaultTitle,
           subtitle: [
             DateTime.fromMillisecondsSinceEpoch(r.startAt * 1000).toString(),
             if ((r.location ?? '').isNotEmpty) r.location,

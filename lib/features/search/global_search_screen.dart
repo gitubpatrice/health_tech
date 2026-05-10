@@ -53,7 +53,10 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
     }
     setState(() => _busy = true);
     try {
-      final hits = await ref.read(globalSearchServiceProvider).search(query);
+      final l10n = AppL10n.of(context);
+      final hits = await ref
+          .read(globalSearchServiceProvider)
+          .search(query, appointmentDefaultTitle: l10n.notifDefaultTitle);
       if (!mounted || _lastQuery != query) return;
       setState(() => _hits = hits);
     } finally {

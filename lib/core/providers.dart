@@ -115,21 +115,6 @@ final databaseProvider = FutureProvider<HealthDb>((ref) async {
   try {
     final db = await HealthDb.open(vek: keyBytes);
     ref.onDispose(db.close);
-    // Reschedule every upcoming reminder from the freshly-opened DB.
-    // This makes the alarm queue authoritative against the SQLCipher
-    // contents — covers reboots (boot receiver may replay stale alarms),
-    // restores (DB swapped under the queue), and cold-starts where the
-    // process was killed mid-schedule. Best-effort & async — never
-    // blocks the unlock.
-    unawaited(() async {
-      try {
-        final repo = AppointmentRepository(db, vault.crypto);
-        final upcoming = await repo.watchUpcoming(limit: 200).first;
-        await ref.read(notificationServiceProvider).rescheduleAll(upcoming);
-      } on Object {
-        // ignore — alarms missing on this boot is preferable to a crash.
-      }
-    }());
     return db;
   } finally {
     keyBytes.fillRange(0, keyBytes.length, 0);

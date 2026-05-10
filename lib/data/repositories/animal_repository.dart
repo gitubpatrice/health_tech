@@ -95,7 +95,7 @@ class AnimalRepository {
       species: Value(a.species),
       breed: Value(a.breed),
       sex: Value(a.sex),
-      birthDateMs: Value(a.birthDate?.millisecondsSinceEpoch),
+      birthDateMs: Value(dateToMs(a.birthDate)),
       weightGrams: Value(a.weightGrams),
       color: Value(a.color),
       identifiersJson: Value(a.identifiers.toJson()),
@@ -128,16 +128,14 @@ class AnimalRepository {
     species: row.species,
     breed: row.breed,
     sex: row.sex,
-    birthDate: row.birthDateMs == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(row.birthDateMs!),
+    birthDate: msToDate(row.birthDateMs),
     weightGrams: row.weightGrams,
     color: row.color,
     identifiers: row.identifiersJson.isEmpty
         ? const AnimalIdentifiers()
         : AnimalIdentifiers.fromJson(row.identifiersJson),
     profile: row.profileJson,
-    createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt * 1000),
-    updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt * 1000),
+    createdAt: secondsToDate(row.createdAt),
+    updatedAt: secondsToDate(row.updatedAt),
   );
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/providers.dart';
+import '../../data/services/notification_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/adaptive_scaffold.dart';
 import '../agenda/agenda_screen.dart';
@@ -25,11 +27,48 @@ final homeTabProvider = StateProvider<HomeTab>((_) => HomeTab.home);
 
 /// Top-level navigation shell. Adapts to phone (bottom bar) and tablet
 /// (navigation rail).
-class HomeShell extends ConsumerWidget {
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends ConsumerState<HomeShell> {
+  @override
+  void initState() {
+    super.initState();
+    // Re-planifier les rappels du jour : c'est le seul endroit où l'on a à
+    // la fois la base déverrouillée ET AppL10n.of(context). On le fait au
+    // montage du shell (post-unlock) pour rattraper :
+    //   - un reboot device (le boot receiver remet de vieilles alarms)
+    //   - une restauration de sauvegarde (la base change sous la file)
+    //   - un cold-start après que l'OS a tué l'app pendant un schedule
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final l10n = AppL10n.of(context);
+      final strings = NotificationStrings.fromL10n(
+        channelName: l10n.notifChannelName,
+        channelDescription: l10n.notifChannelDescription,
+        defaultTitle: l10n.notifDefaultTitle,
+        body: l10n.notifBody,
+        bodyWithLocation: l10n.notifBodyWithLocation,
+      );
+      try {
+        final repo = ref.read(appointmentRepositoryProvider);
+        final upcoming = await repo.watchUpcoming(limit: 200).first;
+        await ref
+            .read(notificationServiceProvider)
+            .rescheduleAll(upcoming, strings);
+      } on Object {
+        // best-effort : alarms manquées plutôt que crash
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final l10n = AppL10n.of(context);
     final index = ref.watch(homeTabProvider);
     const pages = [

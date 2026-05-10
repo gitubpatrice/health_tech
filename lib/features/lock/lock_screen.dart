@@ -4,6 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 
+/// One-shot check: was a restore interrupted on a previous launch? The
+/// lock screen displays a non-blocking banner inviting the user to retry,
+/// so they are not left wondering why their data looks empty.
+final partialRestoreFlagProvider = FutureProvider<bool>((ref) {
+  return ref.read(backupServiceProvider).recoverPartialRestore();
+});
+
 /// Single entry-point: shows either setup (first launch) or unlock.
 /// Routes to home on success.
 class LockScreen extends ConsumerWidget {
@@ -13,14 +20,21 @@ class LockScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final init = ref.watch(vaultInitialisedProvider);
     final l10n = AppL10n.of(context);
+    // Probe for an interrupted restore — best-effort, never blocks unlock.
+    final partialRestore = ref.watch(partialRestoreFlagProvider);
     return init.when(
       loading: () => const _Loading(),
       // The lock screen is reached BEFORE auth, so any raw exception text
       // is exposed to a hostile observer. Show a generic, localised message
       // and rely on logs / crash reporting for the underlying detail.
       error: (e, _) => _Error(message: l10n.lockStorageError),
-      data: (initialised) =>
-          initialised ? const _UnlockForm() : const _SetupForm(),
+      data: (initialised) {
+        final body = initialised ? const _UnlockForm() : const _SetupForm();
+        if (partialRestore.valueOrNull == true) {
+          return _PartialRestoreBanner(child: body);
+        }
+        return body;
+      },
     );
   }
 }
@@ -35,6 +49,49 @@ class _Loading extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: CircularProgressIndicator()));
+}
+
+/// Non-blocking banner stacked above the unlock / setup form when a
+/// previous restore was interrupted. Lets the user proceed normally
+/// (they may have nothing to recover) but surfaces the partial state so
+/// they can retry from their .htbk file rather than wonder why their
+/// data looks incomplete.
+class _PartialRestoreBanner extends StatelessWidget {
+  const _PartialRestoreBanner({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: Column(
+        children: [
+          Material(
+            color: scheme.errorContainer,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_outlined, color: scheme.error),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        l10n.lockPartialRestoreBanner,
+                        style: TextStyle(color: scheme.onErrorContainer),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
 }
 
 class _Error extends StatelessWidget {

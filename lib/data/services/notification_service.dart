@@ -5,6 +5,51 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../../domain/appointment.dart';
 
+/// Localised strings injected into [NotificationService] from the UI layer.
+/// Keeps the service free of `AppL10n` dependencies (no `BuildContext` in
+/// services) while still letting the lockscreen + notification shade pick
+/// up the user's chosen locale.
+class NotificationStrings {
+  const NotificationStrings({
+    required this.channelName,
+    required this.channelDescription,
+    required this.defaultTitle,
+    required this.bodyMinutesBefore,
+  });
+
+  final String channelName;
+  final String channelDescription;
+
+  /// Fallback title when `appointment.title` is null/empty.
+  final String defaultTitle;
+
+  /// Format function for the notification body. Receives `(minutes, time,
+  /// location?)` and returns the human string. Implemented in the UI layer
+  /// so it can use the locale's plural / number formatter.
+  final String Function(int minutes, String time, String? location)
+  bodyMinutesBefore;
+
+  /// Convenience builder: pulls every label from an `AppL10n` instance.
+  /// Defined as a static constructor to keep the service file free of any
+  /// `flutter` / `material` import.
+  static NotificationStrings fromL10n({
+    required String channelName,
+    required String channelDescription,
+    required String defaultTitle,
+    required String Function(int minutes, String time) body,
+    required String Function(int minutes, String time, String location)
+    bodyWithLocation,
+  }) {
+    return NotificationStrings(
+      channelName: channelName,
+      channelDescription: channelDescription,
+      defaultTitle: defaultTitle,
+      bodyMinutesBefore: (m, t, l) =>
+          l == null ? body(m, t) : bodyWithLocation(m, t, l),
+    );
+  }
+}
+
 /// Local appointment reminders (no Firebase / FCM — fully on-device).
 ///
 /// Each appointment optionally carries `reminderMinutesBefore`. When set,
@@ -16,6 +61,9 @@ import '../../domain/appointment.dart';
 ///
 /// Boot persistence: reminders survive device reboot via the
 /// ScheduledNotificationBootReceiver declared in AndroidManifest.
+///
+/// Localisation: strings are passed in via [NotificationStrings] at the
+/// `scheduleFor` / `rescheduleAll` call site. The service stays UI-agnostic.
 class NotificationService {
   NotificationService({FlutterLocalNotificationsPlugin? plugin})
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
@@ -25,9 +73,6 @@ class NotificationService {
   bool _tzReady = false;
 
   static const _channelId = 'health_tech_appointments_v1';
-  static const _channelName = 'Rendez-vous';
-  static const _channelDescription =
-      'Rappels avant chaque rendez-vous planifié.';
 
   Future<void> _ensureTimezones() async {
     if (_tzReady) return;
@@ -67,7 +112,10 @@ class NotificationService {
   /// Schedule (or reschedule) the reminder for [appointment]. Always cancels
   /// the previous alarm first so an edit doesn't leave a stale notification
   /// in the queue.
-  Future<void> scheduleFor(Appointment appointment) async {
+  Future<void> scheduleFor(
+    Appointment appointment,
+    NotificationStrings strings,
+  ) async {
     await ensureInitialised();
     final id = _idFor(appointment.id);
     await _plugin.cancel(id);
@@ -82,15 +130,8 @@ class NotificationService {
       Duration(minutes: minutesBefore),
     );
     if (fireAt.isBefore(DateTime.now())) {
-      // Past reminder — nothing to schedule. The agenda screen will still
-      // show the appointment normally.
       return;
     }
-    // Lazily ask for POST_NOTIFICATIONS the first time the user actually
-    // schedules a reminder. Asking eagerly at boot would feel intrusive
-    // (most practitioners may use the calendar without local pushes).
-    // If the user denies, the alarm still fires but the notification is
-    // suppressed by Android — no error to surface here.
     await requestPermission();
     final tzDate = tz.TZDateTime.from(fireAt, tz.local);
 
@@ -98,26 +139,32 @@ class NotificationService {
     // appointment title or location. Practitioner data (client name, place)
     // is sensitive — we treat it as we would health notes. The full body is
     // still displayed inside the unlocked notification shade.
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       _channelId,
-      _channelName,
-      channelDescription: _channelDescription,
+      strings.channelName,
+      channelDescription: strings.channelDescription,
       importance: Importance.high,
       priority: Priority.high,
       visibility: NotificationVisibility.secret,
+    );
+
+    final hh = appointment.startAt.hour.toString().padLeft(2, '0');
+    final mm = appointment.startAt.minute.toString().padLeft(2, '0');
+    final body = strings.bodyMinutesBefore(
+      minutesBefore,
+      '$hh:$mm',
+      (appointment.location?.isNotEmpty ?? false) ? appointment.location : null,
     );
 
     await _plugin.zonedSchedule(
       id,
       appointment.title?.isNotEmpty == true
           ? appointment.title!
-          : 'Rendez-vous',
-      _bodyFor(appointment, minutesBefore),
+          : strings.defaultTitle,
+      body,
       tzDate,
-      const NotificationDetails(android: androidDetails),
+      NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      // iOS-only knob — required by the API even though we ship Android
-      // only. Wall-clock interpretation matches `tz.TZDateTime.from(...)`.
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: appointment.id,
@@ -137,16 +184,15 @@ class NotificationService {
     await _plugin.cancelAll();
   }
 
-  /// Re-schedule every appointment in [upcoming] from scratch. Idempotent:
-  /// `scheduleFor` cancels-before-scheduling, so calling this on every
-  /// fresh unlock keeps the queue in sync with the DB even if the user
-  /// restored a backup, manually edited the DB, or the boot receiver
-  /// reinstated stale alarms after reboot.
-  Future<void> rescheduleAll(Iterable<Appointment> upcoming) async {
+  /// Re-schedule every appointment in [upcoming] from scratch. Idempotent.
+  Future<void> rescheduleAll(
+    Iterable<Appointment> upcoming,
+    NotificationStrings strings,
+  ) async {
     await ensureInitialised();
     for (final appt in upcoming) {
       try {
-        await scheduleFor(appt);
+        await scheduleFor(appt, strings);
       } on Object {
         // Skip individual failures — one malformed row should not abort
         // the whole reschedule pass.
@@ -167,15 +213,5 @@ class NotificationService {
     // Map to a positive 31-bit integer so we never produce a negative ID
     // (which the underlying NotificationManager rejects).
     return hash & 0x7FFFFFFF;
-  }
-
-  static String _bodyFor(Appointment a, int minutesBefore) {
-    final hh = a.startAt.hour.toString().padLeft(2, '0');
-    final mm = a.startAt.minute.toString().padLeft(2, '0');
-    final base = 'Dans $minutesBefore min · $hh:$mm';
-    if (a.location != null && a.location!.isNotEmpty) {
-      return '$base · ${a.location}';
-    }
-    return base;
   }
 }
