@@ -7,6 +7,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/errors.dart';
+import 'biometric_channel.dart';
 import 'field_crypto.dart';
 
 /// Single source of truth for the master key lifecycle.
@@ -26,15 +27,18 @@ import 'field_crypto.dart';
 ///     ciphertext in the database (only the wrapped VEK needs rewriting).
 ///   - VEK is uniformly random (better than a passphrase-derived key for AEAD).
 class HealthVault {
-  HealthVault({FlutterSecureStorage? secureStorage})
-    : _storage =
-          secureStorage ??
-          const FlutterSecureStorage(
-            aOptions: AndroidOptions(
-              encryptedSharedPreferences: true,
-              resetOnError: false,
-            ),
-          );
+  HealthVault({
+    FlutterSecureStorage? secureStorage,
+    BiometricChannel? biometric,
+  }) : _storage =
+           secureStorage ??
+           const FlutterSecureStorage(
+             aOptions: AndroidOptions(
+               encryptedSharedPreferences: true,
+               resetOnError: false,
+             ),
+           ),
+       _biometric = biometric ?? const BiometricChannel();
 
   static const _kWrappedVek = 'health_vault.wrapped_vek_v1';
   static const _kKdfSalt = 'health_vault.kdf_salt_v1';
@@ -48,6 +52,11 @@ class HealthVault {
   /// time which would weaken the brute-force budget. We re-calibrate
   /// lazily on the next successful unlock when this tag changes.
   static const _kKdfBackend = 'health_vault.kdf_backend_v1';
+
+  /// Biometric-wrapped VEK + IV. Persisted only after the user opts in via
+  /// [enableBiometric] while the vault is unlocked.
+  static const _kBioIv = 'health_vault.bio_iv_v1';
+  static const _kBioCipher = 'health_vault.bio_ct_v1';
 
   /// Identifier for the active Argon2id backend (`native` when
   /// `cryptography_flutter` is wired, `dart` otherwise).
@@ -65,6 +74,7 @@ class HealthVault {
   static const int _macLen = 16;
 
   final FlutterSecureStorage _storage;
+  final BiometricChannel _biometric;
   final AesGcm _wrap = AesGcm.with256bits();
 
   Uint8List? _vek;
@@ -252,7 +262,72 @@ class HealthVault {
     await _storage.delete(key: _kKdfMemory);
     await _storage.delete(key: _kKdfIterations);
     await _storage.delete(key: _kKdfParallelism);
+    await disableBiometric();
   }
+
+  // -- Biometric unlock -----------------------------------------------------
+
+  /// True iff the user has previously opted in and a biometric-wrapped VEK
+  /// is currently persisted. Does NOT verify hardware availability — the
+  /// caller should also consult [biometricAvailable] before showing the UI.
+  Future<bool> isBiometricEnrolled() async =>
+      (await _storage.read(key: _kBioIv)) != null &&
+      (await _storage.read(key: _kBioCipher)) != null;
+
+  /// Hardware + enrollment check. Independent of [isBiometricEnrolled].
+  Future<bool> biometricAvailable() => _biometric.isAvailable();
+
+  /// Enable biometric unlock. The vault MUST be unlocked: we wrap the
+  /// in-memory VEK with a fresh Keystore-bound key. After this call the
+  /// next launch can offer the biometric prompt as a passphrase shortcut.
+  Future<void> enableBiometric() async {
+    final vek = _vek;
+    if (vek == null) throw const VaultLockedError();
+    final wrap = await _biometric.wrap(Uint8List.fromList(vek));
+    await _storage.write(key: _kBioIv, value: base64Encode(wrap.iv));
+    await _storage.write(
+      key: _kBioCipher,
+      value: base64Encode(wrap.ciphertext),
+    );
+  }
+
+  /// Drop the biometric-wrapped VEK and the underlying Keystore key.
+  Future<void> disableBiometric() async {
+    await _storage.delete(key: _kBioIv);
+    await _storage.delete(key: _kBioCipher);
+    await _biometric.delete();
+  }
+
+  /// Show the BiometricPrompt and, on success, recover the VEK without
+  /// asking for the passphrase. Throws [BiometricFailure] if the user
+  /// cancels or the hardware refuses; throws [VaultNotInitialisedError]
+  /// if biometric was never enabled.
+  Future<bool> unlockWithBiometric({
+    required String title,
+    required String subtitle,
+    required String negativeButton,
+  }) => _serialize(() async {
+    final ivB64 = await _storage.read(key: _kBioIv);
+    final ctB64 = await _storage.read(key: _kBioCipher);
+    if (ivB64 == null || ctB64 == null) {
+      throw const VaultNotInitialisedError();
+    }
+    final vek = await _biometric.unwrap(
+      iv: base64Decode(ivB64),
+      ciphertext: base64Decode(ctB64),
+      title: title,
+      subtitle: subtitle,
+      negativeButton: negativeButton,
+    );
+    if (vek.length != _vekLen) {
+      // Corrupted blob — fail closed and force passphrase re-entry.
+      await disableBiometric();
+      return false;
+    }
+    _vek = vek;
+    _crypto = FieldCrypto(Uint8List.fromList(vek));
+    return true;
+  });
 
   Future<Uint8List> _deriveMasterKey({
     required String passphrase,

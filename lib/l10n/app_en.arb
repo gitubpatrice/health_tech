@@ -306,6 +306,17 @@
   "backupPassphraseTooShort": "12 characters minimum.",
   "backupPassphraseMismatch": "Passphrases do not match.",
 
+  "settingsBiometricTitle": "Biometric unlock",
+  "settingsBiometricSubtitle": "Enable strong fingerprint or face authentication to open the vault.",
+  "settingsBiometricUnavailable": "No strong biometric is enrolled on this device.",
+  "settingsBiometricEnabled": "Biometric unlock enabled.",
+  "settingsBiometricDisabled": "Biometric unlock disabled.",
+  "lockBiometricTitle": "Health Tech unlock",
+  "lockBiometricSubtitle": "Touch the sensor to open your vault.",
+  "lockBiometricFallback": "Use passphrase",
+  "lockBiometricButton": "Unlock with biometrics",
+  "lockBiometricFailed": "Biometric authentication refused.",
+
   "homeStatsSessionsMonth": "Sessions this month",
   "homeStatsClientsMonth": "Clients seen",
   "homeStatsClientsTotal": "Total clients",

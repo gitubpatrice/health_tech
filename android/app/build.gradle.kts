@@ -88,3 +88,10 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // BiometricPrompt + CryptoObject — used to wrap the VEK with a
+    // Keystore key bound to user authentication. Required by
+    // BiometricBridge.kt.
+    implementation("androidx.biometric:biometric:1.1.0")
+}

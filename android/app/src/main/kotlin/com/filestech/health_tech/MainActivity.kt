@@ -2,11 +2,14 @@ package com.filestech.health_tech
 
 import android.os.Bundle
 import android.view.WindowManager
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+/// FlutterFragmentActivity (rather than FlutterActivity) is required by
+/// androidx.biometric.BiometricPrompt, which expects a FragmentActivity to
+/// host its prompt fragment.
+class MainActivity : FlutterFragmentActivity() {
 
     private val secureChannel = "com.filestech.health_tech/secure_window"
 
@@ -39,5 +42,9 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        // Wire the biometric bridge. It lives only as long as the activity,
+        // so re-installing it on every engine attach is safe.
+        BiometricBridge(this, flutterEngine.dartExecutor.binaryMessenger)
     }
 }

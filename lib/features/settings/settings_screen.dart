@@ -20,6 +20,8 @@ class SettingsScreen extends ConsumerWidget {
       children: [
         const _AutoLockTile(),
         const Divider(height: 1),
+        const _BiometricTile(),
+        const Divider(height: 1),
         const _ExportClientTile(),
         const Divider(height: 1),
         const _PurgeClientTile(),
@@ -95,6 +97,59 @@ class _AutoLockTile extends ConsumerWidget {
       subtitle: Text(l10n.settingsAutoLockSubtitle),
       trailing: Text(l10n.settingsAutoLockMinutes(duration.inMinutes)),
       onTap: () => _pick(context, ref),
+    );
+  }
+}
+
+class _BiometricTile extends ConsumerWidget {
+  const _BiometricTile();
+
+  Future<void> _toggle(BuildContext context, WidgetRef ref, bool turnOn) async {
+    final l10n = AppL10n.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final vault = ref.read(vaultProvider);
+    try {
+      if (turnOn) {
+        await vault.enableBiometric();
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.settingsBiometricEnabled)),
+        );
+      } else {
+        await vault.disableBiometric();
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.settingsBiometricDisabled)),
+        );
+      }
+    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+    ref.invalidate(biometricStatusProvider);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
+    final status = ref.watch(biometricStatusProvider);
+    return status.when(
+      loading: () => const ListTile(
+        leading: Icon(Icons.fingerprint),
+        title: SizedBox(
+          height: 24,
+          child: Center(child: LinearProgressIndicator()),
+        ),
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (s) => SwitchListTile(
+        secondary: const Icon(Icons.fingerprint),
+        title: Text(l10n.settingsBiometricTitle),
+        subtitle: Text(
+          s.available
+              ? l10n.settingsBiometricSubtitle
+              : l10n.settingsBiometricUnavailable,
+        ),
+        value: s.enrolled,
+        onChanged: s.available ? (v) => _toggle(context, ref, v) : null,
+      ),
     );
   }
 }

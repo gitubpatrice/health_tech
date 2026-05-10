@@ -27,6 +27,22 @@ final vaultInitialisedProvider = FutureProvider<bool>((ref) async {
   return ref.watch(vaultProvider).isInitialised();
 });
 
+/// Composite biometric state: whether the device can do strong biometrics
+/// AND whether the user has previously enrolled them with Health Tech.
+class BiometricStatus {
+  const BiometricStatus({required this.available, required this.enrolled});
+  final bool available;
+  final bool enrolled;
+  bool get readyForUnlock => available && enrolled;
+}
+
+final biometricStatusProvider = FutureProvider<BiometricStatus>((ref) async {
+  final vault = ref.watch(vaultProvider);
+  final available = await vault.biometricAvailable();
+  final enrolled = await vault.isBiometricEnrolled();
+  return BiometricStatus(available: available, enrolled: enrolled);
+});
+
 /// Auth state. `null` = locked, non-null = unlocked.
 class VaultSession {
   const VaultSession({required this.unlockedAt});
@@ -47,6 +63,26 @@ class VaultSessionController extends StateNotifier<VaultSession?> {
   Future<bool> unlock(String passphrase) async {
     final vault = _ref.read(vaultProvider);
     final ok = await vault.unlockWithPassphrase(passphrase);
+    if (ok) {
+      state = VaultSession(unlockedAt: DateTime.now());
+    }
+    return ok;
+  }
+
+  /// Unlock via the BiometricPrompt + Keystore-wrapped VEK. Returns true
+  /// on success, false if the prompt was cancelled or the wrapped blob
+  /// failed authentication.
+  Future<bool> unlockWithBiometric({
+    required String title,
+    required String subtitle,
+    required String negativeButton,
+  }) async {
+    final vault = _ref.read(vaultProvider);
+    final ok = await vault.unlockWithBiometric(
+      title: title,
+      subtitle: subtitle,
+      negativeButton: negativeButton,
+    );
     if (ok) {
       state = VaultSession(unlockedAt: DateTime.now());
     }

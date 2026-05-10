@@ -306,6 +306,17 @@
   "backupPassphraseTooShort": "12 caractères minimum.",
   "backupPassphraseMismatch": "Les deux phrases ne correspondent pas.",
 
+  "settingsBiometricTitle": "Déverrouillage biométrique",
+  "settingsBiometricSubtitle": "Active l’empreinte digitale ou la reconnaissance faciale forte pour ouvrir le coffre.",
+  "settingsBiometricUnavailable": "Aucune empreinte forte enregistrée sur cet appareil.",
+  "settingsBiometricEnabled": "Biométrie activée.",
+  "settingsBiometricDisabled": "Biométrie désactivée.",
+  "lockBiometricTitle": "Déverrouillage Health Tech",
+  "lockBiometricSubtitle": "Place ton doigt sur le capteur pour ouvrir le coffre.",
+  "lockBiometricFallback": "Utiliser la phrase secrète",
+  "lockBiometricButton": "Déverrouiller avec la biométrie",
+  "lockBiometricFailed": "Authentification biométrique refusée.",
+
   "homeStatsSessionsMonth": "Séances ce mois",
   "homeStatsClientsMonth": "Clients vus",
   "homeStatsClientsTotal": "Total clients",

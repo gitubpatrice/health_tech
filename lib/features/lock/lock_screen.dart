@@ -81,11 +81,36 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
   bool _busy = false;
   bool _obscured = true;
   String? _error;
+  bool _biometricAttempted = false;
 
   @override
   void dispose() {
     _ctrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _tryBiometric() async {
+    if (_biometricAttempted || _busy) return;
+    _biometricAttempted = true;
+    final status = await ref.read(biometricStatusProvider.future);
+    if (!status.readyForUnlock || !mounted) return;
+    final l10n = AppL10n.of(context);
+    setState(() => _busy = true);
+    try {
+      final ok = await ref
+          .read(vaultSessionProvider.notifier)
+          .unlockWithBiometric(
+            title: l10n.lockBiometricTitle,
+            subtitle: l10n.lockBiometricSubtitle,
+            negativeButton: l10n.lockBiometricFallback,
+          );
+      if (mounted && !ok) {
+        setState(() => _error = l10n.lockBiometricFailed);
+      }
+    } on Object {
+      // User cancelled or hardware rejected — fall back silently to passphrase.
+    }
+    if (mounted) setState(() => _busy = false);
   }
 
   Future<void> _submit() async {
@@ -110,6 +135,15 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppL10n.of(context);
+    final bioStatus = ref.watch(biometricStatusProvider);
+    // Auto-prompt on first build when biometric is enrolled. The prompt
+    // appears immediately so the user does not have to tap a separate
+    // button — passphrase remains available behind it.
+    bioStatus.whenData((s) {
+      if (s.readyForUnlock && !_biometricAttempted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _tryBiometric());
+      }
+    });
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -155,6 +189,19 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
                           )
                         : Text(l10n.lockUnlockButton),
                   ),
+                  if (bioStatus.valueOrNull?.readyForUnlock ?? false) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () {
+                              _biometricAttempted = false;
+                              _tryBiometric();
+                            },
+                      icon: const Icon(Icons.fingerprint),
+                      label: Text(l10n.lockBiometricButton),
+                    ),
+                  ],
                 ],
               ),
             ),
