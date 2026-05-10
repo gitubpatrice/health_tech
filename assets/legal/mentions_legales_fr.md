@@ -1,8 +1,10 @@
 # Mentions légales
 
-_Health Tech — version v0.7_
+_Health Tech — version v1.1_
 
-> **À COMPLÉTER PAR L'ÉDITEUR / L'UTILISATEUR PROFESSIONNEL.** Les champs entre `<…>` doivent être remplis avant toute mise en service et a fortiori avant toute publication publique.
+> **L'utilisateur de l'application est SEUL RESPONSABLE de l'usage qu'il en fait.** En installant et en utilisant Health Tech, l'utilisateur accepte d'utiliser l'application de façon responsable et reconnaît qu'il est le seul responsable de son utilisation.
+>
+> Les champs entre `<…>` ci-dessous doivent être complétés par l'utilisateur professionnel s'il publie ou affiche publiquement ces mentions (site web, devis, factures, etc.).
 
 ## Éditeur de l'application
 

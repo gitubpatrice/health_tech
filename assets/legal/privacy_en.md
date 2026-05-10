@@ -1,12 +1,12 @@
 # Privacy policy
 
-_Health Tech — v0.7 — GDPR (Regulation (EU) 2016/679)._
+_Health Tech — v1.1 — GDPR (Regulation (EU) 2016/679)._
 
-> **DRAFT — TO BE REVIEWED BY A LAWYER.** Adapted to non-medical use (energy work, animal osteopathy, geobiology).
+> **The user of the application is the SOLE PARTY RESPONSIBLE for the use they make of it, including the processing of personal data they record in it.** By installing and using Health Tech, the user agrees to use the application in a responsible manner and acknowledges that they are solely responsible for its use.
 
 ## 1. Data controller
 
-The professional user of the application is the **sole data controller** within the meaning of GDPR Article 4. The publisher (Files Tech) processes no client data: Health Tech runs entirely on the user's device, with no intermediary server.
+The professional user of the application is the **sole data controller** within the meaning of GDPR Article 4. The publisher (Files Tech) processes no client data: Health Tech runs entirely on the user's device, with no intermediary server. **Files Tech cannot be held liable for the GDPR compliance of the processing carried out by the user** (consent of data subjects, retention periods, follow-up on rights, physical security of the device, etc.).
 
 ## 2. Categories of data collected
 

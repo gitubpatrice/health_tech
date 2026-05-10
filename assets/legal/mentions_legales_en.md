@@ -1,8 +1,10 @@
 # Legal notice
 
-_Health Tech — v0.7_
+_Health Tech — v1.1_
 
-> **TO BE FILLED IN BY THE PUBLISHER / PROFESSIONAL USER.** Fields between `<…>` must be completed before any deployment, and certainly before any public release.
+> **The user of the application is the SOLE PARTY RESPONSIBLE for the use they make of it.** By installing and using Health Tech, the user agrees to use the application in a responsible manner and acknowledges that they are solely responsible for its use.
+>
+> The `<…>` fields below must be completed by the professional user if they publish or display these notices in public (website, quotes, invoices, etc.).
 
 ## Application publisher
 

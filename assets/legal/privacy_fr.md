@@ -1,12 +1,12 @@
 # Politique de confidentialité
 
-_Health Tech — version v0.7 — RGPD (Règlement (UE) 2016/679)._
+_Health Tech — version v1.1 — RGPD (Règlement (UE) 2016/679)._
 
-> **À RELIRE PAR UN AVOCAT.** Brouillon adapté à un usage non médical (soin énergétique, ostéopathie animale, géobiologie).
+> **L'utilisateur de l'application est SEUL RESPONSABLE de l'usage qu'il en fait, y compris du traitement des données personnelles qu'il y enregistre.** En installant et en utilisant Health Tech, l'utilisateur accepte d'utiliser l'application de façon responsable et reconnaît qu'il est le seul responsable de son utilisation.
 
 ## 1. Responsable de traitement
 
-L'utilisateur professionnel de l'application est **seul responsable du traitement** au sens de l'article 4 du RGPD. L'éditeur de l'application (Files Tech) ne traite aucune donnée client : Health Tech est exécutée intégralement sur l'appareil de l'utilisateur, sans serveur intermédiaire.
+L'utilisateur professionnel de l'application est **seul responsable du traitement** au sens de l'article 4 du RGPD. L'éditeur de l'application (Files Tech) ne traite aucune donnée client : Health Tech est exécutée intégralement sur l'appareil de l'utilisateur, sans serveur intermédiaire. **Files Tech ne peut être tenu responsable de la conformité RGPD du traitement opéré par l'utilisateur** (consentement des personnes concernées, durées de conservation, suites données aux droits, sécurité physique de l'appareil, etc.).
 
 ## 2. Catégories de données collectées
 
