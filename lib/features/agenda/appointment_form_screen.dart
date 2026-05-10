@@ -8,6 +8,7 @@ import '../../domain/animal.dart';
 import '../../domain/appointment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../widgets/busy_helpers.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/error_view.dart';
 import '../animals/animal_providers.dart';
@@ -155,66 +156,67 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
     final repo = ref.read(appointmentRepositoryProvider);
     final bridge = ref.read(systemCalendarBridgeProvider);
     final messenger = ScaffoldMessenger.of(context);
-    try {
-      Appointment saved;
-      if (widget.initial == null) {
-        saved = await repo.create(draft);
-      } else {
-        saved = await repo.update(draft);
-      }
-      // Replanifie le rappel local. scheduleFor cancel l'ancienne alarm
-      // avant d'en poser une nouvelle, donc une édition qui change l'heure
-      // ou la durée avant met à jour proprement la file.
-      try {
-        final strings = NotificationStrings.fromL10n(
-          channelName: l10n.notifChannelName,
-          channelDescription: l10n.notifChannelDescription,
-          defaultTitle: l10n.notifDefaultTitle,
-          body: l10n.notifBody,
-          bodyWithLocation: l10n.notifBodyWithLocation,
-        );
-        await ref.read(notificationServiceProvider).scheduleFor(saved, strings);
-      } on Object {
-        // Best-effort — un échec de rappel ne doit pas bloquer la sauvegarde.
-      }
-      // Opt-in: push to (or update in) the system calendar AFTER the row
-      // is durable. The bridge reuses externalCalendarEventId when present
-      // so an existing event is updated in place, not duplicated.
-      if (_addToSystemCalendar) {
+    await runWithBusy(
+      context: context,
+      setBusy: (bool v) => setState(() => _busy = v),
+      action: () async {
+        Appointment saved;
+        if (widget.initial == null) {
+          saved = await repo.create(draft);
+        } else {
+          saved = await repo.update(draft);
+        }
+        // Replanifie le rappel local. scheduleFor cancel l'ancienne alarm
+        // avant d'en poser une nouvelle.
         try {
-          final pushed = await bridge.push(saved);
-          if (pushed != null) {
-            // Persist the (calendarId, eventId) pair only on first sync;
-            // subsequent updates already carry it.
-            if (saved.externalCalendarEventId == null) {
-              await repo.update(
-                saved.copyWith(
-                  externalCalendarId: pushed.calendarId,
-                  externalCalendarEventId: pushed.eventId,
-                ),
+          final strings = NotificationStrings.fromL10n(
+            channelName: l10n.notifChannelName,
+            channelDescription: l10n.notifChannelDescription,
+            defaultTitle: l10n.notifDefaultTitle,
+            body: l10n.notifBody,
+            bodyWithLocation: l10n.notifBodyWithLocation,
+          );
+          await ref
+              .read(notificationServiceProvider)
+              .scheduleFor(saved, strings);
+        } on Object {
+          // Best-effort — un échec de rappel ne doit pas bloquer la sauvegarde.
+        }
+        // Opt-in: push to (or update in) the system calendar APRÈS que
+        // la row soit durable. Le bridge réutilise externalCalendarEventId
+        // pour ne pas dupliquer.
+        if (_addToSystemCalendar) {
+          try {
+            final pushed = await bridge.push(saved);
+            if (pushed != null) {
+              if (saved.externalCalendarEventId == null) {
+                await repo.update(
+                  saved.copyWith(
+                    externalCalendarId: pushed.calendarId,
+                    externalCalendarEventId: pushed.eventId,
+                  ),
+                );
+              }
+              messenger.showSnackBar(
+                SnackBar(content: Text(l10n.appointmentFormSyncedToCalendar)),
               );
             }
+          } on CalendarPermissionDenied {
             messenger.showSnackBar(
-              SnackBar(content: Text(l10n.appointmentFormSyncedToCalendar)),
+              SnackBar(
+                content: Text(l10n.appointmentFormCalendarPermissionDenied),
+              ),
+            );
+          } on CalendarUnavailable {
+            messenger.showSnackBar(
+              SnackBar(content: Text(l10n.appointmentFormCalendarMissing)),
             );
           }
-        } on CalendarPermissionDenied {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(l10n.appointmentFormCalendarPermissionDenied),
-            ),
-          );
-        } on CalendarUnavailable {
-          messenger.showSnackBar(
-            SnackBar(content: Text(l10n.appointmentFormCalendarMissing)),
-          );
         }
-      }
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      },
+    );
   }
 
   Future<void> _delete() async {
@@ -227,16 +229,17 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       body: l10n.sessionDetailDeleteBody,
     );
     if (!confirmed || !mounted) return;
-    setState(() => _busy = true);
-    try {
-      // Cascades through PurgeService so the calendar event (if any) is
-      // also removed in one go.
-      await ref.read(purgeServiceProvider).softDeleteAppointment(initial.id);
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    await runWithBusy(
+      context: context,
+      setBusy: (bool v) => setState(() => _busy = v),
+      action: () async {
+        // Cascades through PurgeService so the calendar event (if any) is
+        // also removed in one go.
+        await ref.read(purgeServiceProvider).softDeleteAppointment(initial.id);
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      },
+    );
   }
 
   @override

@@ -20,16 +20,18 @@ void main() {
       }
     });
 
-    test('aucune collision sur 50 000 UUIDs aléatoires', () {
-      // Probabilité d'au moins une collision (paradoxe des anniversaires
-      // sur 31 bits / N = 50 000) : ~1 / 1700. Acceptable pour un test
-      // déterministe ? Non — on utilise un seed fixe pour rendre le test
-      // reproductible. Si le test commence à flaker, c'est que la
-      // distribution FNV s'est dégradée — c'est exactement ce qu'on veut
-      // détecter.
+    test('aucune collision sur 5 000 UUIDs (cible métier réaliste)', () {
+      // Paradoxe des anniversaires sur 31 bits :
+      //   P(collision | N=50000) ≈ 44%  → flaky test
+      //   P(collision | N=10000) ≈ 2.3%
+      //   P(collision | N=5000)  ≈ 0.6%
+      // Un praticien typique a < 1000 RDV vivants à un instant T.
+      // 5000 valide largement la cible métier sans flake. Si la
+      // distribution FNV se dégrade (un hash bidon collisionnerait
+      // bien plus tôt), ce test détectera la régression.
       const uuid = Uuid();
       final seen = <int>{};
-      for (var i = 0; i < 50000; i++) {
+      for (var i = 0; i < 5000; i++) {
         final id = NotificationService.idForTesting(uuid.v4());
         expect(seen.add(id), isTrue, reason: 'collision détectée');
       }
