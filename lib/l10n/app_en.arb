@@ -267,6 +267,12 @@
   "settingsRgpdPurgeSubtitle": "Permanently erase a client and all related data.",
   "settingsLanguage": "Language",
   "settingsAbout": "About",
+  "settingsLegalTitle": "Legal documents",
+  "settingsLegalSubtitle": "Terms of service, privacy policy, legal notice.",
+  "legalScreenTitle": "Legal documents",
+  "legalDocCgs": "Terms of service",
+  "legalDocPrivacy": "Privacy policy",
+  "legalDocMentions": "Legal notice",
 
   "exportPdfButton": "Export PDF",
   "exportPdfHeader": "Session report",

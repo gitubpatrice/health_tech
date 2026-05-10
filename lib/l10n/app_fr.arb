@@ -267,6 +267,12 @@
   "settingsRgpdPurgeSubtitle": "Efface définitivement un client et toutes ses données liées.",
   "settingsLanguage": "Langue",
   "settingsAbout": "À propos",
+  "settingsLegalTitle": "Documents légaux",
+  "settingsLegalSubtitle": "CGS, politique de confidentialité, mentions légales.",
+  "legalScreenTitle": "Documents légaux",
+  "legalDocCgs": "Conditions générales de service",
+  "legalDocPrivacy": "Politique de confidentialité",
+  "legalDocMentions": "Mentions légales",
 
   "exportPdfButton": "Exporter PDF",
   "exportPdfHeader": "Compte rendu de séance",

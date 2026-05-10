@@ -6,6 +6,7 @@ import '../../core/auto_lock.dart';
 import '../../core/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../clients/client_providers.dart';
+import '../legal/legal_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -21,6 +22,15 @@ class SettingsScreen extends ConsumerWidget {
         const _ExportClientTile(),
         const Divider(height: 1),
         const _PurgeClientTile(),
+        const Divider(height: 1),
+        ListTile(
+          leading: const Icon(Icons.gavel_outlined),
+          title: Text(l10n.settingsLegalTitle),
+          subtitle: Text(l10n.settingsLegalSubtitle),
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(builder: (_) => const LegalScreen()),
+          ),
+        ),
         const Divider(height: 1),
         ListTile(
           leading: const Icon(Icons.lock_outline),
