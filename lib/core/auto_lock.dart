@@ -144,10 +144,12 @@ class _AutoLockGuardState extends ConsumerState<AutoLockGuard> {
       // Android fires onPause/onHide on transient events like file picker,
       // biometric prompt, share sheet, system dialog — locking on every one
       // of them would force a re-unlock after the most common user actions.
-      onPause: () =>
-          ref.read(autoLockControllerProvider.notifier).scheduleBackgroundLock(),
-      onHide: () =>
-          ref.read(autoLockControllerProvider.notifier).scheduleBackgroundLock(),
+      onPause: () => ref
+          .read(autoLockControllerProvider.notifier)
+          .scheduleBackgroundLock(),
+      onHide: () => ref
+          .read(autoLockControllerProvider.notifier)
+          .scheduleBackgroundLock(),
       // onDetach means the app is being torn down — lock immediately, no grace.
       onDetach: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
       onResume: () =>
