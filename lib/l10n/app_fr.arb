@@ -312,7 +312,7 @@
   "settingsBiometricEnrollSubtitle": "Confirme ton empreinte pour activer le déverrouillage biométrique.",
   "settingsBiometricEnabled": "Biométrie activée.",
   "settingsStrictModeTitle": "Mode strict",
-  "settingsStrictModeSubtitle": "Toujours demander la phrase secrète à chaque déverrouillage. La biométrie reste un raccourci uniquement pour les rappels rapprochés.",
+  "settingsStrictModeSubtitle": "Toujours demander la phrase secrète à chaque déverrouillage. Désactive le raccourci biométrique.",
   "settingsBiometricDisabled": "Biométrie désactivée.",
   "lockBiometricTitle": "Déverrouillage Health Tech",
   "lockBiometricSubtitle": "Place ton doigt sur le capteur pour ouvrir le coffre.",
@@ -395,5 +395,21 @@
 
   "disclaimerHeadline": "Bien-être, pas un avis médical",
   "disclaimerBody": "Les séances proposées s’inscrivent dans une démarche de bien-être et d’accompagnement énergétique. Elles ne remplacent ni un avis médical, ni un diagnostic, ni un traitement prescrit par un professionnel de santé ou un vétérinaire.",
-  "disclaimerAccept": "J’ai compris"
+  "disclaimerAccept": "J’ai compris",
+
+  "settingsAboutTitle": "À propos",
+  "settingsAboutSubtitle": "Version, éditeur, licence.",
+  "aboutScreenTitle": "À propos",
+  "aboutTagline": "Gestion des clients, animaux et séances pour praticien·ne·s du bien-être.",
+  "aboutVersionLabel": "Version",
+  "aboutEditorLabel": "Éditeur",
+  "aboutEditorValue": "Patrice Haltaya — micro-entreprise, SIRET 90437498000012",
+  "aboutContactLabel": "Contact",
+  "aboutContactValue": "contact@files-tech.com",
+  "aboutPrivacyLabel": "Confidentialité",
+  "aboutPrivacyValue": "100 % local sur ton appareil. Aucun cloud, aucun tracking, aucune télémétrie. Données chiffrées avec ta phrase secrète.",
+  "aboutLicenseLabel": "Licence",
+  "aboutLicenseValue": "Apache 2.0 — Files Tech",
+  "aboutLegalLink": "Voir les documents légaux",
+  "aboutCopyContact": "Copier l’adresse"
 }

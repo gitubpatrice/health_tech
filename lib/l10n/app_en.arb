@@ -312,7 +312,7 @@
   "settingsBiometricEnrollSubtitle": "Confirm your biometric to enable unlock shortcuts.",
   "settingsBiometricEnabled": "Biometric unlock enabled.",
   "settingsStrictModeTitle": "Strict mode",
-  "settingsStrictModeSubtitle": "Always require the passphrase on every unlock. Biometrics remain a shortcut for very recent reminders only.",
+  "settingsStrictModeSubtitle": "Always require the passphrase on every unlock. Disables the biometric shortcut.",
   "settingsBiometricDisabled": "Biometric unlock disabled.",
   "lockBiometricTitle": "Health Tech unlock",
   "lockBiometricSubtitle": "Touch the sensor to open your vault.",
@@ -395,5 +395,21 @@
 
   "disclaimerHeadline": "Wellness, not medical advice",
   "disclaimerBody": "The sessions offered are part of a wellness and energetic accompaniment approach. They do not replace medical advice, a diagnosis, or a treatment prescribed by a health or veterinary professional.",
-  "disclaimerAccept": "I understand"
+  "disclaimerAccept": "I understand",
+
+  "settingsAboutTitle": "About",
+  "settingsAboutSubtitle": "Version, publisher, licence.",
+  "aboutScreenTitle": "About",
+  "aboutTagline": "Client, animal and session management for wellness practitioners.",
+  "aboutVersionLabel": "Version",
+  "aboutEditorLabel": "Publisher",
+  "aboutEditorValue": "Patrice Haltaya — sole proprietorship, SIRET 90437498000012",
+  "aboutContactLabel": "Contact",
+  "aboutContactValue": "contact@files-tech.com",
+  "aboutPrivacyLabel": "Privacy",
+  "aboutPrivacyValue": "100% local on your device. No cloud, no tracking, no telemetry. Data encrypted with your passphrase.",
+  "aboutLicenseLabel": "Licence",
+  "aboutLicenseValue": "Apache 2.0 — Files Tech",
+  "aboutLegalLink": "Open legal documents",
+  "aboutCopyContact": "Copy address"
 }

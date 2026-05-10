@@ -10,6 +10,7 @@ import '../../core/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/ephemeral_cache.dart';
 import '../../widgets/error_view.dart' show localiseError;
+import '../about/about_screen.dart';
 import '../backup/backup_screen.dart';
 import '../clients/client_providers.dart';
 import '../legal/legal_screen.dart';
@@ -48,6 +49,15 @@ class SettingsScreen extends ConsumerWidget {
           subtitle: Text(l10n.settingsLegalSubtitle),
           onTap: () => Navigator.of(context).push<void>(
             MaterialPageRoute<void>(builder: (_) => const LegalScreen()),
+          ),
+        ),
+        const Divider(height: 1),
+        ListTile(
+          leading: const Icon(Icons.info_outline),
+          title: Text(l10n.settingsAboutTitle),
+          subtitle: Text(l10n.settingsAboutSubtitle),
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
           ),
         ),
         const Divider(height: 1),

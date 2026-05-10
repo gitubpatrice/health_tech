@@ -342,9 +342,9 @@ class HealthVault {
 
   /// Lit le timestamp (epoch ms) du dernier verrouillage. `null` = jamais
   /// verrouillé sur ce device (cold-start après install, ou destroy()).
-  /// Le Lock screen utilise ce timestamp pour décider si la biométrie est
-  /// autorisée (delta < 1h) ou si la passphrase est forcée (cold-start /
-  /// inactivité longue).
+  /// Le Lock screen utilise ce timestamp pour détecter un cold-start
+  /// (passphrase forcée) et un éventuel rollback du clock système
+  /// (anti-rollback : delta négatif ⇒ passphrase forcée).
   Future<int?> lastLockedAtMs() async {
     final s = await _storage.read(key: _kLastLockedAt);
     if (s == null) return null;

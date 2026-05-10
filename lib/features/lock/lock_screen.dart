@@ -163,10 +163,10 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_autoPromptScheduled || !mounted) return;
       _autoPromptScheduled = true;
-      // Mode hybride 1Password / Bitwarden : si on est sur cold-start ou
-      // après inactivité longue (> 1h) ou en mode strict, on skip l'auto
-      // prompt biométrique → la passphrase est forcée. La biométrie
-      // n'est qu'un raccourci pour les re-unlock à chaud.
+      // Mode hybride : si on est sur cold-start (premier setup) ou en
+      // mode strict, on skip l'auto-prompt biométrique → la passphrase
+      // est forcée. Sinon (cas nominal après activation biométrie),
+      // l'auto-prompt s'arme dès l'ouverture du Lock screen.
       final passphraseRequired = await ref.read(
         requirePassphraseProvider.future,
       );
