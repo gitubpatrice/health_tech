@@ -189,50 +189,56 @@ class _SessionsTab extends ConsumerWidget {
     final l10n = AppL10n.of(context);
     final list = ref.watch(sessionsByAnimalProvider(animalId));
     final animal = ref.watch(selectedAnimalProvider).valueOrNull;
-    return Stack(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        list.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ErrorView(error: e),
-          data: (sessions) => sessions.isEmpty
-              ? Center(child: Text(l10n.sessionsListEmpty))
-              : ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 96),
-                  itemCount: sessions.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final s = sessions[i];
-                    return ListTile(
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.event_note),
-                      ),
-                      title: Text(formatDate(s.startAt)),
-                      subtitle: Text(
-                        '${kindLabel(l10n, s.kind)} · '
-                        '${statusLabel(l10n, s.status)}',
-                      ),
-                    );
-                  },
-                ),
-        ),
         if (animal != null)
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton(
-              heroTag: 'add-session-animal-$animalId',
-              onPressed: () => Navigator.of(context).push<bool>(
-                MaterialPageRoute<bool>(
-                  builder: (_) => SessionFormScreen(
-                    defaultClientId: animal.clientId,
-                    defaultAnimalId: animalId,
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () => Navigator.of(context).push<bool>(
+                    MaterialPageRoute<bool>(
+                      builder: (_) => SessionFormScreen(
+                        defaultClientId: animal.clientId,
+                        defaultAnimalId: animalId,
+                      ),
+                      fullscreenDialog: true,
+                    ),
                   ),
-                  fullscreenDialog: true,
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.actionAdd),
                 ),
-              ),
-              child: const Icon(Icons.add),
+              ],
             ),
           ),
+        Expanded(
+          child: list.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => ErrorView(error: e),
+            data: (sessions) => sessions.isEmpty
+                ? Center(child: Text(l10n.sessionsListEmpty))
+                : ListView.separated(
+                    itemCount: sessions.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final s = sessions[i];
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.event_note),
+                        ),
+                        title: Text(formatDate(s.startAt)),
+                        subtitle: Text(
+                          '${kindLabel(l10n, s.kind)} · '
+                          '${statusLabel(l10n, s.status)}',
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ),
       ],
     );
   }

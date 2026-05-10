@@ -205,45 +205,49 @@ class _AnimalsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
     final list = ref.watch(animalsByClientProvider(clientId));
-    return Stack(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        list.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ErrorView(error: e),
-          data: (animals) => animals.isEmpty
-              ? Center(child: Text(l10n.animalsListEmpty))
-              : ListView.separated(
-                  // Trailing space so the floating + button never sits on
-                  // top of the last row (it used to clip the tap target).
-                  padding: const EdgeInsets.only(bottom: 96),
-                  itemCount: animals.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final a = animals[i];
-                    return ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.pets)),
-                      title: Text(a.name),
-                      subtitle: Text(speciesLabel(l10n, a.species)),
-                      onTap: () {
-                        ref.read(selectedAnimalIdProvider.notifier).state =
-                            a.id;
-                      },
-                    );
-                  },
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Wrap(
+            spacing: 8,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: () => Navigator.of(context).push<bool>(
+                  MaterialPageRoute<bool>(
+                    builder: (_) => AnimalFormScreen(defaultClientId: clientId),
+                    fullscreenDialog: true,
+                  ),
                 ),
-        ),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: FloatingActionButton(
-            heroTag: 'add-animal-$clientId',
-            onPressed: () => Navigator.of(context).push<bool>(
-              MaterialPageRoute<bool>(
-                builder: (_) => AnimalFormScreen(defaultClientId: clientId),
-                fullscreenDialog: true,
+                icon: const Icon(Icons.add),
+                label: Text(l10n.actionAdd),
               ),
-            ),
-            child: const Icon(Icons.add),
+            ],
+          ),
+        ),
+        Expanded(
+          child: list.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => ErrorView(error: e),
+            data: (animals) => animals.isEmpty
+                ? Center(child: Text(l10n.animalsListEmpty))
+                : ListView.separated(
+                    itemCount: animals.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final a = animals[i];
+                      return ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.pets)),
+                        title: Text(a.name),
+                        subtitle: Text(speciesLabel(l10n, a.species)),
+                        onTap: () {
+                          ref.read(selectedAnimalIdProvider.notifier).state =
+                              a.id;
+                        },
+                      );
+                    },
+                  ),
           ),
         ),
       ],
@@ -259,48 +263,55 @@ class _SessionsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
     final list = ref.watch(sessionsByClientProvider(clientId));
-    return Stack(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        list.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ErrorView(error: e),
-          data: (sessions) => sessions.isEmpty
-              ? Center(child: Text(l10n.sessionsListEmpty))
-              : ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 96),
-                  itemCount: sessions.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final s = sessions[i];
-                    return ListTile(
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.event_note),
-                      ),
-                      title: Text(formatDate(s.startAt)),
-                      subtitle: Text(
-                        '${kindLabel(l10n, s.kind)} · '
-                        '${statusLabel(l10n, s.status)}',
-                      ),
-                      onTap: () {
-                        ref.read(selectedSessionIdProvider.notifier).state =
-                            s.id;
-                      },
-                    );
-                  },
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Wrap(
+            spacing: 8,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: () => Navigator.of(context).push<bool>(
+                  MaterialPageRoute<bool>(
+                    builder: (_) =>
+                        SessionFormScreen(defaultClientId: clientId),
+                    fullscreenDialog: true,
+                  ),
                 ),
-        ),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: FloatingActionButton(
-            heroTag: 'add-session-$clientId',
-            onPressed: () => Navigator.of(context).push<bool>(
-              MaterialPageRoute<bool>(
-                builder: (_) => SessionFormScreen(defaultClientId: clientId),
-                fullscreenDialog: true,
+                icon: const Icon(Icons.add),
+                label: Text(l10n.actionAdd),
               ),
-            ),
-            child: const Icon(Icons.add),
+            ],
+          ),
+        ),
+        Expanded(
+          child: list.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => ErrorView(error: e),
+            data: (sessions) => sessions.isEmpty
+                ? Center(child: Text(l10n.sessionsListEmpty))
+                : ListView.separated(
+                    itemCount: sessions.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final s = sessions[i];
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.event_note),
+                        ),
+                        title: Text(formatDate(s.startAt)),
+                        subtitle: Text(
+                          '${kindLabel(l10n, s.kind)} · '
+                          '${statusLabel(l10n, s.status)}',
+                        ),
+                        onTap: () {
+                          ref.read(selectedSessionIdProvider.notifier).state =
+                              s.id;
+                        },
+                      );
+                    },
+                  ),
           ),
         ),
       ],
