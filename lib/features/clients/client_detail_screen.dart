@@ -145,12 +145,8 @@ class _InfoTab extends StatelessWidget {
               text: l10n.clientFormGeobiology,
             ),
           if ((client.profile['em_waves'] as bool?) ?? false)
-            DetailRow(
-              icon: Icons.waves_outlined,
-              text: l10n.clientFormEmWaves,
-            ),
-        ] else if (client.profession != null &&
-            client.profession!.isNotEmpty)
+            DetailRow(icon: Icons.waves_outlined, text: l10n.clientFormEmWaves),
+        ] else if (client.profession != null && client.profession!.isNotEmpty)
           DetailRow(icon: Icons.work_outline, text: client.profession!),
         if (client.phone != null && client.phone!.isNotEmpty)
           DetailRow(icon: Icons.phone_outlined, text: client.phone!),

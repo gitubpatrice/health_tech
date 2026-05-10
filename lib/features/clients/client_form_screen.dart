@@ -158,9 +158,7 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
       // For a business client, lastName carries the company name and
       // firstName stays empty; this keeps the search index (FTS5 on
       // last/first/phone/email) functional without a dedicated column.
-      lastName: isBusiness
-          ? _companyName.text.trim()
-          : _lastName.text.trim(),
+      lastName: isBusiness ? _companyName.text.trim() : _lastName.text.trim(),
       firstName: isBusiness ? '' : _firstName.text.trim(),
       birthDate: isBusiness ? null : _birthDate,
       phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
@@ -247,8 +245,7 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
                   ),
                 ],
                 selected: {_kind},
-                onSelectionChanged: (s) =>
-                    setState(() => _kind = s.first),
+                onSelectionChanged: (s) => setState(() => _kind = s.first),
               ),
               const SizedBox(height: 16),
               if (_kind == ClientKind.individual) ...[
@@ -336,8 +333,7 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _geobiology,
-                  onChanged: (v) =>
-                      setState(() => _geobiology = v ?? false),
+                  onChanged: (v) => setState(() => _geobiology = v ?? false),
                   title: Text(l10n.clientFormGeobiology),
                   controlAffinity: ListTileControlAffinity.leading,
                 ),
