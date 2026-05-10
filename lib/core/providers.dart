@@ -45,6 +45,18 @@ final biometricStatusProvider = FutureProvider<BiometricStatus>((ref) async {
   final vault = ref.watch(vaultProvider);
   final available = await vault.biometricAvailable();
   final enrolled = await vault.isBiometricEnrolled();
+  // Cas "biométrie supprimée côté Android après opt-in dans l'app" :
+  // l'app pense être enrolled (le blob IV/CT vit toujours dans
+  // FlutterSecureStorage) mais le hardware n'a plus aucune empreinte
+  // STRONG enrôlée. La clé Keystore a déjà été invalidée par Android
+  // (`setInvalidatedByBiometricEnrollment`), donc le blob est mort.
+  // On auto-nettoie pour que le toggle Settings retombe à OFF — sinon
+  // il reste ON greyed-out et l'utilisateur ne comprend pas pourquoi
+  // la biométrie ne marche plus.
+  if (enrolled && !available) {
+    await vault.disableBiometric();
+    return const BiometricStatus(available: false, enrolled: false);
+  }
   return BiometricStatus(available: available, enrolled: enrolled);
 });
 
