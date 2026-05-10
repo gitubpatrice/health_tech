@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/attachment.dart';
 import '../../utils/atomic_write.dart';
 import '../../utils/image_bounds.dart';
+import '../../utils/image_compress.dart';
 import '../db/database.dart';
 import '../vault/field_crypto.dart';
 
@@ -71,6 +72,9 @@ class AttachmentRepository {
     if (bytes.length > kMaxAttachmentBytes) {
       throw AttachmentTooLargeError(bytes.length);
     }
+    var workingBytes = bytes;
+    var workingMime = mimeType;
+    var workingFilename = filename;
     if (mimeType.startsWith('image/')) {
       final dims = ImageBoundsProbe.probe(bytes);
       if (dims == null) {
@@ -79,11 +83,25 @@ class AttachmentRepository {
       if (dims.exceeds()) {
         throw const AttachmentRejectedError('image_too_large');
       }
+      // Downscale + re-encode huge phone photos so we don't ship 5 MB
+      // JPEGs into the encrypted store. Runs in an isolate so a 12 MP
+      // decode does not freeze the UI. If the compressor returns the
+      // bytes unchanged (small image, decode failure, or larger output),
+      // we keep the original.
+      final compressed = await ImageCompress.maybeCompress(
+        bytes: bytes,
+        mime: mimeType,
+      );
+      workingBytes = compressed.bytes;
+      if (compressed.mimeType != mimeType) {
+        workingMime = compressed.mimeType;
+        workingFilename = _swapExtension(filename, '.jpg');
+      }
     }
 
     final id = _uuid.v4();
     final storagePath = '$id.enc';
-    final encrypted = await _crypto.encryptBytes(bytes);
+    final encrypted = await _crypto.encryptBytes(workingBytes);
     final file = await _fileFor(storagePath);
     await atomicWriteBytes(file, encrypted);
 
@@ -96,9 +114,9 @@ class AttachmentRepository {
             ownerType: ownerType,
             ownerId: ownerId,
             kind: kind,
-            filename: filename,
-            mimeType: mimeType,
-            sizeBytes: bytes.length,
+            filename: workingFilename,
+            mimeType: workingMime,
+            sizeBytes: workingBytes.length,
             storagePath: storagePath,
             nonceB64: '',
             createdAt: Value(epoch),
@@ -110,12 +128,21 @@ class AttachmentRepository {
       ownerType: ownerType,
       ownerId: ownerId,
       kind: kind,
-      filename: filename,
-      mimeType: mimeType,
-      sizeBytes: bytes.length,
+      filename: workingFilename,
+      mimeType: workingMime,
+      sizeBytes: workingBytes.length,
       storagePath: storagePath,
       createdAt: DateTime.fromMillisecondsSinceEpoch(epoch * 1000),
     );
+  }
+
+  /// Replace (or append) the file extension. Used after image compression
+  /// re-encodes a PNG/WebP as JPEG so the stored filename stays consistent
+  /// with the actual bytes — `paw.png` becomes `paw.jpg`.
+  static String _swapExtension(String filename, String newExt) {
+    final dot = filename.lastIndexOf('.');
+    final stem = dot <= 0 ? filename : filename.substring(0, dot);
+    return '$stem$newExt';
   }
 
   Future<Uint8List> readBytes(String id) async {

@@ -61,8 +61,45 @@ class AutoLockController extends StateNotifier<Duration> {
 
   /// Forces a lock now (used when app goes to background).
   void lockNow() {
+    _backgroundGrace?.cancel();
+    _backgroundGrace = null;
     _ref.read(vaultSessionProvider.notifier).lock();
   }
+
+  /// Schedule a lock after a short grace period. Used by the lifecycle
+  /// listener: locking instantly on `onPause` / `onHide` would lock the
+  /// vault every time the user opens a file picker, the share sheet, the
+  /// biometric prompt, or pulls down the notification shade — yielding a
+  /// terrible UX where most user actions force a re-unlock. With the grace
+  /// period, those transient pauses are tolerated; only a true "user left
+  /// the app" pause (longer than [_backgroundGracePeriod]) triggers a lock.
+  void scheduleBackgroundLock() {
+    _backgroundGrace?.cancel();
+    _backgroundGrace = Timer(_backgroundGracePeriod, () {
+      _backgroundGrace = null;
+      if (_ref.read(vaultSessionProvider) != null) {
+        _ref.read(vaultSessionProvider.notifier).lock();
+      }
+    });
+  }
+
+  /// Called when the app is back in the foreground — cancels any pending
+  /// background lock and resets the inactivity timer.
+  void cancelBackgroundLock() {
+    _backgroundGrace?.cancel();
+    _backgroundGrace = null;
+    onUserActivity();
+  }
+
+  /// Grace period before locking on background. 2 minutes leaves ample
+  /// room for file pickers / gallery navigation / share sheet / biometric
+  /// prompt, and matches the user's expectation that briefly switching
+  /// apps does not force a re-unlock. The real long-form auto-lock
+  /// (configurable in Settings, default 5 min of *inactivity*) remains
+  /// the authoritative session timeout — this constant only governs the
+  /// transient pause/resume case.
+  static const Duration _backgroundGracePeriod = Duration(minutes: 2);
+  Timer? _backgroundGrace;
 
   void _tick() {
     if (_ref.read(vaultSessionProvider) == null) return; // already locked
@@ -75,6 +112,8 @@ class AutoLockController extends StateNotifier<Duration> {
   void dispose() {
     _ticker?.cancel();
     _ticker = null;
+    _backgroundGrace?.cancel();
+    _backgroundGrace = null;
     _stopwatch.stop();
     super.dispose();
   }
@@ -101,11 +140,18 @@ class _AutoLockGuardState extends ConsumerState<AutoLockGuard> {
   void initState() {
     super.initState();
     _lifecycleListener = AppLifecycleListener(
-      onPause: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
-      onHide: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
+      // Schedule a lock with a grace period instead of locking instantly:
+      // Android fires onPause/onHide on transient events like file picker,
+      // biometric prompt, share sheet, system dialog — locking on every one
+      // of them would force a re-unlock after the most common user actions.
+      onPause: () =>
+          ref.read(autoLockControllerProvider.notifier).scheduleBackgroundLock(),
+      onHide: () =>
+          ref.read(autoLockControllerProvider.notifier).scheduleBackgroundLock(),
+      // onDetach means the app is being torn down — lock immediately, no grace.
       onDetach: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
       onResume: () =>
-          ref.read(autoLockControllerProvider.notifier).onUserActivity(),
+          ref.read(autoLockControllerProvider.notifier).cancelBackgroundLock(),
     );
     Future<void>.microtask(() async {
       await ref.read(autoLockControllerProvider.notifier).init();
