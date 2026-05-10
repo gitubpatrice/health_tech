@@ -5,6 +5,7 @@ import '../../core/providers.dart';
 import '../../domain/animal.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../widgets/busy_helpers.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/section_title.dart';
 import '../clients/client_providers.dart';
@@ -152,17 +153,19 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
     );
 
     final repo = ref.read(animalRepositoryProvider);
-    try {
-      if (widget.initial == null) {
-        await repo.create(draft);
-      } else {
-        await repo.update(draft);
-      }
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    await runWithBusy(
+      context: context,
+      setBusy: (bool v) => setState(() => _busy = v),
+      action: () async {
+        if (widget.initial == null) {
+          await repo.create(draft);
+        } else {
+          await repo.update(draft);
+        }
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      },
+    );
   }
 
   @override

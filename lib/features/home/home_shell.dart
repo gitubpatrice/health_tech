@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
-import '../../data/services/notification_service.dart';
+import '../../data/services/notification_service.dart' show NotificationStrings;
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/adaptive_scaffold.dart';
 import '../agenda/agenda_screen.dart';
@@ -55,11 +55,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         bodyWithLocation: l10n.notifBodyWithLocation,
       );
       try {
-        final repo = ref.read(appointmentRepositoryProvider);
-        final upcoming = await repo.watchUpcoming(limit: 200).first;
+        // Source unique : NotificationReconciler enchaîne cancelAll +
+        // re-schedule depuis la DB courante. Pas besoin pour HomeShell de
+        // savoir que c'est un cancel-then-schedule sous le capot.
         await ref
-            .read(notificationServiceProvider)
-            .rescheduleAll(upcoming, strings);
+            .read(notificationReconcilerProvider)
+            .reconcile(strings: strings);
       } on Object {
         // best-effort : alarms manquées plutôt que crash
       }
@@ -69,6 +70,32 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final ref = this.ref;
+    // Gate sur databaseProvider résolu : avant ce refactor, tous les
+    // repository providers faisaient `requireValue` au build, ce qui
+    // throw `StateError` pendant la fenêtre [unlock OK → DB ouverte] et
+    // affichait un flash d'ErrorView rouge. En attendant ici la résolution
+    // du Future, les enfants du shell (et donc tous les `requireValue`
+    // downstream) ne sont construits qu'une fois la DB prête.
+    final dbAsync = ref.watch(databaseProvider);
+    return dbAsync.when(
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              AppL10n.of(context).lockStorageError,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+      data: (_) => _buildShell(context, ref),
+    );
+  }
+
+  Widget _buildShell(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
     final index = ref.watch(homeTabProvider);
     const pages = [

@@ -343,7 +343,8 @@ class BackupService {
     // Flush every alarm before swapping the DB. Without this, the previous
     // device's reminders would still fire — pointing at appointments whose
     // ids no longer match anything in the restored DB. Boot-receiver replay
-    // would resurrect them after every reboot too.
+    // would resurrect them after every reboot too. La re-population se fait
+    // côté HomeShell au prochain unlock (le DB sera la nouvelle base).
     try {
       await notifications.cancelAll();
     } on Object {

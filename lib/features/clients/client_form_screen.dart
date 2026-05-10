@@ -6,6 +6,7 @@ import '../../domain/address.dart';
 import '../../domain/client.dart';
 import '../../domain/consent.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/busy_helpers.dart';
 import '../../widgets/section_title.dart';
 
 /// Create / edit form for a client. Uses one [Form] with a [GlobalKey] for
@@ -193,17 +194,19 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
     );
 
     final repo = ref.read(clientRepositoryProvider);
-    try {
-      if (widget.initial == null) {
-        await repo.create(draft);
-      } else {
-        await repo.update(draft);
-      }
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    await runWithBusy(
+      context: context,
+      setBusy: (v) => setState(() => _busy = v),
+      action: () async {
+        if (widget.initial == null) {
+          await repo.create(draft);
+        } else {
+          await repo.update(draft);
+        }
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      },
+    );
   }
 
   @override

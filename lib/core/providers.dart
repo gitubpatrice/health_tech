@@ -12,6 +12,7 @@ import '../data/repositories/session_repository.dart';
 import '../data/repositories/tag_repository.dart';
 import '../data/services/backup_service.dart';
 import '../data/services/global_search_service.dart';
+import '../data/services/notification_reconciler.dart';
 import '../data/services/notification_service.dart';
 import '../data/services/purge_service.dart';
 import '../data/services/rgpd_export_service.dart';
@@ -182,10 +183,14 @@ final attachmentRepositoryProvider = Provider<AttachmentRepository>((ref) {
   final repo = AttachmentRepository(db, crypto);
   // Sweep stale `.enc` files left behind by previous crashes / partial
   // imports. Runs once per unlock, after a short delay so we don't race
-  // with a user who immediately starts importing files (the sweep would
-  // otherwise see a fresh `.enc` written but not yet inserted in the DB
-  // and remove it as orphan).
-  Future.delayed(const Duration(seconds: 5), repo.purgeOrphans);
+  // with a user who immediately starts importing files. On lock, le Timer
+  // est annulé via ref.onDispose pour qu'un purgeOrphans ne tourne pas
+  // sur un repo dont la DB a été fermée entre-temps (race observée dans
+  // l'audit P1-7).
+  final timer = Timer(const Duration(seconds: 5), () {
+    unawaited(repo.purgeOrphans());
+  });
+  ref.onDispose(timer.cancel);
   return repo;
 });
 
@@ -221,6 +226,17 @@ final globalSearchServiceProvider = Provider<GlobalSearchService>((ref) {
 /// `_initialised` / `_tzReady` caches survive across screens.
 final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService();
+});
+
+/// Source unique de vérité pour la synchronisation file d'alarmes ↔ DB.
+/// Tous les chemins (boot post-unlock, post-restore, post-destroy) doivent
+/// passer par ici plutôt que d'appeler directement
+/// `notifications.cancelAll` / `rescheduleAll` au risque d'oublier l'un.
+final notificationReconcilerProvider = Provider<NotificationReconciler>((ref) {
+  return NotificationReconciler(
+    notifications: ref.watch(notificationServiceProvider),
+    appointments: ref.watch(appointmentRepositoryProvider),
+  );
 });
 
 /// Encrypted device-wide backup. The service reads the open [HealthDb] when
