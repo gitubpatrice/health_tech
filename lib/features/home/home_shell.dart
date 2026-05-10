@@ -6,6 +6,7 @@ import '../../widgets/adaptive_scaffold.dart';
 import '../agenda/agenda_screen.dart';
 import '../animals/animals_screen.dart';
 import '../clients/clients_screen.dart';
+import '../search/global_search_screen.dart';
 import '../sessions/sessions_screen.dart';
 import '../settings/settings_screen.dart';
 import 'home_screen.dart';
@@ -97,6 +98,18 @@ class HomeShell extends ConsumerWidget {
               ? l10n.navSettings
               : destinations[index.index].label,
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: l10n.searchTitle,
+            onPressed: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => const GlobalSearchScreen(),
+                fullscreenDialog: true,
+              ),
+            ),
+          ),
+        ],
         body: IndexedStack(index: index.index, children: pages),
       ),
     );

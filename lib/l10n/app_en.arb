@@ -318,6 +318,11 @@
   "lockBiometricButton": "Unlock with biometrics",
   "lockBiometricFailed": "Biometric authentication refused.",
 
+  "searchTitle": "Search",
+  "searchHint": "Search across records…",
+  "searchEmptyHint": "Type a name, an address, a species, a session type… Encrypted notes (health, reports) are not indexed by design.",
+  "searchNoResults": "No results.",
+
   "appointmentFormReminderHelper": "Local notification sent before the appointment.",
   "appointmentFormReminderNone": "No reminder",
   "appointmentFormReminderMinutes": "{n} min before",

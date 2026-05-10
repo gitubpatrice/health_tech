@@ -285,8 +285,7 @@ Future<String?> _askPassphrase(
                     errorText: error,
                     suffixIcon: visibility(
                       current: obscured,
-                      onPressed: () =>
-                          setState(() => obscured = !obscured),
+                      onPressed: () => setState(() => obscured = !obscured),
                     ),
                   ),
                 ),
@@ -299,9 +298,8 @@ Future<String?> _askPassphrase(
                       labelText: l10n.backupPassphraseConfirmLabel,
                       suffixIcon: visibility(
                         current: obscuredConfirm,
-                        onPressed: () => setState(
-                          () => obscuredConfirm = !obscuredConfirm,
-                        ),
+                        onPressed: () =>
+                            setState(() => obscuredConfirm = !obscuredConfirm),
                       ),
                     ),
                   ),

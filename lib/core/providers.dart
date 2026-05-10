@@ -9,6 +9,7 @@ import '../data/repositories/client_repository.dart';
 import '../data/repositories/session_repository.dart';
 import '../data/repositories/tag_repository.dart';
 import '../data/services/backup_service.dart';
+import '../data/services/global_search_service.dart';
 import '../data/services/notification_service.dart';
 import '../data/services/purge_service.dart';
 import '../data/services/rgpd_export_service.dart';
@@ -187,6 +188,14 @@ final purgeServiceProvider = Provider((ref) {
 /// actually be invoked.
 final systemCalendarBridgeProvider = Provider<SystemCalendarBridge>((ref) {
   return SystemCalendarBridge();
+});
+
+/// Cross-entity search across clients/animals/sessions/appointments.
+/// Searches plaintext columns only — encrypted notes stay opaque on
+/// purpose (they can't appear in any future FTS index either).
+final globalSearchServiceProvider = Provider<GlobalSearchService>((ref) {
+  final db = ref.watch(databaseProvider).requireValue;
+  return GlobalSearchService(db);
 });
 
 /// On-device appointment reminder scheduler. Stateless wrapper around
