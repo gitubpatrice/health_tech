@@ -1,7 +1,7 @@
 name: health_tech
 description: "Health Tech - Gestion clients, animaux et seances pour praticiens bien-etre."
 publish_to: 'none'
-version: 0.7.0+1
+version: 0.8.0+1
 
 environment:
   sdk: ^3.11.5
