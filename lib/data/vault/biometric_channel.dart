@@ -107,6 +107,11 @@ class BiometricFailure implements Exception {
   final String code;
   bool get userCancelled => code == 'auth_error';
   bool get keyMissing => code == 'no_key';
+
+  /// L'utilisateur a enrôlé une nouvelle empreinte (ou retiré toutes les
+  /// existantes) après l'activation : la clé Keystore est invalidée. Le
+  /// caller doit wipe les blobs IV/CT et inviter à ré-activer.
+  bool get keyInvalidated => code == 'key_invalidated';
   @override
   String toString() => 'BiometricFailure($code)';
 }

@@ -31,23 +31,40 @@ class HomeStats {
   final List<Appointment> upcomingAppointments;
 }
 
+/// `now` "réactif" — re-fire chaque jour à minuit local pour que les
+/// providers qui dépendent de "aujourd'hui" basculent au lendemain sans
+/// nécessiter un rebuild manuel. Avant, `appointmentsTodayProvider`
+/// capturait `DateTime.now()` au build du provider et restait bloqué
+/// sur la date initiale jusqu'à un cold-start.
+final _todayBoundaryProvider = StreamProvider<DateTime>((ref) async* {
+  while (true) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    yield today;
+    final nextMidnight = today.add(const Duration(days: 1, seconds: 1));
+    await Future<void>.delayed(nextMidnight.difference(DateTime.now()));
+  }
+});
+
 /// Today's appointments, recomputed on every DB change. Bounds use local
 /// midnight-to-midnight so a session starting at 23h45 stays in "today".
 final appointmentsTodayProvider = StreamProvider<List<Appointment>>((ref) {
   final repo = ref.watch(appointmentRepositoryProvider);
-  final now = DateTime.now();
-  final start = DateTime(now.year, now.month, now.day);
-  final end = start.add(const Duration(days: 1));
-  return repo.watchInRange(start, end);
+  final today = ref.watch(_todayBoundaryProvider).valueOrNull;
+  if (today == null) return const Stream.empty();
+  final end = today.add(const Duration(days: 1));
+  return repo.watchInRange(today, end);
 });
 
-/// Sessions in the calendar month containing `now`. Soft-deleted sessions
-/// are filtered out at repository level.
+/// Sessions in the calendar month containing `now`. Bornes recalculées via
+/// `_todayBoundaryProvider` qui re-fire à minuit, donc le mois bascule
+/// automatiquement le 1er du mois suivant.
 final sessionsThisMonthProvider = StreamProvider<List<Session>>((ref) {
   final repo = ref.watch(sessionRepositoryProvider);
-  final now = DateTime.now();
-  final start = DateTime(now.year, now.month, 1);
-  final end = DateTime(now.year, now.month + 1, 1);
+  final today = ref.watch(_todayBoundaryProvider).valueOrNull;
+  if (today == null) return const Stream.empty();
+  final start = DateTime(today.year, today.month, 1);
+  final end = DateTime(today.year, today.month + 1, 1);
   return repo.watchInRange(start, end);
 });
 

@@ -139,6 +139,22 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
   bool _obscured = true;
   String? _error;
   bool _biometricAttempted = false;
+  bool _autoPromptScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Un seul auto-prompt par durée de vie du widget — le whenData de
+    // build() pouvait fire l'auto-prompt à chaque rebuild si
+    // `_biometricAttempted` n'était pas encore positionné synchroniquement.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_autoPromptScheduled || !mounted) return;
+      _autoPromptScheduled = true;
+      final status = await ref.read(biometricStatusProvider.future);
+      if (!mounted) return;
+      if (status.readyForUnlock) await _tryBiometric();
+    });
+  }
 
   @override
   void dispose() {
@@ -193,14 +209,10 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
   Widget build(BuildContext context) {
     final l10n = AppL10n.of(context);
     final bioStatus = ref.watch(biometricStatusProvider);
-    // Auto-prompt on first build when biometric is enrolled. The prompt
-    // appears immediately so the user does not have to tap a separate
-    // button — passphrase remains available behind it.
-    bioStatus.whenData((s) {
-      if (s.readyForUnlock && !_biometricAttempted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _tryBiometric());
-      }
-    });
+    // L'auto-prompt est armé une seule fois dans initState() — pas ici
+    // (le whenData() refire à chaque rebuild). On lit juste la valeur
+    // pour conditionner l'affichage du bouton "Déverrouiller avec la
+    // biométrie".
     return Scaffold(
       body: SafeArea(
         child: Center(

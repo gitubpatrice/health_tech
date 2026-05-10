@@ -318,18 +318,45 @@ class HealthVault {
     required String subtitle,
     required String negativeButton,
   }) => _serialize(() async {
+    // Si déjà déverrouillé (cas race auto-prompt + tap manuel), on wipe
+    // l'ancien matériel avant d'écrire le nouveau pour ne pas fuiter une
+    // ancienne copie du VEK en mémoire jusqu'au prochain GC.
+    if (_vek != null) {
+      _crypto?.dispose();
+      _vek!.fillRange(0, _vek!.length, 0);
+      _vek = null;
+      _crypto = null;
+    }
     final ivB64 = await _storage.read(key: _kBioIv);
     final ctB64 = await _storage.read(key: _kBioCipher);
     if (ivB64 == null || ctB64 == null) {
       throw const VaultNotInitialisedError();
     }
-    final vek = await _biometric.unwrap(
-      iv: base64Decode(ivB64),
-      ciphertext: base64Decode(ctB64),
-      title: title,
-      subtitle: subtitle,
-      negativeButton: negativeButton,
-    );
+    final iv = base64Decode(ivB64);
+    if (iv.length != 12) {
+      // IV corrompu (n'a jamais dû arriver via le bridge mais defense
+      // in depth). Désactive la biométrie pour forcer un setup propre.
+      await disableBiometric();
+      return false;
+    }
+    Uint8List vek;
+    try {
+      vek = await _biometric.unwrap(
+        iv: iv,
+        ciphertext: base64Decode(ctB64),
+        title: title,
+        subtitle: subtitle,
+        negativeButton: negativeButton,
+      );
+    } on BiometricFailure catch (e) {
+      // L'enrollment biométrique a changé ou la clé est sortie du
+      // Keystore : on nettoie côté vault pour qu'un futur prompt ne
+      // tape pas indéfiniment dans un blob orphelin.
+      if (e.keyInvalidated) {
+        await disableBiometric();
+      }
+      rethrow;
+    }
     if (vek.length != _vekLen) {
       // Corrupted blob — fail closed and force passphrase re-entry.
       await disableBiometric();

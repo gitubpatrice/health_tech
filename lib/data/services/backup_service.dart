@@ -110,8 +110,15 @@ class BackupService {
 
   /// Build an encrypted backup bundle. The vault MUST be unlocked: we need
   /// to checkpoint the WAL to copy the database file in a consistent state.
+  /// Longueur minimum imposée à la passphrase de sauvegarde. 14 caractères
+  /// est le seuil sous lequel un brute-force GPU sur passphrase humaine
+  /// (≈ 2-3 bits d'entropie/char) reste réaliste avec Argon2id 64 MiB / 3
+  /// itérations. À 14 chars, même une passphrase faiblement entropique
+  /// dépasse les semaines de brute-force sur cluster A100.
+  static const int _minBackupPassphraseLength = 14;
+
   Future<Uint8List> export({required String backupPassphrase}) async {
-    if (backupPassphrase.length < 12) {
+    if (backupPassphrase.length < _minBackupPassphraseLength) {
       throw const ValidationError('backup_passphrase_too_short', 'passphrase');
     }
     final db = dbReader();
@@ -475,8 +482,12 @@ class BackupService {
   /// safe defaults. Without this floor, an attacker who substitutes the
   /// header (and re-MAC's it under their own passphrase) could feed us a
   /// 1-iteration / 1 MiB derivation and brute-force at will.
-  static const int _kdfMemoryKbFloor = 32 * 1024;
-  static const int _kdfIterationsFloor = 2;
+  ///
+  /// Floor aligned with [_kdfMemoryKb] and [_kdfIterations]: any legitimate
+  /// .htbk produced by this app uses exactly those values, so rejecting
+  /// anything weaker has zero false-positive cost.
+  static const int _kdfMemoryKbFloor = 64 * 1024;
+  static const int _kdfIterationsFloor = 3;
 
   _Envelope _parseEnvelope(Uint8List bundle) {
     if (bundle.length < _magic.length + _headerLenSize + _nonceLen + _macLen) {

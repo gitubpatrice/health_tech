@@ -28,7 +28,7 @@ class HealthDb extends _$HealthDb {
   HealthDb(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -38,11 +38,16 @@ class HealthDb extends _$HealthDb {
       await _createFts();
     },
     onUpgrade: (m, from, to) async {
-      // v1 → v2: introduce the `kind` column on clients (individual /
-      // business) so the form can switch into geobiology / EM survey mode.
-      // Existing rows default to 'individual'.
+      // v1 → v2 : colonne `kind` sur clients (individual / business).
       if (from < 2) {
         await m.addColumn(clients, clients.kind);
+      }
+      // v2 → v3 : indices appointments(client_id) / appointments(animal_id) +
+      // composites partiels sur (start_at) WHERE deleted_at IS NULL pour que
+      // watchUpcoming / watchInRange fasse un range scan plutôt qu'un full
+      // table scan à 1000+ rdv.
+      if (from < 3) {
+        await _createIndexesV3();
       }
     },
     beforeOpen: (details) async {
@@ -76,6 +81,36 @@ class HealthDb extends _$HealthDb {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_taglinks_owner '
       'ON tag_links(owner_type, owner_id);',
+    );
+    // v3 indices intégrés dès la création (nouveau coffre = directement v3).
+    await _createIndexesV3();
+  }
+
+  /// Indices ajoutés en v3 : `appointments` n'avait que `start_at`, ce qui
+  /// suffisait au début mais devient un full scan dès qu'on filtre par
+  /// `client_id` ou `animal_id` (PurgeService.softDeleteAnimal,
+  /// agenda.watchByClient, ...). Le composite partiel `(start_at) WHERE
+  /// deleted_at IS NULL` accélère watchUpcoming / watchInRange à 1000+ rdv.
+  Future<void> _createIndexesV3() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_appointments_client '
+      'ON appointments(client_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_appointments_animal '
+      'ON appointments(animal_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_appointments_active_start '
+      'ON appointments(start_at) WHERE deleted_at IS NULL;',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sessions_active_start '
+      'ON sessions(start_at) WHERE deleted_at IS NULL;',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sessions_client_start '
+      'ON sessions(client_id, start_at);',
     );
   }
 

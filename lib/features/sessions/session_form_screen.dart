@@ -433,13 +433,28 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                 decoration: InputDecoration(
                   labelText: l10n.sessionFormImprovementLevel,
                 ),
-                items: const [
-                  DropdownMenuItem(value: null, child: Text('—')),
-                  DropdownMenuItem(value: 0, child: Text('0 — aucune')),
-                  DropdownMenuItem(value: 1, child: Text('1 — légère')),
-                  DropdownMenuItem(value: 2, child: Text('2 — moyenne')),
-                  DropdownMenuItem(value: 3, child: Text('3 — importante')),
-                  DropdownMenuItem(value: 4, child: Text('4 — à suivre')),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('—')),
+                  DropdownMenuItem(
+                    value: 0,
+                    child: Text(l10n.sessionFormImprovement0),
+                  ),
+                  DropdownMenuItem(
+                    value: 1,
+                    child: Text(l10n.sessionFormImprovement1),
+                  ),
+                  DropdownMenuItem(
+                    value: 2,
+                    child: Text(l10n.sessionFormImprovement2),
+                  ),
+                  DropdownMenuItem(
+                    value: 3,
+                    child: Text(l10n.sessionFormImprovement3),
+                  ),
+                  DropdownMenuItem(
+                    value: 4,
+                    child: Text(l10n.sessionFormImprovement4),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _improvement = v),
               ),

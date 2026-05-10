@@ -32,6 +32,11 @@ void main() {
   // through `isolateSetup` (see HealthDb.open).
   if (Platform.isAndroid) {
     open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+    // FLAG_SECURE est positionné dès `MainActivity.onCreate` côté natif,
+    // mais on appelle aussi le canal Dart pour que toute régression
+    // (split de la logique en provider) soit immédiatement visible si
+    // le pont est cassé. Idempotent côté natif.
+    SecureWindow.enable();
   }
   SystemChrome.setPreferredOrientations(const [
     DeviceOrientation.portraitUp,

@@ -2,6 +2,7 @@ package com.filestech.health_tech
 
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.biometric.BiometricManager
@@ -172,6 +173,18 @@ class BiometricBridge(
             cipher = Cipher.getInstance("AES/GCM/NoPadding")
             val iv = Base64.decode(ivB64, Base64.NO_WRAP)
             cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, iv))
+        } catch (e: KeyPermanentlyInvalidatedException) {
+            // L'utilisateur a enrolled une nouvelle empreinte → la clé
+            // Keystore est invalidée par `setInvalidatedByBiometricEnrollment`.
+            // On la supprime pour que le prochain `enableBiometric` reparte
+            // d'une clé saine ; le caller Dart wipe les blobs IV/CT au
+            // niveau du vault.
+            deleteKey()
+            return result.error(
+                "key_invalidated",
+                "biometric enrollment changed — re-enable from passphrase",
+                null,
+            )
         } catch (e: Exception) {
             return result.error("cipher_init", e.message, null)
         }

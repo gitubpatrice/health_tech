@@ -93,7 +93,23 @@ class VaultSessionController extends StateNotifier<VaultSession?> {
     return ok;
   }
 
-  void lock() {
+  /// Lock asynchrone : on attend la fermeture effective du handle SQLCipher
+  /// AVANT de wiper le VEK. Sinon Drift peut continuer à écrire WAL/SHM
+  /// pendant que `vault.lock()` zéroïse la clé en mémoire — n'importe
+  /// quelle requête en vol fait alors throw `SecretBoxAuthenticationError`,
+  /// et — plus grave — `BackupService.applyRestore` peut se mettre à
+  /// supprimer `health.db` alors que SQLCipher tient encore le file
+  /// descriptor ouvert (corruption WAL/SHM possible).
+  Future<void> lock() async {
+    final dbAsync = _ref.read(databaseProvider);
+    if (dbAsync.hasValue) {
+      try {
+        await dbAsync.requireValue.close();
+      } on Object {
+        // ignore — on continue le lock même si close throw, pour ne pas
+        // laisser le vault déverrouillé après une demande utilisateur.
+      }
+    }
     _ref.read(vaultProvider).lock();
     state = null;
   }

@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/auto_lock.dart';
 import '../../core/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/error_view.dart' show localiseError;
 import '../backup/backup_screen.dart';
 import '../clients/client_providers.dart';
 import '../legal/legal_screen.dart';
@@ -125,7 +126,14 @@ class _BiometricTile extends ConsumerWidget {
         );
       }
     } on Object catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+      // Pas de e.toString() : on ne fuite pas les détails (Keystore status,
+      // file paths, noms d'erreur crypto) à l'utilisateur. localiseError
+      // tombe sur errorGeneric pour les types non-mappés.
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(localiseError(context, e))),
+        );
+      }
     }
     ref.invalidate(biometricStatusProvider);
   }

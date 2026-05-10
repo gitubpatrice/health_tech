@@ -9,6 +9,7 @@ import '../../core/errors.dart';
 import '../../core/providers.dart';
 import '../../data/services/backup_service.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/error_view.dart' show localiseError;
 
 /// Settings → Backup. Two flows on one screen:
 ///   - **Export**: ask the user for a backup passphrase (≥12 chars), produce
@@ -190,13 +191,19 @@ class _RestoreTile extends ConsumerWidget {
     if (confirmed != true || !context.mounted) return;
 
     // Lock the vault BEFORE writing files: the open SQLCipher handle would
-    // otherwise hold the .db file and corrupt mid-replace.
-    ref.read(vaultSessionProvider.notifier).lock();
+    // otherwise hold the .db file and corrupt mid-replace. lock() est
+    // asynchrone et await la fermeture effective du DB.
+    await ref.read(vaultSessionProvider.notifier).lock();
     try {
       await service.applyRestore(preview);
     } on Object catch (e) {
       if (!context.mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+      // Évite la fuite via e.toString() (chemins de fichiers, codes
+      // Keystore, noms d'erreurs crypto) — localiseError → errorGeneric
+      // pour tout ce qui n'est pas un HealthError mappé.
+      messenger.showSnackBar(
+        SnackBar(content: Text(localiseError(context, e))),
+      );
       return;
     }
     if (!context.mounted) return;
@@ -241,7 +248,7 @@ Future<String?> _askPassphrase(
         builder: (ctx, setState) {
           void submit() {
             final v = ctrl.text;
-            if (v.length < 12) {
+            if (v.length < 14) {
               setState(() => error = l10n.backupPassphraseTooShort);
               return;
             }

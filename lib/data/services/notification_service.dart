@@ -184,12 +184,24 @@ class NotificationService {
     await _plugin.cancelAll();
   }
 
-  /// Re-schedule every appointment in [upcoming] from scratch. Idempotent.
+  /// Re-schedule every appointment in [upcoming] from scratch. Idempotent
+  /// AND total : on commence par cancelAll pour évacuer toute alarm zombie
+  /// que le BootReceiver aurait remise en file après reboot, ou que la
+  /// précédente DB (avant restore) avait laissée. Sans ce cancelAll en
+  /// tête, une alarm avec un appointment.id orphelin pourrait fire et
+  /// taper sur du vide en handler.
   Future<void> rescheduleAll(
     Iterable<Appointment> upcoming,
     NotificationStrings strings,
   ) async {
     await ensureInitialised();
+    try {
+      await _plugin.cancelAll();
+    } on Object {
+      // best-effort : si le cancel global échoue, scheduleFor ci-dessous
+      // fera quand même un cancel-puis-schedule par id pour les rdv
+      // qu'on connaît. Les zombies inconnus survivront jusqu'au reboot.
+    }
     for (final appt in upcoming) {
       try {
         await scheduleFor(appt, strings);

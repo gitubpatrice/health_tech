@@ -281,7 +281,7 @@
   "backupExportTitle": "Exporter une sauvegarde",
   "backupExportSubtitle": "Crée un fichier .htbk chiffré et le partage via le sélecteur Android.",
   "backupExportPassphraseTitle": "Phrase secrète de sauvegarde",
-  "backupExportPassphraseHint": "Cette phrase secrète protège uniquement le fichier de sauvegarde. Choisis-en une différente de celle du coffre. 12 caractères minimum.",
+  "backupExportPassphraseHint": "Cette phrase secrète protège uniquement le fichier de sauvegarde. Choisis-en une différente de celle du coffre. 14 caractères minimum.",
   "backupExportInProgress": "Préparation de la sauvegarde…",
   "backupRestoreTitle": "Restaurer une sauvegarde",
   "backupRestoreSubtitle": "Remplace toutes les données par celles du fichier .htbk choisi.",
@@ -303,7 +303,7 @@
   "backupVaultMustBeUnlocked": "Le coffre doit être déverrouillé pour exporter.",
   "backupPassphraseLabel": "Phrase secrète",
   "backupPassphraseConfirmLabel": "Confirmer",
-  "backupPassphraseTooShort": "12 caractères minimum.",
+  "backupPassphraseTooShort": "14 caractères minimum.",
   "backupPassphraseMismatch": "Les deux phrases ne correspondent pas.",
 
   "settingsBiometricTitle": "Déverrouillage biométrique",
@@ -323,6 +323,12 @@
   "searchHint": "Rechercher dans les fiches…",
   "searchEmptyHint": "Tape un nom, une adresse, une espèce, un type de séance… Les notes chiffrées (santé, comptes rendus) ne sont pas indexées par sécurité.",
   "searchNoResults": "Aucun résultat.",
+
+  "sessionFormImprovement0": "0 — aucune",
+  "sessionFormImprovement1": "1 — légère",
+  "sessionFormImprovement2": "2 — moyenne",
+  "sessionFormImprovement3": "3 — importante",
+  "sessionFormImprovement4": "4 — à suivre",
 
   "notifChannelName": "Rendez-vous",
   "notifChannelDescription": "Rappels avant chaque rendez-vous planifié.",

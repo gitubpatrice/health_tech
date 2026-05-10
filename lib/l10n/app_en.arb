@@ -281,7 +281,7 @@
   "backupExportTitle": "Export a backup",
   "backupExportSubtitle": "Create an encrypted .htbk file and share it via the Android sheet.",
   "backupExportPassphraseTitle": "Backup passphrase",
-  "backupExportPassphraseHint": "This passphrase only protects the backup file. Pick a different one from your vault passphrase. 12 characters minimum.",
+  "backupExportPassphraseHint": "This passphrase only protects the backup file. Pick a different one from your vault passphrase. 14 characters minimum.",
   "backupExportInProgress": "Preparing the backup…",
   "backupRestoreTitle": "Restore a backup",
   "backupRestoreSubtitle": "Replace all current data with the contents of the selected .htbk file.",
@@ -303,7 +303,7 @@
   "backupVaultMustBeUnlocked": "Vault must be unlocked to export.",
   "backupPassphraseLabel": "Passphrase",
   "backupPassphraseConfirmLabel": "Confirm",
-  "backupPassphraseTooShort": "12 characters minimum.",
+  "backupPassphraseTooShort": "14 characters minimum.",
   "backupPassphraseMismatch": "Passphrases do not match.",
 
   "settingsBiometricTitle": "Biometric unlock",
@@ -323,6 +323,12 @@
   "searchHint": "Search across records…",
   "searchEmptyHint": "Type a name, an address, a species, a session type… Encrypted notes (health, reports) are not indexed by design.",
   "searchNoResults": "No results.",
+
+  "sessionFormImprovement0": "0 — none",
+  "sessionFormImprovement1": "1 — slight",
+  "sessionFormImprovement2": "2 — moderate",
+  "sessionFormImprovement3": "3 — significant",
+  "sessionFormImprovement4": "4 — follow up",
 
   "notifChannelName": "Appointments",
   "notifChannelDescription": "Reminders before each scheduled appointment.",
