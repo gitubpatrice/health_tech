@@ -180,10 +180,29 @@ class BackupService {
   Future<Uint8List> _buildInnerArchive() async {
     final archive = Archive();
     final pkg = await _packageInfo();
+    // Le `schema_version` du bundle ≠ le `db_user_version` du DB SQLCipher.
+    // L'un versionne le format de l'enveloppe .htbk (cassé seulement si on
+    // change la structure inner ZIP), l'autre versionne la structure de
+    // la base Drift (cassé à chaque migration). On embarque les deux pour
+    // que la restauration puisse refuser un backup créé avec un schéma DB
+    // plus récent que celui de l'app courante (sinon drift crash au open
+    // avec une assertion peu lisible pour l'utilisateur).
+    int? dbUserVersion;
+    final db = dbReader();
+    if (db != null) {
+      try {
+        final row = await db.customSelect('PRAGMA user_version').getSingle();
+        dbUserVersion = row.read<int>('user_version');
+      } on Object {
+        // best-effort : si on n'y arrive pas, on omet — la restauration
+        // tombera juste sur le check de schéma au prochain ouverture.
+      }
+    }
     final manifest = <String, dynamic>{
       'kind': 'health_tech_full_backup',
       'app_version': '${pkg.version}+${pkg.buildNumber}',
       'schema_version': _bundleSchemaVersion,
+      'db_user_version': ?dbUserVersion,
       'created_at': DateTime.now().toUtc().toIso8601String(),
     };
     _addJson(archive, 'manifest.json', manifest);
@@ -277,6 +296,17 @@ class BackupService {
         'schema_version',
       );
     }
+    // Si le bundle déclare un `db_user_version` plus récent que celui du
+    // schéma Drift de l'app courante, drift refusera d'ouvrir le DB
+    // restauré (assertion sur `userVersion > schemaVersion`). On rejette
+    // tôt avec un message localisable, plutôt que de laisser drift crash.
+    final dbUserVersion = manifest['db_user_version'];
+    if (dbUserVersion is int && dbUserVersion > _maxSupportedDbUserVersion) {
+      throw const ValidationError(
+        'backup_db_version_too_new',
+        'db_user_version',
+      );
+    }
     return BackupPreview._(
       archive: archive,
       manifest: manifest,
@@ -284,6 +314,11 @@ class BackupService {
       headerAppVersion: parsed.header['app_version'] as String?,
     );
   }
+
+  /// Doit être maintenu en phase avec `HealthDb.schemaVersion` — c'est la
+  /// version max d'une base que cette release de l'app sait ouvrir. Au
+  /// prochain bump de `HealthDb.schemaVersion`, mettre à jour ici aussi.
+  static const int _maxSupportedDbUserVersion = 3;
 
   /// Replace the device's current vault state with the contents of a
   /// previously-validated [BackupPreview]. The vault MUST be locked: we are
@@ -330,8 +365,8 @@ class BackupService {
     await stagingDb.create(recursive: true);
     await stagingAtt.create(recursive: true);
 
-    Map<String, dynamic>? vaultJson;
     var dbWritten = false;
+    var vaultWritten = false;
     for (final f in preview._archive.files) {
       if (!f.isFile) continue;
       final name = f.name;
@@ -355,10 +390,17 @@ class BackupService {
         }
         await atomicWriteBytes(File(p.join(stagingAtt.path, safe)), bytes);
       } else if (name == 'vault.json') {
-        vaultJson = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+        // Vault material écrit dans le staging (PAS gardé en mémoire) :
+        // recoverPartialRestore peut ainsi finir Phase B après crash sans
+        // jamais avoir vu le bundle d'origine.
+        await atomicWriteBytes(
+          File(p.join(stagingDir.path, 'vault.json')),
+          bytes,
+        );
+        vaultWritten = true;
       }
     }
-    if (!dbWritten || vaultJson == null) {
+    if (!dbWritten || !vaultWritten) {
       await stagingDir.delete(recursive: true);
       throw const ValidationError('backup_incomplete', 'bundle');
     }
@@ -397,26 +439,15 @@ class BackupService {
       if (!dbDir.existsSync()) await dbDir.create(recursive: true);
       if (!attDir.existsSync()) await attDir.create(recursive: true);
 
-      // Rename staging files into place. Same-volume renames are atomic at
-      // the inode level on Android.
-      await File(p.join(stagingDb.path, 'health.db')).rename(dbFile.path);
-      await for (final entity in stagingAtt.list()) {
-        if (entity is File) {
-          await entity.rename(p.join(attDir.path, p.basename(entity.path)));
-        }
-      }
-
-      // Apply vault material LAST so a crash before this point leaves the
-      // user with the previous wrapped VEK + a fresh DB they cannot decrypt
-      // — fail-closed (they retry restore from the same .htbk).
-      for (final k in _vaultKeys) {
-        final v = vaultJson[k];
-        if (v == null) {
-          await _storage.delete(key: k);
-        } else if (v is String) {
-          await _storage.write(key: k, value: v);
-        }
-      }
+      // Rename staging files into place + apply vault material — phase
+      // commit factorisée pour que recoverPartialRestore puisse la rejouer
+      // après crash (le staging reste sur disque tant que Phase B n'a pas
+      // été clean).
+      await _commitStaging(
+        stagingDir: stagingDir,
+        dbFile: dbFile,
+        attDir: attDir,
+      );
     } finally {
       // Remove the staging dir + sentinel as the LAST step. If we ever
       // throw above, the sentinel remains and recoverPartialRestore can
@@ -428,22 +459,120 @@ class BackupService {
     }
   }
 
-  /// Recovery hook for a Phase B crash. The LockScreen calls this once at
-  /// app start: if the sentinel from a previous interrupted restore is
-  /// present, we know the device is in an indeterminate state — the safest
-  /// move is to surface the situation rather than silently move on.
+  /// Phase B factorisée : rename staging → final + apply vault keys.
+  /// Idempotente tant que le staging contient `db/health.db` + `vault.json` :
+  /// si un fichier cible existe déjà (Phase B ré-exécutée), on l'écrase.
+  Future<void> _commitStaging({
+    required Directory stagingDir,
+    required File dbFile,
+    required Directory attDir,
+  }) async {
+    final stagingDb = File(p.join(stagingDir.path, 'db', 'health.db'));
+    final stagingAtt = Directory(p.join(stagingDir.path, 'attachments'));
+    final stagingVault = File(p.join(stagingDir.path, 'vault.json'));
+    if (!stagingDb.existsSync() || !stagingVault.existsSync()) {
+      throw const ValidationError('backup_staging_incomplete', 'staging');
+    }
+
+    // Si la phase A précédente a complété mais que Phase B s'est arrêtée
+    // après un partial rename, certains fichiers sont déjà à destination.
+    // Le `rename` Android écrase. On supprime explicitement ce qui pourrait
+    // gêner les renames (ex: WAL/SHM résiduels).
+    final wal = File(p.join(dbFile.parent.path, 'health.db-wal'));
+    final shm = File(p.join(dbFile.parent.path, 'health.db-shm'));
+    if (wal.existsSync()) await wal.delete();
+    if (shm.existsSync()) await shm.delete();
+    if (dbFile.existsSync()) await dbFile.delete();
+
+    if (attDir.existsSync()) {
+      await for (final entity in attDir.list()) {
+        if (entity is File) {
+          try {
+            await entity.delete();
+          } on FileSystemException {
+            // best-effort
+          }
+        }
+      }
+    }
+    if (!dbFile.parent.existsSync()) {
+      await dbFile.parent.create(recursive: true);
+    }
+    if (!attDir.existsSync()) await attDir.create(recursive: true);
+
+    await stagingDb.rename(dbFile.path);
+    if (stagingAtt.existsSync()) {
+      await for (final entity in stagingAtt.list()) {
+        if (entity is File) {
+          await entity.rename(p.join(attDir.path, p.basename(entity.path)));
+        }
+      }
+    }
+
+    // Apply vault material LAST so a crash before this point leaves the
+    // user with the previous wrapped VEK + a fresh DB they cannot decrypt
+    // — fail-closed (they retry restore from the same .htbk).
+    final vaultJson =
+        jsonDecode(await stagingVault.readAsString()) as Map<String, dynamic>;
+    for (final k in _vaultKeys) {
+      final v = vaultJson[k];
+      if (v == null) {
+        await _storage.delete(key: k);
+      } else if (v is String) {
+        await _storage.write(key: k, value: v);
+      }
+    }
+  }
+
+  /// Recovery hook au démarrage de l'app. La LockScreen l'appelle une fois
+  /// au build : si le sentinel d'une restauration interrompue est présent,
+  /// on TENTE de finir Phase B en utilisant le staging encore sur disque.
   ///
-  /// Returns true when a partial restore was detected (caller decides how
-  /// to inform the user — typically a banner inviting them to retry the
-  /// restore from their .htbk file). Best-effort cleans up the staging
-  /// dir so the next attempt starts fresh.
-  Future<bool> recoverPartialRestore() async {
+  /// Retourne un [PartialRestoreOutcome] :
+  ///   - `none` : pas d'interruption à traiter.
+  ///   - `resumed` : le staging était complet (db + vault.json), Phase B
+  ///     a été rejouée, le coffre est désormais cohérent. Le user déver-
+  ///     rouille avec sa passphrase habituelle, ses données restaurées
+  ///     sont là.
+  ///   - `aborted` : staging incomplet ou rejouable a échoué — staging
+  ///     wipé. Le user voit un banner et doit relancer la restauration
+  ///     depuis son .htbk.
+  Future<PartialRestoreOutcome> recoverPartialRestore() async {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt(_kRestorePendingFlag);
-    if (timestamp == null) return false;
+    if (timestamp == null) return PartialRestoreOutcome.none;
+
+    final support = await getApplicationSupportDirectory();
+    final stagingDir = Directory(p.join(support.path, 'restore_staging'));
+    final stagingDb = File(p.join(stagingDir.path, 'db', 'health.db'));
+    final stagingVault = File(p.join(stagingDir.path, 'vault.json'));
+    final dbFile = File(p.join(support.path, 'db', 'health.db'));
+    final attDir = Directory(p.join(support.path, 'attachments'));
+
+    final canResume =
+        stagingDir.existsSync() &&
+        stagingDb.existsSync() &&
+        stagingVault.existsSync();
+
+    if (canResume) {
+      try {
+        await _commitStaging(
+          stagingDir: stagingDir,
+          dbFile: dbFile,
+          attDir: attDir,
+        );
+        if (stagingDir.existsSync()) {
+          await stagingDir.delete(recursive: true);
+        }
+        await prefs.remove(_kRestorePendingFlag);
+        return PartialRestoreOutcome.resumed;
+      } on Object {
+        // L'idempotence du commit a échoué (FS dans un état impossible).
+        // Tomber en mode aborted plutôt que de boucler à chaque démarrage.
+      }
+    }
+
     try {
-      final support = await getApplicationSupportDirectory();
-      final stagingDir = Directory(p.join(support.path, 'restore_staging'));
       if (stagingDir.existsSync()) {
         await stagingDir.delete(recursive: true);
       }
@@ -451,7 +580,7 @@ class BackupService {
       // best-effort cleanup
     }
     await prefs.remove(_kRestorePendingFlag);
-    return true;
+    return PartialRestoreOutcome.aborted;
   }
 
   // -- Helpers --------------------------------------------------------------
@@ -554,6 +683,22 @@ class BackupService {
     }
     return out;
   }
+}
+
+/// Résultat de [BackupService.recoverPartialRestore]. La LockScreen mappe
+/// chaque variante à un comportement UI distinct (snack / banner / silence).
+enum PartialRestoreOutcome {
+  /// Aucune restauration interrompue : démarrage normal.
+  none,
+
+  /// Une restauration interrompue a été détectée ET reprise avec succès :
+  /// la base et le vault sont désormais cohérents. On informe l'utilisateur
+  /// par un snack discret pour qu'il sache que ses données sont à jour.
+  resumed,
+
+  /// Restauration interrompue détectée mais staging incomplet ou rejouable
+  /// échoué : le banner invite l'utilisateur à relancer depuis son .htbk.
+  aborted,
 }
 
 class BackupPreview {

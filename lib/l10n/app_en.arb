@@ -318,6 +318,7 @@
   "lockBiometricButton": "Unlock with biometrics",
   "lockBiometricFailed": "Biometric authentication refused.",
   "lockPartialRestoreBanner": "A previous restore was interrupted. If your data looks incomplete, retry from Settings → Encrypted backup.",
+  "lockPartialRestoreResumed": "An interrupted restore was completed at startup. Your data is up to date.",
 
   "searchTitle": "Search",
   "searchHint": "Search across records…",

@@ -318,6 +318,7 @@
   "lockBiometricButton": "Déverrouiller avec la biométrie",
   "lockBiometricFailed": "Authentification biométrique refusée.",
   "lockPartialRestoreBanner": "Une restauration a été interrompue précédemment. Si tes données sont incomplètes, recommence-la depuis Paramètres → Sauvegarde chiffrée.",
+  "lockPartialRestoreResumed": "Une restauration interrompue a été achevée au démarrage. Tes données sont à jour.",
 
   "searchTitle": "Recherche",
   "searchHint": "Rechercher dans les fiches…",

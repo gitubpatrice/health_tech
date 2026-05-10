@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../data/services/backup_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 
-/// One-shot check: was a restore interrupted on a previous launch? The
-/// lock screen displays a non-blocking banner inviting the user to retry,
-/// so they are not left wondering why their data looks empty.
-final partialRestoreFlagProvider = FutureProvider<bool>((ref) {
+/// One-shot check: was a restore interrupted on a previous launch?
+///   - `resumed` : on a réussi à finir Phase B au démarrage, snack discret
+///     "restauration achevée".
+///   - `aborted` : staging perdu / commit échoué, banner invitant à relancer.
+final partialRestoreFlagProvider = FutureProvider<PartialRestoreOutcome>((ref) {
   return ref.read(backupServiceProvider).recoverPartialRestore();
 });
 
@@ -30,10 +32,20 @@ class LockScreen extends ConsumerWidget {
       error: (e, _) => _Error(message: l10n.lockStorageError),
       data: (initialised) {
         final body = initialised ? const _UnlockForm() : const _SetupForm();
-        if (partialRestore.valueOrNull == true) {
-          return _PartialRestoreBanner(child: body);
+        switch (partialRestore.valueOrNull ?? PartialRestoreOutcome.none) {
+          case PartialRestoreOutcome.aborted:
+            return _PartialRestoreBanner(
+              message: l10n.lockPartialRestoreBanner,
+              child: body,
+            );
+          case PartialRestoreOutcome.resumed:
+            return _PartialRestoreBanner(
+              message: l10n.lockPartialRestoreResumed,
+              child: body,
+            );
+          case PartialRestoreOutcome.none:
+            return body;
         }
-        return body;
       },
     );
   }
@@ -57,11 +69,11 @@ class _Loading extends StatelessWidget {
 /// they can retry from their .htbk file rather than wonder why their
 /// data looks incomplete.
 class _PartialRestoreBanner extends StatelessWidget {
-  const _PartialRestoreBanner({required this.child});
+  const _PartialRestoreBanner({required this.child, required this.message});
   final Widget child;
+  final String message;
   @override
   Widget build(BuildContext context) {
-    final l10n = AppL10n.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: Column(
@@ -78,7 +90,7 @@ class _PartialRestoreBanner extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        l10n.lockPartialRestoreBanner,
+                        message,
                         style: TextStyle(color: scheme.onErrorContainer),
                       ),
                     ),

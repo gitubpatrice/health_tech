@@ -335,7 +335,10 @@ String _localiseError(AppL10n l10n, ValidationError e) {
     'backup_bad_magic' ||
     'backup_manifest_missing' ||
     'backup_vault_missing' => l10n.backupBundleInvalid,
-    'backup_schema_unsupported' => l10n.backupSchemaUnsupported,
-    _ => e.toString(),
+    'backup_schema_unsupported' ||
+    'backup_db_version_too_new' => l10n.backupSchemaUnsupported,
+    'backup_kdf_params_too_weak' ||
+    'backup_incomplete' => l10n.backupBundleInvalid,
+    _ => l10n.errorGeneric,
   };
 }
