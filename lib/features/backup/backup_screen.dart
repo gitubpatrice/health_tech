@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -9,6 +10,7 @@ import '../../core/errors.dart';
 import '../../core/providers.dart';
 import '../../data/services/backup_service.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/ephemeral_cache.dart';
 import '../../widgets/error_view.dart' show localiseError;
 
 /// Settings → Backup. Two flows on one screen:
@@ -96,6 +98,12 @@ class _ExportTile extends ConsumerWidget {
           mimeType: 'application/octet-stream',
         ),
       ]);
+      // Le bundle .htbk est chiffré, mais share_plus le matérialise sur
+      // disque dans cache/share_plus/. On planifie une purge 2 minutes
+      // plus tard — l'app cible (Drive / Mail) a eu le temps de
+      // consommer, et le fichier ne traîne pas indéfiniment dans le
+      // cache OS jusqu'à éviction LRU.
+      unawaited(EphemeralCache.scheduleSharePurge());
     } on ValidationError catch (e) {
       if (!context.mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(_localiseError(l10n, e))));
@@ -134,10 +142,19 @@ class _RestoreTile extends ConsumerWidget {
       type: FileType.any,
       withData: true,
     );
-    if (picked == null || picked.files.isEmpty || !context.mounted) return;
+    if (picked == null || picked.files.isEmpty || !context.mounted) {
+      // Purge le file_picker cache même en cas d'annulation, pour pas
+      // laisser un .htbk traîner si l'utilisateur a sélectionné puis
+      // changé d'avis dans le dialog de confirmation.
+      unawaited(EphemeralCache.purgeFilePicker());
+      return;
+    }
     final file = picked.files.single;
     final bytes = file.bytes;
-    if (bytes == null) return;
+    if (bytes == null) {
+      unawaited(EphemeralCache.purgeFilePicker());
+      return;
+    }
 
     final passphrase = await _askPassphrase(
       context,
@@ -197,6 +214,12 @@ class _RestoreTile extends ConsumerWidget {
     try {
       await service.applyRestore(preview);
     } on Object catch (e) {
+      // Quel que soit le résultat (succès ou erreur), on purge le
+      // file_picker cache pour ne pas laisser le .htbk d'origine
+      // dormir dans cache/file_picker/ post-restore.
+      unawaited(EphemeralCache.purgeFilePicker());
+      // Audit M13 : wipe les bytes clairs détenus par BackupPreview.
+      preview.wipe();
       if (!context.mounted) return;
       // Évite la fuite via e.toString() (chemins de fichiers, codes
       // Keystore, noms d'erreurs crypto) — localiseError → errorGeneric
@@ -206,6 +229,8 @@ class _RestoreTile extends ConsumerWidget {
       );
       return;
     }
+    unawaited(EphemeralCache.purgeFilePicker());
+    preview.wipe();
     if (!context.mounted) return;
     messenger.showSnackBar(SnackBar(content: Text(l10n.backupRestoreDone)));
     // Force the app back to the lock screen so providers re-init around

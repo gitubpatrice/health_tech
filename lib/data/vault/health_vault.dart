@@ -403,11 +403,17 @@ class HealthVault {
   /// going through the BiometricPrompt (the key is provisioned with
   /// `setUserAuthenticationRequired(true)`, so even the encrypt step
   /// needs an authenticated cipher), hence the prompt strings.
+  /// **Durcissement audit v1.3.1 H6** : enable/disable passent maintenant
+  /// par le mutex `_serialize` qui sérialise déjà setup/unlock/lock.
+  /// Sans cela, un toggle ON-OFF-ON rapide (UI accessibility ou pression
+  /// nerveuse de l'utilisateur) pouvait interleaver les writes
+  /// FlutterSecureStorage et empiler deux BiometricPrompt côté Kotlin
+  /// (IllegalStateException + blob orphelin).
   Future<void> enableBiometric({
     required String title,
     required String subtitle,
     required String negativeButton,
-  }) async {
+  }) => _serialize(() async {
     final vek = _vek;
     if (vek == null) throw const VaultLockedError();
     final wrap = await _biometric.wrap(
@@ -421,14 +427,14 @@ class HealthVault {
       key: _kBioCipher,
       value: base64Encode(wrap.ciphertext),
     );
-  }
+  });
 
   /// Drop the biometric-wrapped VEK and the underlying Keystore key.
-  Future<void> disableBiometric() async {
+  Future<void> disableBiometric() => _serialize(() async {
     await _storage.delete(key: _kBioIv);
     await _storage.delete(key: _kBioCipher);
     await _biometric.delete();
-  }
+  });
 
   /// Show the BiometricPrompt and, on success, recover the VEK without
   /// asking for the passphrase. Throws [BiometricFailure] if the user
@@ -497,14 +503,18 @@ class HealthVault {
   }) async {
     // 64 MiB / 3 iter Argon2id is ~750 ms on S24 FE and ~1.5 s on S9 — too
     // long to run on the UI isolate without freezing the lock screen
-    // pinwheel. Push it off to a background isolate via `compute()`. The
-    // passphrase is a Dart String (immutable, GC-only) so its in-memory
-    // lifetime is the same regardless of isolate; the serialisation cost
-    // here is negligible compared to the 750-1500 ms KDF itself.
+    // pinwheel. Push it off to a background isolate via `compute()`.
+    //
+    // **Audit M9** : on encode la passphrase en UTF-8 LOCALEMENT (donc
+    // `bytes` peut être wipé après dérivation), et on transmet le
+    // Uint8List wipable. Le `String passphrase` lui-même reste en
+    // mémoire (immuable Dart), mais on minimise la fenêtre où une
+    // copie supplémentaire (la version isolate) vit.
+    final pBytes = Uint8List.fromList(utf8.encode(passphrase));
     return compute<_KdfInput, Uint8List>(
       _deriveMasterKeyIsolate,
       _KdfInput(
-        passphrase: passphrase,
+        passphraseBytes: pBytes,
         salt: salt,
         memoryKb: memoryKb,
         iterations: iterations,
@@ -561,15 +571,21 @@ class HealthVault {
 /// Top-level inputs for [_deriveMasterKeyIsolate]. Must be a top-level (not
 /// a private inner) class because `compute()` sends the value across an
 /// isolate boundary and therefore needs trivially-serialisable data.
+///
+/// **Audit M9** : on transporte la passphrase sous forme `Uint8List`
+/// (UTF-8 encoded) au lieu d'un `String`. Bénéfice : le caller peut
+/// `fillRange(0)` ses bytes après envoi, et le receiver wipe ses bytes
+/// après extraction. Réduit la fenêtre RAM où une passphrase legacy
+/// vit en clair (Dart String est immuable et GC-only).
 class _KdfInput {
   const _KdfInput({
-    required this.passphrase,
+    required this.passphraseBytes,
     required this.salt,
     required this.memoryKb,
     required this.iterations,
     required this.parallelism,
   });
-  final String passphrase;
+  final Uint8List passphraseBytes;
   final Uint8List salt;
   final int memoryKb;
   final int iterations;
@@ -587,9 +603,12 @@ Future<Uint8List> _deriveMasterKeyIsolate(_KdfInput input) async {
     hashLength: 32,
   );
   final key = await algo.deriveKey(
-    secretKey: SecretKey(utf8.encode(input.passphrase)),
+    secretKey: SecretKey(input.passphraseBytes),
     nonce: input.salt,
   );
   final bytes = await key.extractBytes();
+  // Wipe la copie côté isolate après dérivation. Le caller wipe la sienne
+  // de son côté (on ne peut pas faire mieux avec Dart).
+  input.passphraseBytes.fillRange(0, input.passphraseBytes.length, 0);
   return Uint8List.fromList(bytes);
 }

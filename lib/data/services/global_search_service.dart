@@ -15,6 +15,18 @@ class GlobalSearchService {
 
   final HealthDb _db;
 
+  /// Tronque [s] à au plus [maxUnits] unités UTF-16 sans casser une
+  /// surrogate pair en deux. Si l'unité à `maxUnits-1` est une
+  /// high-surrogate (0xD800-0xDBFF), on coupe à `maxUnits-1` pour laisser
+  /// la moitié orpheline hors du buffer.
+  static String _safeTruncate(String s, int maxUnits) {
+    if (s.length <= maxUnits) return s;
+    final lastIndex = maxUnits - 1;
+    final cu = s.codeUnitAt(lastIndex);
+    final endsOnHighSurrogate = cu >= 0xD800 && cu <= 0xDBFF;
+    return s.substring(0, endsOnHighSurrogate ? lastIndex : maxUnits);
+  }
+
   /// Returns a flat list of hits sorted by entity kind then by relevance
   /// proxy (alphabetical for now). The query is split on whitespace and
   /// every token must match at least one indexed column (AND semantics).
@@ -28,7 +40,13 @@ class GlobalSearchService {
     // entités × 4-5 LIKE non-indexés à SQLCipher. 200 caractères + 8
     // tokens couvrent largement les cas légitimes ("Jean Dupont chien
     // Labrador noir 2024").
-    final cleanQuery = query.length > 200 ? query.substring(0, 200) : query;
+    //
+    // **Audit M11** : `String.substring` opère sur les unités UTF-16,
+    // donc une coupe à 200 peut isoler une high-surrogate (1ère moitié
+    // d'un emoji 4-byte 🐕) → comportement erratique côté LIKE. Avant
+    // de tronquer, si l'unité 199 est un high-surrogate (0xD800-0xDBFF),
+    // on coupe à 199 pour laisser le pair complet hors du buffer.
+    final cleanQuery = _safeTruncate(query, 200);
     // Strip d'abord les wildcards SQL, filtre ensuite : sinon "%" tout
     // seul (ou "%%%") deviendrait "%%" et matcherait toutes les lignes.
     final tokens = cleanQuery

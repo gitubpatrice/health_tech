@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/painting.dart' show PaintingBinding;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -160,6 +161,15 @@ class VaultSessionController extends StateNotifier<VaultSession?> {
         // laisser le vault déverrouillé après une demande utilisateur.
       }
     }
+    // **Durcissement audit v1.3.1 H5** : Image.memory() (utilisé dans
+    // AttachmentViewer pour les photos santé) garde le bitmap décodé
+    // dans PaintingBinding.imageCache (par défaut 100 Mo). Au lock,
+    // on wipe le VEK mais cette cache restait chaude → un dump RAM
+    // root après lock pouvait encore lire les pixels d'une photo
+    // d'examen médical. Maintenant : clear + clearLiveImages.
+    PaintingBinding.instance.imageCache
+      ..clear()
+      ..clearLiveImages();
     _ref.read(vaultProvider).lock();
     state = null;
   }

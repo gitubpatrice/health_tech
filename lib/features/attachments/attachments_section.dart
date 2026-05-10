@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import '../../data/repositories/attachment_repository.dart';
 import '../../domain/attachment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../utils/ephemeral_cache.dart';
 import '../../widgets/error_view.dart';
 import 'attachment_viewer.dart';
 
@@ -88,10 +91,16 @@ class AttachmentsSection extends ConsumerWidget {
       type: fileType,
       withData: true,
     );
-    if (picked == null || picked.files.isEmpty) return;
+    if (picked == null || picked.files.isEmpty) {
+      unawaited(EphemeralCache.purgeFilePicker());
+      return;
+    }
     final file = picked.files.single;
     final bytes = file.bytes;
-    if (bytes == null) return;
+    if (bytes == null) {
+      unawaited(EphemeralCache.purgeFilePicker());
+      return;
+    }
 
     final mime = _guessMime(file.name);
     try {
@@ -115,6 +124,12 @@ class AttachmentsSection extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.attachmentsRejectedImage)));
+    } finally {
+      // Le file_picker plugin a copié le fichier source dans
+      // cache/file_picker/ avant de retourner les bytes. Maintenant que
+      // l'attachment a été chiffré et persisté dans `attachments/<uuid>.enc`,
+      // l'original en clair est inutile et doit dégager.
+      unawaited(EphemeralCache.purgeFilePicker());
     }
   }
 

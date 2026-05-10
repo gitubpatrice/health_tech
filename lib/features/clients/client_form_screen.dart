@@ -8,6 +8,7 @@ import '../../domain/consent.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/busy_helpers.dart';
 import '../../widgets/section_title.dart';
+import '../../widgets/sensitive_text_field.dart';
 
 /// Create / edit form for a client. Uses one [Form] with a [GlobalKey] for
 /// validation, no per-field controller leak (controllers disposed in dispose).
@@ -428,7 +429,7 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
                     ? l10n.clientFormSectionBusiness
                     : l10n.clientFormSectionHealth,
               ),
-              TextFormField(
+              SensitiveTextField(
                 controller: _healthNotes,
                 maxLines: 4,
                 decoration: InputDecoration(
@@ -438,7 +439,7 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              SensitiveTextField(
                 controller: _freeNotes,
                 maxLines: 4,
                 decoration: InputDecoration(

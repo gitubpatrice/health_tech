@@ -186,19 +186,27 @@ class NotificationService {
       visibility: NotificationVisibility.secret,
     );
 
+    // **DURCISSEMENT C1 audit v1.3.1** : flutter_local_notifications
+    // sérialise titre + body + payload dans `databases/<channel>.db`
+    // **non chiffrée** pour rejouer les alarms via BootReceiver. Avant
+    // ce fix, le titre du RDV (souvent un nom de client) et la location
+    // (souvent une adresse client) étaient persistés en clair sur disque,
+    // accessibles via ADB / root sans déverrouiller l'app. Maintenant :
+    //   - titre = banal (`strings.defaultTitle` = "Rendez-vous")
+    //   - body  = générique avec horaire seulement (jamais le lieu)
+    //   - payload = appointment.id (UUID, non sensible)
+    // Compromis : la lockscreen (visibility = secret) n'a déjà rien
+    // d'identifiable ; ouvert dans le shade, l'utilisateur voit l'horaire
+    // et clique pour ouvrir l'app qui montre le détail réel.
     final hh = appointment.startAt.hour.toString().padLeft(2, '0');
     final mm = appointment.startAt.minute.toString().padLeft(2, '0');
-    final body = strings.bodyMinutesBefore(
-      minutesBefore,
-      '$hh:$mm',
-      (appointment.location?.isNotEmpty ?? false) ? appointment.location : null,
-    );
+    // bodyMinutesBefore reçoit `null` en location → le format sans
+    // location est utilisé. Plus aucune donnée client en clair plugin-side.
+    final body = strings.bodyMinutesBefore(minutesBefore, '$hh:$mm', null);
 
     await _plugin.zonedSchedule(
       id,
-      appointment.title?.isNotEmpty == true
-          ? appointment.title!
-          : strings.defaultTitle,
+      strings.defaultTitle,
       body,
       tzDate,
       NotificationDetails(android: androidDetails),
@@ -270,6 +278,12 @@ class NotificationService {
     }
     // Map to a positive 31-bit integer so we never produce a negative ID
     // (which the underlying NotificationManager rejects).
-    return hash & 0x7FFFFFFF;
+    final id = hash & 0x7FFFFFFF;
+    // **Audit M10** : id == 0 est légal pour notify() mais cancel(0)
+    // sur certaines OEM AOSP-fork annule TOUS les ids de l'app.
+    // Probabilité ≈ 2^-31 sur UUID légitime, mais un .htbk forgé peut
+    // déclencher la collision. On dégage 0 vers 1 — pas de collision
+    // observée car id=1 n'est jamais produit par FNV-1a non-trivial.
+    return id == 0 ? 1 : id;
   }
 }

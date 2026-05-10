@@ -8,6 +8,7 @@ import '../../utils/date_format.dart';
 import '../../widgets/busy_helpers.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/section_title.dart';
+import '../../widgets/sensitive_text_field.dart';
 import '../clients/client_providers.dart';
 import 'animal_l10n.dart';
 
@@ -351,7 +352,7 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
               ),
               const Divider(height: 32),
               SectionTitle(l10n.animalFormSectionHealth),
-              TextFormField(
+              SensitiveTextField(
                 controller: _healthNotes,
                 maxLines: 4,
                 decoration: InputDecoration(
@@ -359,7 +360,7 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              SensitiveTextField(
                 controller: _behaviorNotes,
                 maxLines: 4,
                 decoration: InputDecoration(

@@ -9,6 +9,7 @@ import '../../utils/date_format.dart';
 import '../../widgets/busy_helpers.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/section_title.dart';
+import '../../widgets/sensitive_text_field.dart';
 import '../animals/animal_providers.dart';
 import '../clients/client_providers.dart';
 import 'session_l10n.dart';
@@ -463,7 +464,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
               ),
               const Divider(height: 32),
               SectionTitle(l10n.sessionFormSectionPrivate),
-              TextFormField(
+              SensitiveTextField(
                 controller: _privateNote,
                 maxLines: 3,
                 decoration: InputDecoration(
@@ -489,9 +490,11 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
     );
   }
 
+  /// Champs de rapport de séance — données sensibles → SensitiveTextField
+  /// pour bloquer le cloud autocomplete des claviers tiers (audit M8).
   Widget _reportField(TextEditingController c, String label) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
-    child: TextFormField(
+    child: SensitiveTextField(
       controller: c,
       maxLines: 3,
       decoration: InputDecoration(labelText: label),

@@ -48,6 +48,13 @@ class BiometricBridge(
 
     private val channel = MethodChannel(messenger, CHANNEL)
 
+    /// Reference vers le prompt biometrique en cours (wrap ou unwrap),
+    /// pour pouvoir le `cancelAuthentication()` proprement avant un
+    /// `deleteKey()` (audit M14). Sans cela, deleteKey() pendant un prompt
+    /// visible déclenche KeyPermanentlyInvalidatedException sur le doigt
+    /// de l'utilisateur, qui voit un message d'erreur cryptique.
+    private var activePrompt: BiometricPrompt? = null
+
     init {
         channel.setMethodCallHandler(this)
     }
@@ -58,6 +65,14 @@ class BiometricBridge(
             "wrap" -> handleWrap(call, result)
             "unwrap" -> handleUnwrap(call, result)
             "delete" -> {
+                // Audit M14 : si un prompt biometrique est en cours
+                // (race race UI : Settings -> toggle bio off pendant
+                // qu'un unlock biometrique est visible), on cancel
+                // proprement avant deleteKey(). Sinon le prompt
+                // tombe sur KeyPermanentlyInvalidatedException avec
+                // un message cryptique a l'utilisateur.
+                activePrompt?.cancelAuthentication()
+                activePrompt = null
                 deleteKey()
                 result.success(true)
             }
@@ -109,12 +124,14 @@ class BiometricBridge(
                     errorCode: Int,
                     errString: CharSequence,
                 ) {
+                    activePrompt = null
                     result.error("auth_error", "$errorCode: $errString", null)
                 }
 
                 override fun onAuthenticationSucceeded(
                     auth: BiometricPrompt.AuthenticationResult,
                 ) {
+                    activePrompt = null
                     try {
                         val bound = auth.cryptoObject?.cipher
                             ?: throw IllegalStateException("crypto object missing")
@@ -137,6 +154,7 @@ class BiometricBridge(
                 }
             },
         )
+        activePrompt = prompt
 
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
@@ -198,6 +216,7 @@ class BiometricBridge(
             executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    activePrompt = null
                     result.error("auth_error", "$errorCode: $errString", null)
                 }
 
@@ -209,6 +228,7 @@ class BiometricBridge(
                 override fun onAuthenticationSucceeded(
                     auth: BiometricPrompt.AuthenticationResult,
                 ) {
+                    activePrompt = null
                     try {
                         val bound = auth.cryptoObject?.cipher
                             ?: throw IllegalStateException("crypto object missing")
@@ -225,6 +245,7 @@ class BiometricBridge(
                 }
             },
         )
+        activePrompt = prompt
 
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)

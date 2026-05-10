@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cryptography_flutter/cryptography_flutter.dart';
@@ -14,6 +15,7 @@ import 'core/theme.dart';
 import 'features/home/home_shell.dart';
 import 'features/lock/lock_screen.dart';
 import 'l10n/generated/app_localizations.dart';
+import 'utils/ephemeral_cache.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +46,10 @@ void main() {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
+  // Purge des caches éphémères (share_plus, printing, file_picker) qui
+  // peuvent contenir des fragments d'export PDF, ZIP RGPD ou bundle
+  // .htbk en clair. Best-effort, async — n'attendons pas avant runApp.
+  unawaited(EphemeralCache.purgeOnBoot());
   runApp(const ProviderScope(child: HealthApp()));
 }
 

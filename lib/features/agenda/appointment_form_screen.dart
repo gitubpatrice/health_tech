@@ -11,6 +11,7 @@ import '../../utils/date_format.dart';
 import '../../widgets/busy_helpers.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/sensitive_text_field.dart';
 import '../animals/animal_providers.dart';
 import '../clients/client_providers.dart';
 import '../sessions/session_l10n.dart';
@@ -398,7 +399,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                 onChanged: (v) => setState(() => _reminderMinutes = v),
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              SensitiveTextField(
                 controller: _notes,
                 maxLines: 4,
                 decoration: InputDecoration(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
@@ -6,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/auto_lock.dart';
 import '../../core/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/ephemeral_cache.dart';
 import '../../widgets/error_view.dart' show localiseError;
 import '../backup/backup_screen.dart';
 import '../clients/client_providers.dart';
@@ -257,6 +260,11 @@ class _ExportClientTile extends ConsumerWidget {
         mimeType: 'application/zip',
       ),
     ]);
+    // Le ZIP RGPD contient des données santé en CLAIR (export Article 15).
+    // share_plus matérialise dans cache/share_plus/ → on planifie une
+    // purge 2 min plus tard pour limiter la fenêtre de fuite si l'app
+    // cible (mail) ne consomme pas immédiatement.
+    unawaited(EphemeralCache.scheduleSharePurge());
   }
 
   @override

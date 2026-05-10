@@ -95,6 +95,19 @@ class BackupService {
   static const String _kRestorePendingFlag =
       'health_tech.restore_pending_at_v1';
 
+  /// Compteur de tentatives de recovery, persistant. Au-delà de
+  /// [_kMaxRecoveryRetries], on abandonne pour éviter une boucle infinie
+  /// au boot (FS bloqué par AV, race avec scan media, etc.). Audit M12.
+  static const String _kRestoreRetryCount =
+      'health_tech.restore_retry_count_v1';
+  static const int _kMaxRecoveryRetries = 3;
+
+  /// Au-delà de cet âge, un staging laissé sur disque est considéré
+  /// orphelin (l'utilisateur a probablement réinstallé / fait factory
+  /// reset entre temps) et on le wipe sans tenter `_commitStaging`.
+  /// Audit M15.
+  static const Duration _kStagingMaxAge = Duration(days: 7);
+
   // Vault material keys mirrored from [HealthVault]. Centralised here so
   // backup format remains stable even if the vault's storage layout shifts.
   static const _vaultKeys = <String>[
@@ -426,58 +439,27 @@ class BackupService {
     // Le sentinel _kRestorePendingFlag a été posé en tête de applyRestore
     // (avant cancelAll) et reste set pendant Phase B. Si l'OS kill ici,
     // recoverPartialRestore au prochain boot rejouera _commitStaging.
+    final dbFile = File(p.join(dbDir.path, 'health.db'));
+
+    // **Pas de finally autour de prefs.remove** : si _commitStaging throw,
+    // on veut que le sentinel SURVIVE pour que recoverPartialRestore tente
+    // de finir au prochain boot. L'ancienne version avec
+    // `finally { prefs.remove }` perdait le sentinel sur erreur
+    // intermédiaire (audit M7).
+    await _commitStaging(
+      stagingDir: stagingDir,
+      dbFile: dbFile,
+      attDir: attDir,
+    );
+    // Succès complet -> on peut nettoyer staging + sentinel.
     try {
-      // Delete current DB sidecars (WAL/SHM) so SQLCipher does not try to
-      // recover from them against the new main file.
-      final dbFile = File(p.join(dbDir.path, 'health.db'));
-      final wal = File(p.join(dbDir.path, 'health.db-wal'));
-      final shm = File(p.join(dbDir.path, 'health.db-shm'));
-      if (wal.existsSync()) await wal.delete();
-      if (shm.existsSync()) await shm.delete();
-      if (dbFile.existsSync()) await dbFile.delete();
-
-      // Wipe current attachments — we own this directory entirely.
-      if (attDir.existsSync()) {
-        await for (final entity in attDir.list()) {
-          if (entity is File) {
-            try {
-              await entity.delete();
-            } on FileSystemException {
-              // best-effort: a leftover doesn't compromise the restore.
-            }
-          }
-        }
+      if (stagingDir.existsSync()) {
+        await stagingDir.delete(recursive: true);
       }
-      if (!dbDir.existsSync()) await dbDir.create(recursive: true);
-      if (!attDir.existsSync()) await attDir.create(recursive: true);
-
-      // Rename staging files into place + apply vault material — phase
-      // commit factorisée pour que recoverPartialRestore puisse la rejouer
-      // après crash (le staging reste sur disque tant que Phase B n'a pas
-      // été clean).
-      await _commitStaging(
-        stagingDir: stagingDir,
-        dbFile: dbFile,
-        attDir: attDir,
-      );
-    } finally {
-      // Remove the staging dir + sentinel as the LAST step. If we ever
-      // throw above, the sentinel remains and recoverPartialRestore can
-      // resume on next launch.
-      // Best-effort sur le delete : si le FS refuse (file lock, race),
-      // on poursuit quand même la suppression du sentinel — sinon on
-      // laisserait un sentinel orphelin alors que la restauration a
-      // pourtant réussi (UX confuse "restauration interrompue" alors
-      // que tout va bien).
-      try {
-        if (stagingDir.existsSync()) {
-          await stagingDir.delete(recursive: true);
-        }
-      } on Object {
-        // ignore — staging orphelin sera wipe au prochain applyRestore
-      }
-      await prefs.remove(_kRestorePendingFlag);
+    } on Object {
+      // ignore — staging orphelin sera wipe au prochain applyRestore.
     }
+    await prefs.remove(_kRestorePendingFlag);
   }
 
   /// Phase B factorisée : rename staging → final + apply vault keys.
@@ -601,26 +583,70 @@ class BackupService {
     final dbFile = File(p.join(support.path, 'db', 'health.db'));
     final attDir = Directory(p.join(support.path, 'attachments'));
 
+    // **Audit M15** : un staging trop ancien est probablement orphelin
+    // (l'utilisateur a réinstallé l'app, ou le device a fait un factory
+    // reset partiel). On wipe sans tenter `_commitStaging` pour ne pas
+    // committer des bytes pré-historiques sur une session récente.
+    final age = DateTime.now().millisecondsSinceEpoch - timestamp;
+    if (age < 0 || age > _kStagingMaxAge.inMilliseconds) {
+      try {
+        if (stagingDir.existsSync()) {
+          await stagingDir.delete(recursive: true);
+        }
+      } on Object {
+        // best-effort
+      }
+      await prefs.remove(_kRestorePendingFlag);
+      await prefs.remove(_kRestoreRetryCount);
+      return PartialRestoreOutcome.aborted;
+    }
+
+    // **Audit M12** : si on a déjà tenté N fois de finir cette restoration
+    // sans succès, on abandonne définitivement plutôt que de boucler à
+    // chaque démarrage. Évite une app coincée au boot par un FS hostile.
+    final retries = prefs.getInt(_kRestoreRetryCount) ?? 0;
+    if (retries >= _kMaxRecoveryRetries) {
+      try {
+        if (stagingDir.existsSync()) {
+          await stagingDir.delete(recursive: true);
+        }
+      } on Object {
+        // best-effort
+      }
+      await prefs.remove(_kRestorePendingFlag);
+      await prefs.remove(_kRestoreRetryCount);
+      return PartialRestoreOutcome.aborted;
+    }
+
     final canResume =
         stagingDir.existsSync() &&
         stagingDb.existsSync() &&
         stagingVault.existsSync();
 
     if (canResume) {
+      // Incrémente AVANT tentative pour éviter qu'un crash mid-tentative
+      // ne fasse re-tenter à l'infini. Si le commit réussit, on supprime
+      // le compteur juste après.
+      await prefs.setInt(_kRestoreRetryCount, retries + 1);
       try {
         await _commitStaging(
           stagingDir: stagingDir,
           dbFile: dbFile,
           attDir: attDir,
         );
-        if (stagingDir.existsSync()) {
-          await stagingDir.delete(recursive: true);
+        try {
+          if (stagingDir.existsSync()) {
+            await stagingDir.delete(recursive: true);
+          }
+        } on Object {
+          // best-effort
         }
         await prefs.remove(_kRestorePendingFlag);
+        await prefs.remove(_kRestoreRetryCount);
         return PartialRestoreOutcome.resumed;
       } on Object {
         // L'idempotence du commit a échoué (FS dans un état impossible).
-        // Tomber en mode aborted plutôt que de boucler à chaque démarrage.
+        // Le compteur incrémenté permet d'abandonner après N tentatives.
       }
     }
 
@@ -632,6 +658,7 @@ class BackupService {
       // best-effort cleanup
     }
     await prefs.remove(_kRestorePendingFlag);
+    await prefs.remove(_kRestoreRetryCount);
     return PartialRestoreOutcome.aborted;
   }
 
@@ -774,6 +801,23 @@ class BackupPreview {
   int get attachmentCount =>
       _archive.files.where((f) => f.name.startsWith('attachments/')).length;
   bool get hasDatabase => _archive.findFile('db/health.db') != null;
+
+  /// **Audit M13** : après usage (applyRestore réussi ou aborté), écrase
+  /// les bytes en clair encore détenus par l'archive en mémoire. La
+  /// preview peut vivre plusieurs minutes dans un dialog de confirmation
+  /// pendant que l'utilisateur lit ; un dump RAM root pendant cette
+  /// fenêtre exposait `vault.json` clair (wrapped VEK + KDF salt) et
+  /// les bytes du DB SQLCipher (chiffrés mais entête identifiante).
+  void wipe() {
+    for (final f in _archive.files) {
+      if (!f.isFile) continue;
+      final content = f.content as List<int>;
+      for (var i = 0; i < content.length; i++) {
+        content[i] = 0;
+      }
+    }
+    _archive.clearSync();
+  }
 }
 
 class _Envelope {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
@@ -9,6 +11,7 @@ import '../../domain/session.dart';
 import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../utils/ephemeral_cache.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
 import '../../widgets/error_view.dart';
@@ -94,6 +97,11 @@ class _SessionBody extends ConsumerWidget {
       bytes: bytes,
       filename: 'session-${session.id}.pdf',
     );
+    // Le PDF de séance contient les notes santé en CLAIR (rapport de
+    // séance, observations, advice, etc.). Printing.sharePdf le
+    // matérialise dans cache/printing/ → on planifie la purge 2 min
+    // plus tard pour qu'il ne traîne pas dans le cache OS.
+    unawaited(EphemeralCache.scheduleSharePurge());
   }
 
   @override
