@@ -1,52 +1,92 @@
-# Mentions légales
+# Mentions légales — Health Tech
 
-_Health Tech — version v1.1_
+## Éditeur
 
-> **L'utilisateur de l'application est SEUL RESPONSABLE de l'usage qu'il en fait.** En installant et en utilisant Health Tech, l'utilisateur accepte d'utiliser l'application de façon responsable et reconnaît qu'il est le seul responsable de son utilisation.
->
-> Les champs entre `<…>` ci-dessous doivent être complétés par l'utilisateur professionnel s'il publie ou affiche publiquement ces mentions (site web, devis, factures, etc.).
+Application développée et publiée par :
 
-## Éditeur de l'application
+**Files Tech**
+Contact : contact@files-tech.com
 
-- **Nom commercial** : Health Tech (gamme Files Tech)
-- **Domaine** : files-tech.com
-- **Contact** : contact@files-tech.com
+Projet open source distribué gratuitement.
 
-L'application est diffusée sous licence **Apache 2.0**. Le code source est hébergé sur GitHub (dépôt privé en phase de bêta).
+---
 
-## Hébergeur
+## Distribution
 
-L'application **ne fait appel à aucun hébergeur**. Elle s'exécute sur l'appareil Android de l'utilisateur et ne transmet aucune donnée client à un serveur distant.
+L'application est distribuée :
+- via GitHub ;
+- éventuellement via F-Droid.
 
-## Utilisateur professionnel
+---
 
-L'application est utilisée par un professionnel indépendant identifié, qui en est seul responsable au sens du RGPD :
+## Licence Open Source
 
-- **Nom prénom** : `<À COMPLÉTER>`
-- **Activité** : `<soin énergétique / Reiki / ostéopathie animale / géobiologie — préciser>`
-- **Numéro SIRET** : `<À COMPLÉTER si applicable>`
-- **Adresse professionnelle** : `<À COMPLÉTER>`
-- **Email professionnel** : `<À COMPLÉTER>`
-- **Téléphone professionnel** : `<À COMPLÉTER>`
+Le code source de l'application est distribué sous licence Apache License 2.0.
 
-## Caractère non médical
+Vous pouvez :
+- utiliser ;
+- étudier ;
+- modifier ;
+- redistribuer ;
 
-Les prestations proposées par l'utilisateur professionnel s'inscrivent dans une démarche de **mieux-être** et **d'accompagnement énergétique**. Elles **ne remplacent pas** un avis médical, un diagnostic, un traitement prescrit par un professionnel de santé humaine ou par un vétérinaire.
+le logiciel conformément aux termes de cette licence.
+
+Texte officiel :
+[https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
+
+---
+
+## Absence de garantie
+
+L'application est fournie « en l'état », sans garantie expresse ou implicite.
+
+L'auteur ne garantit notamment pas :
+- l'absence d'erreurs ;
+- la disponibilité continue ;
+- l'adéquation à un besoin particulier ;
+- l'absence de perte de données.
+
+L'utilisateur utilise l'application sous sa responsabilité exclusive.
+
+---
+
+## Activités de bien-être
+
+L'application est destinée à la gestion administrative et organisationnelle d'activités de bien-être et d'accompagnement holistique.
+
+Elle ne constitue pas :
+- un dispositif médical ;
+- un logiciel médical certifié ;
+- un outil de diagnostic ;
+- un service vétérinaire réglementé.
+
+Les informations enregistrées dans l'application ne remplacent en aucun cas :
+- un avis médical ;
+- un diagnostic vétérinaire ;
+- une consultation auprès d'un professionnel habilité.
+
+---
 
 ## Propriété intellectuelle
 
-Le nom **Health Tech** et la marque ombrelle **Files Tech** sont la propriété de leur éditeur. Le code source est sous licence Apache 2.0 — chacun est libre d'en faire usage dans le respect de cette licence.
+Sauf mention contraire, le code source, les éléments graphiques, la documentation et le contenu de l'application sont protégés par les lois relatives à la propriété intellectuelle.
 
-Les contenus produits par l'utilisateur professionnel (comptes rendus, photos, documents joints) restent sa propriété pleine et entière. L'éditeur n'y a aucun accès.
+Les droits accordés aux utilisateurs sont exclusivement ceux prévus par la licence Apache 2.0.
 
-## Crédits techniques
+---
 
-L'application repose sur :
-- **Flutter** (Google) — framework UI sous licence BSD
-- **Drift + sqlcipher_flutter_libs** — base SQLite chiffrée
-- **cryptography_flutter** — primitives crypto natives Android
-- **Material 3** — design system
+## Responsabilité
 
-## Modification
+L'utilisateur demeure seul responsable :
+- des données enregistrées ;
+- des sauvegardes ;
+- de la sécurisation de son appareil ;
+- de l'usage qu'il fait de l'application ;
+- du respect des lois applicables à son activité.
 
-Les présentes mentions peuvent être actualisées sans préavis. La version applicable est celle accessible via **Paramètres → Documents légaux**.
+L'auteur ne pourra être tenu responsable :
+- d'une perte de données ;
+- d'un accès non autorisé à l'appareil ;
+- d'un dysfonctionnement Android ;
+- d'une mauvaise utilisation du logiciel ;
+- des versions modifiées ou redistribuées par des tiers.

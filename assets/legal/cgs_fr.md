@@ -1,85 +1,89 @@
-# Conditions générales de service
+# Conditions Générales d'Utilisation — Health Tech
 
-_Health Tech — version v1.1 — applicable à compter de la date d'installation._
+## Article 1 — Objet
 
-> **L'utilisateur de l'application est SEUL RESPONSABLE de l'usage qu'il en fait.** L'éditeur Files Tech publie un outil sous licence Apache 2.0 et ne peut être tenu responsable de la conformité de cet usage à un quelconque cadre réglementaire métier (santé, animal, juridique, fiscal, RGPD).
+L'application Health Tech est un logiciel libre destiné à la gestion de dossiers, rendez-vous et suivis liés à des activités de bien-être, d'accompagnement holistique et de pratiques énergétiques.
 
-## 0. Acceptation
+---
 
-En installant et en utilisant Health Tech, **l'utilisateur accepte d'utiliser l'application de façon responsable et reconnaît qu'il est le seul responsable de son utilisation**. Il reconnaît avoir pris connaissance de l'ensemble des présentes conditions, des limitations qui y sont énoncées (notamment l'absence totale de garantie) et il s'engage à employer l'outil dans le strict respect du cadre légal applicable à son activité professionnelle. À défaut, il doit cesser d'utiliser l'application et la désinstaller.
+## Article 2 — Licence
 
-## 1. Objet
+L'application est distribuée sous licence Apache License 2.0.
 
-Health Tech est un outil **personnel** de gestion de cabinet pour praticiennes et praticiens en :
-- soin énergétique (Reiki, magnétisme, harmonisation, etc.) ;
-- ostéopathie animale (équin, canin, félin, autres) ;
-- géobiologie et diagnostic de pollutions électromagnétiques d'un lieu.
+L'utilisation du logiciel implique l'acceptation des termes de cette licence.
 
-L'application **n'a pas vocation médicale**. Elle ne participe à aucun acte de diagnostic, de prescription ou de traitement réservé à un professionnel de santé humaine ou à un vétérinaire.
+Texte officiel :
+[https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-## 2. Caractère non médical
+---
 
-L'utilisateur professionnel s'engage à indiquer clairement à ses clients que ses prestations :
-- relèvent du **mieux-être** et **non de la médecine** ;
-- **ne remplacent pas** un avis médical, un diagnostic, un traitement prescrit, un acte vétérinaire ;
-- **n'invitent jamais** un client à arrêter, modifier ou différer un traitement médical en cours.
+## Article 3 — Gratuité
 
-L'application affiche un avertissement à cet effet avant chaque création de fiche client. L'utilisateur s'engage à ne pas neutraliser cet avertissement.
+L'application est mise à disposition gratuitement, sans abonnement ni paiement obligatoire.
 
-## 3. Responsabilités de l'utilisateur professionnel
+---
 
-**L'utilisateur professionnel est l'unique responsable de l'usage qu'il fait de l'application**, notamment :
-- du respect du cadre légal de son activité (déclaration, formation, assurance, statut professionnel) ;
-- de la **véracité** et de la **mise à jour** des informations qu'il saisit ;
-- du **consentement explicite** de chaque personne dont il enregistre les données (consentement RGPD coché dans l'app, en sa qualité de responsable de traitement au sens du RGPD) ;
-- de la **sécurité** de l'appareil (verrouillage écran, mot de passe robuste, pas de prêt) ;
-- du caractère **strictement confidentiel** des comptes rendus, photos et documents joints ;
-- du choix d'utiliser ou non telle ou telle fonctionnalité (sauvegarde, biométrie, agenda système) en accord avec ses obligations professionnelles.
+## Article 4 — Utilisation
 
-**L'éditeur Files Tech décline toute responsabilité** quant à l'usage qui est fait de l'application par l'utilisateur. Les présentes CGS ne créent aucune obligation de moyen ou de résultat à la charge de l'éditeur au-delà de la mise à disposition du logiciel sous licence Apache 2.0.
+L'utilisateur demeure seul responsable :
+- des données enregistrées ;
+- des sauvegardes ;
+- du respect des réglementations applicables ;
+- de l'usage qu'il fait du logiciel.
 
-## 4. Activité animale
+---
 
-L'ostéopathie animale n'est pas un acte vétérinaire au sens du Code rural lorsqu'elle est pratiquée par un professionnel non vétérinaire dans le cadre d'une démarche de bien-être. L'utilisateur s'engage à :
-- ne pas se présenter comme vétérinaire ;
-- recommander une consultation vétérinaire devant tout signe pathologique (douleurs aiguës, plaies, fièvre, etc.) ;
-- documenter dans les notes de séance toute orientation vers un vétérinaire.
+## Article 5 — Données personnelles
 
-## 5. Géobiologie / diagnostic électromagnétique
+Lorsque l'utilisateur enregistre des données personnelles ou sensibles concernant des clients ou des animaux, il lui appartient de respecter les réglementations applicables, notamment le Règlement Général sur la Protection des Données (RGPD).
 
-Les diagnostics géobiologiques et de pollutions électromagnétiques produits via l'application :
-- sont des **observations subjectives** ou des **mesures non normées** ;
-- ne se substituent **en aucun cas** à un diagnostic technique réglementé (radon, amiante, plomb, mesure CEM accréditée COFRAC) ;
-- ne peuvent fonder ni un acte juridique, ni une expertise opposable.
+---
 
-## 6. Fonctionnement de l'application
+## Article 6 — Usage non médical
 
-L'application :
-- **fonctionne hors-ligne** ; aucune donnée client n'est transmise sur Internet par le cœur de l'app ;
-- **chiffre toutes les données** au repos (SQLCipher AES-256 + AES-GCM par champ pour les données sensibles) ;
-- **verrouille** son contenu derrière une phrase secrète et, à venir, une biométrie ;
-- ne contient **aucune télémétrie** ni **identifiant publicitaire**.
+L'application constitue un outil administratif et organisationnel.
 
-L'utilisateur peut activer optionnellement une synchronisation des **rendez-vous** vers l'agenda système (Google Agenda) — cette opt-in est explicite par rendez-vous.
+Elle ne fournit :
+- aucun diagnostic médical ;
+- aucun acte vétérinaire ;
+- aucune prescription ;
+- aucune garantie thérapeutique.
 
-## 7. Limitation de garantie
+Les pratiques énergétiques et approches holistiques relèvent d'une démarche de bien-être et ne remplacent pas un professionnel de santé habilité.
 
-L'application est fournie **« EN L'ÉTAT »**, sans garantie d'aucune sorte, expresse ou implicite, conformément à la licence Apache 2.0. L'éditeur ne peut en aucun cas être tenu responsable :
-- d'une perte de données liée à la perte de l'appareil, à un crash système, à une corruption de fichier ou à l'oubli de la phrase secrète (qui ne peut **PAS** être récupérée par conception) ;
-- d'une indisponibilité temporaire du système Android ou des plugins natifs (calendrier, biométrie, notifications) ;
-- d'une mauvaise utilisation par le professionnel (saisie incorrecte, partage involontaire, configuration inadaptée à son cadre légal) ;
-- d'un préjudice direct ou indirect lié à l'utilisation de l'application, y compris perte de clientèle, perte d'exploitation ou atteinte à la réputation.
+---
 
-L'utilisateur est **fortement encouragé** à exporter régulièrement ses données via la fonction **Sauvegarde chiffrée** (Paramètres → Sauvegarde) et à conserver l'archive dans un emplacement sûr (clé USB, cloud chiffré).
+## Article 7 — Absence de garantie
 
-## 8. Tarif
+Le logiciel est fourni « en l'état », sans garantie d'aucune sorte.
 
-L'application est diffusée sous licence Apache 2.0. Son usage est **gratuit** pour l'utilisateur final.
+L'auteur ne garantit notamment pas :
+- l'absence d'erreurs ;
+- la compatibilité avec tous les appareils ;
+- l'absence de perte de données ;
+- la disponibilité permanente du logiciel.
 
-## 9. Modifications
+---
 
-L'éditeur peut faire évoluer le code et ces conditions. La version applicable est celle accessible via le menu **Paramètres → Documents légaux** au moment de l'utilisation.
+## Article 8 — Limitation de responsabilité
 
-## 10. Contact
+L'auteur ne pourra être tenu responsable :
+- des pertes de données ;
+- des dommages indirects ;
+- d'un mauvais usage du logiciel ;
+- d'un accès frauduleux à l'appareil ;
+- des modifications du logiciel effectuées par des tiers.
 
-contact@files-tech.com
+---
+
+## Article 9 — Redistribution et modification
+
+Conformément à la licence Apache 2.0, l'application peut être modifiée et redistribuée dans le respect des termes de cette licence.
+
+L'auteur original ne peut être tenu responsable des versions modifiées par des tiers.
+
+---
+
+## Article 10 — Droit applicable
+
+Les présentes conditions sont soumises au droit français et au droit de l'Union Européenne applicable.

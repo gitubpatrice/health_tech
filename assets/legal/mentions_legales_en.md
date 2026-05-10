@@ -1,52 +1,92 @@
-# Legal notice
+# Legal notice — Health Tech
 
-_Health Tech — v1.1_
+## Publisher
 
-> **The user of the application is the SOLE PARTY RESPONSIBLE for the use they make of it.** By installing and using Health Tech, the user agrees to use the application in a responsible manner and acknowledges that they are solely responsible for its use.
->
-> The `<…>` fields below must be completed by the professional user if they publish or display these notices in public (website, quotes, invoices, etc.).
+Application developed and published by:
 
-## Application publisher
+**Files Tech**
+Contact: contact@files-tech.com
 
-- **Trade name**: Health Tech (Files Tech range)
-- **Domain**: files-tech.com
-- **Contact**: contact@files-tech.com
+Open source project distributed free of charge.
 
-The application is released under the **Apache 2.0** licence. The source code is hosted on GitHub (private repository during the beta phase).
+---
 
-## Hosting
+## Distribution
 
-The application **uses no hosting provider**. It runs on the user's Android device and transmits no client data to any remote server.
+The application is distributed:
+- via GitHub;
+- possibly via F-Droid.
 
-## Professional user
+---
 
-The application is used by an identified independent professional, who is the sole controller within the meaning of GDPR:
+## Open Source License
 
-- **Full name**: `<TO BE FILLED IN>`
-- **Activity**: `<energy work / Reiki / animal osteopathy / geobiology — specify>`
-- **Business registration number**: `<TO BE FILLED IN if applicable>`
-- **Business address**: `<TO BE FILLED IN>`
-- **Business email**: `<TO BE FILLED IN>`
-- **Business phone**: `<TO BE FILLED IN>`
+The application source code is distributed under the Apache License 2.0.
 
-## Non-medical nature
+You may:
+- use;
+- study;
+- modify;
+- redistribute;
 
-The services offered by the professional user are part of a **wellbeing** and **energy support** approach. They **do not replace** medical advice, a diagnosis, or a treatment prescribed by a human healthcare professional or a veterinarian.
+the software in accordance with the terms of that license.
+
+Official text:
+[https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
+
+---
+
+## No warranty
+
+The application is provided "as is", without express or implied warranty.
+
+The author does not warrant in particular:
+- absence of errors;
+- continuous availability;
+- fitness for a particular purpose;
+- absence of data loss.
+
+The user uses the application under their sole responsibility.
+
+---
+
+## Wellness activities
+
+The application is intended for the administrative and organisational management of wellness and holistic support activities.
+
+It does NOT constitute:
+- a medical device;
+- certified medical software;
+- a diagnostic tool;
+- a regulated veterinary service.
+
+The information recorded in the application is in no way a substitute for:
+- medical advice;
+- a veterinary diagnosis;
+- a consultation with a qualified professional.
+
+---
 
 ## Intellectual property
 
-The name **Health Tech** and the umbrella brand **Files Tech** are the property of their publisher. The source code is released under the Apache 2.0 licence — anyone may use it in accordance with that licence.
+Unless otherwise stated, the source code, graphic elements, documentation and content of the application are protected by intellectual property laws.
 
-Content produced by the professional user (reports, photos, attached documents) remains their full and entire property. The publisher has no access to it.
+The rights granted to users are exclusively those provided by the Apache 2.0 license.
 
-## Technical credits
+---
 
-The application is built on:
-- **Flutter** (Google) — UI framework under the BSD licence
-- **Drift + sqlcipher_flutter_libs** — encrypted SQLite database
-- **cryptography_flutter** — native Android crypto primitives
-- **Material 3** — design system
+## Liability
 
-## Updates
+The user remains solely responsible for:
+- the data they record;
+- their backups;
+- the security of their device;
+- the use they make of the application;
+- compliance with the laws applicable to their activity.
 
-This notice may be updated without prior notice. The applicable version is the one accessible via **Settings → Legal documents**.
+The author cannot be held liable for:
+- loss of data;
+- unauthorised access to the device;
+- a malfunction of Android;
+- misuse of the software;
+- versions modified or redistributed by third parties.

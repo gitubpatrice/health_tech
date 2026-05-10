@@ -1,89 +1,89 @@
-# Politique de confidentialité
+# Politique de confidentialité — Health Tech
 
-_Health Tech — version v1.1 — RGPD (Règlement (UE) 2016/679)._
+## 1. Principes généraux
 
-> **L'utilisateur de l'application est SEUL RESPONSABLE de l'usage qu'il en fait, y compris du traitement des données personnelles qu'il y enregistre.** En installant et en utilisant Health Tech, l'utilisateur accepte d'utiliser l'application de façon responsable et reconnaît qu'il est le seul responsable de son utilisation.
+L'application fonctionne localement sur l'appareil Android de l'utilisateur.
 
-## 1. Responsable de traitement
+Aucune donnée personnelle n'est transmise à l'auteur de l'application.
 
-L'utilisateur professionnel de l'application est **seul responsable du traitement** au sens de l'article 4 du RGPD. L'éditeur de l'application (Files Tech) ne traite aucune donnée client : Health Tech est exécutée intégralement sur l'appareil de l'utilisateur, sans serveur intermédiaire. **Files Tech ne peut être tenu responsable de la conformité RGPD du traitement opéré par l'utilisateur** (consentement des personnes concernées, durées de conservation, suites données aux droits, sécurité physique de l'appareil, etc.).
+Aucune donnée n'est collectée à distance.
 
-## 2. Catégories de données collectées
+Aucune donnée n'est vendue, partagée ou exploitée à des fins commerciales.
 
-L'application stocke localement, chiffrées sur l'appareil :
+---
 
-**Identité et contact** — nom, prénom, civilité, date de naissance, téléphone, email, adresse, profession.
+## 2. Données enregistrées
 
-**Informations sur l'animal** (le cas échéant) — nom, espèce, race, sexe, identifiants (puce, tatouage, pedigree), poids, antécédents, comportement, vétérinaire référent.
+L'utilisateur peut enregistrer dans l'application :
+- des informations clients ;
+- des notes de suivi ;
+- des rendez-vous ;
+- des informations relatives à des animaux ;
+- des observations liées à des pratiques de bien-être ou d'accompagnement.
 
-**Informations entreprise / lieu** (le cas échéant) — raison sociale, SIRET, SIREN, type de lieu, observations site et recommandations.
+Ces données restent exclusivement stockées sur l'appareil de l'utilisateur.
 
-**Notes de bien-être** — l'utilisateur peut consigner des observations relatives au mieux-être ressenti par le client (état émotionnel, fatigue, sommeil, douleurs perçues). Ces données ne sont **pas des données de santé au sens médical strict** (article L.1110-4 CSP) car elles ne sont pas produites dans le cadre d'un acte médical. Elles relèvent toutefois de données **sensibles RGPD** lorsqu'elles révèlent un état de santé — l'utilisateur s'engage à les traiter avec la même rigueur.
+---
 
-**Comptes rendus de séance** — état avant/après, ressenti, observations, conseils.
+## 3. Absence de connexion serveur
 
-**Rendez-vous** — date, lieu, statut, rappels.
+L'application :
+- ne nécessite pas de compte utilisateur ;
+- ne synchronise pas les données sur Internet ;
+- ne transmet pas les données vers un serveur distant ;
+- ne comporte aucun système publicitaire ;
+- ne contient aucun tracker ni outil d'analyse comportementale.
 
-**Pièces jointes** — photos d'animaux, documents transmis par le client (consentements, ordonnances vétérinaires éventuelles).
+---
 
-## 3. Bases légales
+## 4. Sécurité des données
 
-- **Consentement explicite** du client (article 6.1.a et 9.2.a RGPD), recueilli via les cases obligatoires de la fiche client lors de la création.
-- **Intérêt légitime** du praticien à tenir un dossier de suivi pour la qualité de sa prestation (article 6.1.f).
+L'utilisateur demeure seul responsable :
+- de la protection de son appareil ;
+- de ses sauvegardes ;
+- de l'accès physique au téléphone ;
+- de la confidentialité des données enregistrées.
 
-## 4. Finalités
+Il est recommandé d'utiliser :
+- un mot de passe ;
+- un verrouillage biométrique ;
+- un chiffrement de l'appareil.
 
-- Tenue du dossier client / animal / lieu pour le suivi des prestations.
-- Préparation et compte rendu des séances.
-- Gestion des rendez-vous.
-- Facturation éventuelle.
+---
 
-**Aucune** des finalités suivantes n'est mise en œuvre : profilage, marketing ciblé, revente, statistique anonymisée transmise à un tiers.
+## 5. Données sensibles
 
-## 5. Durée de conservation
+Certaines informations enregistrées peuvent être considérées comme sensibles selon la réglementation applicable.
 
-L'utilisateur professionnel détermine la durée de conservation en fonction de son cadre. À titre indicatif :
-- **5 ans** après la dernière prestation pour la tenue de dossier client courante ;
-- **10 ans** pour les données comptables (factures, paiements).
+L'utilisateur s'engage à respecter :
+- le RGPD ;
+- les obligations légales liées à son activité ;
+- la confidentialité des informations concernant ses clients.
 
-L'utilisateur est invité à supprimer les fiches dont la conservation n'est plus justifiée, via le bouton **Effacement définitif** dans Paramètres.
+---
 
-## 6. Sécurité
+## 6. Permissions Android
 
-- Phrase secrète personnelle (12 caractères minimum, dérivée par Argon2id 64 MiB).
-- Base de données chiffrée AES-256 (SQLCipher) au repos.
-- Champs sensibles (notes santé, comptes rendus, pièces jointes) chiffrés une seconde fois au niveau colonne (AES-GCM).
-- Verrouillage automatique paramétrable.
-- Capture d'écran bloquée (FLAG_SECURE).
-- Aucune sauvegarde Android automatique vers le cloud.
-- Aucun transfert hors de l'appareil sans action explicite.
+L'application ne demande que les permissions strictement nécessaires à son fonctionnement.
 
-## 7. Sous-traitants
+---
 
-- **Aucun sous-traitant cloud n'a accès aux données** (l'application est 100 % locale).
-- Si l'utilisateur active l'**ajout au calendrier système** Android, les informations du **rendez-vous uniquement** (titre, date, lieu, durée) sont transmises à l'application Calendrier de l'appareil (souvent Google Calendar). Aucune donnée santé, aucune note de séance, aucun nom de client n'est transmis dans la description sauf si l'utilisateur l'inclut volontairement dans le titre.
-- L'export PDF d'une séance et l'export ZIP RGPD passent par le menu de partage Android — c'est l'utilisateur qui choisit l'application destinataire (mail, cloud, message). À partir du moment où il partage, ce destinataire devient sous-traitant de fait.
+## 7. Logiciel libre
 
-## 8. Droits des personnes (articles 15 à 22 RGPD)
+Le code source de l'application étant accessible publiquement, chacun peut vérifier le fonctionnement réel de l'application.
 
-Le client peut demander à l'utilisateur professionnel :
-- **Accès** à ses données → **Paramètres → Droit à la portabilité (RGPD)** génère un ZIP complet.
-- **Rectification** → modifier la fiche directement.
-- **Effacement** → **Paramètres → Droit à l'effacement (RGPD)** supprime définitivement le client + animaux + séances + pièces jointes + événements de calendrier associés.
-- **Opposition** au traitement.
-- **Limitation** du traitement.
-- **Portabilité** au format JSON (inclus dans le ZIP).
+Licence :
+[https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-L'utilisateur professionnel est tenu d'honorer ces demandes dans un délai d'un mois.
+---
 
-## 9. Mineurs
+## 8. Conservation des données
 
-Le traitement des données d'un client mineur requiert l'accord parental (article 8 RGPD). L'utilisateur professionnel est responsable de recueillir cet accord en dehors de l'application avant toute saisie.
+Les données sont conservées uniquement sur l'appareil de l'utilisateur jusqu'à leur suppression manuelle ou à la désinstallation de l'application.
 
-## 10. Réclamation
+---
 
-En cas de litige non résolu directement avec l'utilisateur professionnel, le client peut saisir la CNIL : [www.cnil.fr](https://www.cnil.fr).
+## 9. Contact
 
-## 11. Contact
-
+Pour toute question concernant la confidentialité :
 contact@files-tech.com
