@@ -110,7 +110,11 @@ class _BiometricTile extends ConsumerWidget {
     final vault = ref.read(vaultProvider);
     try {
       if (turnOn) {
-        await vault.enableBiometric();
+        await vault.enableBiometric(
+          title: l10n.lockBiometricTitle,
+          subtitle: l10n.settingsBiometricEnrollSubtitle,
+          negativeButton: l10n.actionCancel,
+        );
         messenger.showSnackBar(
           SnackBar(content: Text(l10n.settingsBiometricEnabled)),
         );

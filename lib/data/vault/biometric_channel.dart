@@ -26,18 +26,33 @@ class BiometricChannel {
   }
 
   /// Wraps the given plaintext under a fresh Keystore-bound AES-GCM key.
-  /// Returns the IV + ciphertext so the caller can persist them.
-  Future<BiometricWrap> wrap(Uint8List plaintext) async {
-    final res = await _channel.invokeMethod<Map<Object?, Object?>>('wrap', {
-      'plaintext': base64Encode(plaintext),
-    });
-    if (res == null) {
-      throw const BiometricFailure('wrap_failed');
+  /// Shows the BiometricPrompt because the key is created with
+  /// `setUserAuthenticationRequired(true)` — that flag covers BOTH encrypt
+  /// and decrypt operations, so wrapping the VEK at enable-time goes
+  /// through the same prompt the user will see at every unlock.
+  Future<BiometricWrap> wrap({
+    required Uint8List plaintext,
+    required String title,
+    required String subtitle,
+    required String negativeButton,
+  }) async {
+    try {
+      final res = await _channel.invokeMethod<Map<Object?, Object?>>('wrap', {
+        'plaintext': base64Encode(plaintext),
+        'title': title,
+        'subtitle': subtitle,
+        'negativeButton': negativeButton,
+      });
+      if (res == null) {
+        throw const BiometricFailure('wrap_failed');
+      }
+      return BiometricWrap(
+        iv: base64Decode(res['iv'] as String),
+        ciphertext: base64Decode(res['ciphertext'] as String),
+      );
+    } on PlatformException catch (e) {
+      throw BiometricFailure(e.code);
     }
-    return BiometricWrap(
-      iv: base64Decode(res['iv'] as String),
-      ciphertext: base64Decode(res['ciphertext'] as String),
-    );
   }
 
   /// Shows the system biometric prompt; on success the bound Cipher decrypts

@@ -309,6 +309,7 @@
   "settingsBiometricTitle": "Biometric unlock",
   "settingsBiometricSubtitle": "Enable strong fingerprint or face authentication to open the vault.",
   "settingsBiometricUnavailable": "No strong biometric is enrolled on this device.",
+  "settingsBiometricEnrollSubtitle": "Confirm your biometric to enable unlock shortcuts.",
   "settingsBiometricEnabled": "Biometric unlock enabled.",
   "settingsBiometricDisabled": "Biometric unlock disabled.",
   "lockBiometricTitle": "Health Tech unlock",

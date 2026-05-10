@@ -278,12 +278,23 @@ class HealthVault {
   Future<bool> biometricAvailable() => _biometric.isAvailable();
 
   /// Enable biometric unlock. The vault MUST be unlocked: we wrap the
-  /// in-memory VEK with a fresh Keystore-bound key. After this call the
-  /// next launch can offer the biometric prompt as a passphrase shortcut.
-  Future<void> enableBiometric() async {
+  /// in-memory VEK with a fresh Keystore-bound key. The wrap requires
+  /// going through the BiometricPrompt (the key is provisioned with
+  /// `setUserAuthenticationRequired(true)`, so even the encrypt step
+  /// needs an authenticated cipher), hence the prompt strings.
+  Future<void> enableBiometric({
+    required String title,
+    required String subtitle,
+    required String negativeButton,
+  }) async {
     final vek = _vek;
     if (vek == null) throw const VaultLockedError();
-    final wrap = await _biometric.wrap(Uint8List.fromList(vek));
+    final wrap = await _biometric.wrap(
+      plaintext: Uint8List.fromList(vek),
+      title: title,
+      subtitle: subtitle,
+      negativeButton: negativeButton,
+    );
     await _storage.write(key: _kBioIv, value: base64Encode(wrap.iv));
     await _storage.write(
       key: _kBioCipher,

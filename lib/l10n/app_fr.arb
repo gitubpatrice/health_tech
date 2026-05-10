@@ -309,6 +309,7 @@
   "settingsBiometricTitle": "Déverrouillage biométrique",
   "settingsBiometricSubtitle": "Active l’empreinte digitale ou la reconnaissance faciale forte pour ouvrir le coffre.",
   "settingsBiometricUnavailable": "Aucune empreinte forte enregistrée sur cet appareil.",
+  "settingsBiometricEnrollSubtitle": "Confirme ton empreinte pour activer le déverrouillage biométrique.",
   "settingsBiometricEnabled": "Biométrie activée.",
   "settingsBiometricDisabled": "Biométrie désactivée.",
   "lockBiometricTitle": "Déverrouillage Health Tech",

@@ -74,28 +74,78 @@ class BiometricBridge(
     private fun handleWrap(call: MethodCall, result: MethodChannel.Result) {
         val plaintextB64 = call.argument<String>("plaintext")
             ?: return result.error("bad_args", "plaintext missing", null)
+        val title = call.argument<String>("title") ?: "Authenticate"
+        val subtitle = call.argument<String>("subtitle") ?: ""
+        val negative = call.argument<String>("negativeButton") ?: "Cancel"
+
+        // The Keystore key is generated with setUserAuthenticationRequired(true)
+        // which means EVERY use — encrypt as well as decrypt — must go through
+        // BiometricPrompt with a CryptoObject. We therefore prompt the user
+        // once at enable-time, bind the cipher to the auth result, and only
+        // then perform the encryption.
+        val cipher: Cipher
         try {
-            // Wipe any prior wrapping; a freshly-rolled key for each enable
-            // call means a previous wrapped VEK becomes useless if it
-            // somehow leaked.
             deleteKey()
             val key = generateKey()
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.ENCRYPT_MODE, key)
-            val iv = cipher.iv
-            val plaintext = Base64.decode(plaintextB64, Base64.NO_WRAP)
-            val ciphertext = cipher.doFinal(plaintext)
-            // Best-effort wipe of the plaintext copy we just consumed.
-            plaintext.fill(0)
-            result.success(
-                mapOf(
-                    "iv" to Base64.encodeToString(iv, Base64.NO_WRAP),
-                    "ciphertext" to
-                            Base64.encodeToString(ciphertext, Base64.NO_WRAP),
-                ),
-            )
         } catch (e: Exception) {
-            result.error("wrap_failed", e.message, null)
+            return result.error("wrap_init_failed", e.message ?: e.toString(), null)
+        }
+        val iv = cipher.iv
+
+        val executor = ContextCompat.getMainExecutor(activity)
+        val prompt = BiometricPrompt(
+            activity,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationError(
+                    errorCode: Int,
+                    errString: CharSequence,
+                ) {
+                    result.error("auth_error", "$errorCode: $errString", null)
+                }
+
+                override fun onAuthenticationSucceeded(
+                    auth: BiometricPrompt.AuthenticationResult,
+                ) {
+                    try {
+                        val bound = auth.cryptoObject?.cipher
+                            ?: throw IllegalStateException("crypto object missing")
+                        val plaintext = Base64.decode(plaintextB64, Base64.NO_WRAP)
+                        val ciphertext = bound.doFinal(plaintext)
+                        plaintext.fill(0)
+                        result.success(
+                            mapOf(
+                                "iv" to Base64.encodeToString(iv, Base64.NO_WRAP),
+                                "ciphertext" to Base64.encodeToString(
+                                    ciphertext,
+                                    Base64.NO_WRAP,
+                                ),
+                            ),
+                        )
+                    } catch (e: Exception) {
+                        result.error(
+                            "wrap_failed",
+                            e.message ?: e.toString(),
+                            null,
+                        )
+                    }
+                }
+            },
+        )
+
+        val info = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(title)
+            .setSubtitle(subtitle)
+            .setNegativeButtonText(negative)
+            .setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG,
+            )
+            .build()
+
+        activity.runOnUiThread {
+            prompt.authenticate(info, BiometricPrompt.CryptoObject(cipher))
         }
     }
 
