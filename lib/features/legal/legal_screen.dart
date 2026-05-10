@@ -56,7 +56,9 @@ class _LegalDocView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
-      future: rootBundle.loadString(_assetPath(Localizations.localeOf(context))),
+      future: rootBundle.loadString(
+        _assetPath(Localizations.localeOf(context)),
+      ),
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator());

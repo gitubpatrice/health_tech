@@ -274,6 +274,38 @@
   "legalDocPrivacy": "Politique de confidentialité",
   "legalDocMentions": "Mentions légales",
 
+  "settingsBackupTitle": "Sauvegarde chiffrée",
+  "settingsBackupSubtitle": "Exporte et restaure toutes tes données dans un fichier chiffré.",
+  "backupScreenTitle": "Sauvegarde chiffrée",
+  "backupExplainer": "La sauvegarde regroupe ta base et tes pièces jointes dans un fichier .htbk chiffré avec une phrase secrète dédiée. Conserve ce fichier ET la phrase secrète du coffre : il faut les deux pour restaurer.",
+  "backupExportTitle": "Exporter une sauvegarde",
+  "backupExportSubtitle": "Crée un fichier .htbk chiffré et le partage via le sélecteur Android.",
+  "backupExportPassphraseTitle": "Phrase secrète de sauvegarde",
+  "backupExportPassphraseHint": "Cette phrase secrète protège uniquement le fichier de sauvegarde. Choisis-en une différente de celle du coffre. 12 caractères minimum.",
+  "backupExportInProgress": "Préparation de la sauvegarde…",
+  "backupRestoreTitle": "Restaurer une sauvegarde",
+  "backupRestoreSubtitle": "Remplace toutes les données par celles du fichier .htbk choisi.",
+  "backupRestorePassphraseTitle": "Phrase secrète du fichier",
+  "backupRestorePassphraseHint": "Saisis la phrase secrète utilisée lors de l’export.",
+  "backupRestoreConfirmTitle": "Confirmer la restauration",
+  "backupRestoreConfirmBody": "Cette opération va effacer toutes les données actuelles ({attachments} pièces jointes seront remplacées). Sauvegarde du {date}. Continuer ?",
+  "@backupRestoreConfirmBody": {
+    "placeholders": {
+      "attachments": {"type": "int"},
+      "date": {"type": "String"}
+    }
+  },
+  "backupRestoreConfirmAction": "Restaurer",
+  "backupRestoreDone": "Restauration terminée. Déverrouille avec ta phrase secrète habituelle.",
+  "backupRestoreWrongPassphrase": "Phrase secrète incorrecte.",
+  "backupBundleInvalid": "Fichier de sauvegarde invalide ou corrompu.",
+  "backupSchemaUnsupported": "Cette sauvegarde a été créée avec une version plus récente de Health Tech.",
+  "backupVaultMustBeUnlocked": "Le coffre doit être déverrouillé pour exporter.",
+  "backupPassphraseLabel": "Phrase secrète",
+  "backupPassphraseConfirmLabel": "Confirmer",
+  "backupPassphraseTooShort": "12 caractères minimum.",
+  "backupPassphraseMismatch": "Les deux phrases ne correspondent pas.",
+
   "exportPdfButton": "Exporter PDF",
   "exportPdfHeader": "Compte rendu de séance",
   "exportPdfClientLine": "Client",

@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/auto_lock.dart';
 import '../../core/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../backup/backup_screen.dart';
 import '../clients/client_providers.dart';
 import '../legal/legal_screen.dart';
 
@@ -22,6 +23,15 @@ class SettingsScreen extends ConsumerWidget {
         const _ExportClientTile(),
         const Divider(height: 1),
         const _PurgeClientTile(),
+        const Divider(height: 1),
+        ListTile(
+          leading: const Icon(Icons.backup_outlined),
+          title: Text(l10n.settingsBackupTitle),
+          subtitle: Text(l10n.settingsBackupSubtitle),
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(builder: (_) => const BackupScreen()),
+          ),
+        ),
         const Divider(height: 1),
         ListTile(
           leading: const Icon(Icons.gavel_outlined),

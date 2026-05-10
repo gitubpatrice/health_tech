@@ -8,6 +8,7 @@ import '../data/repositories/attachment_repository.dart';
 import '../data/repositories/client_repository.dart';
 import '../data/repositories/session_repository.dart';
 import '../data/repositories/tag_repository.dart';
+import '../data/services/backup_service.dart';
 import '../data/services/purge_service.dart';
 import '../data/services/rgpd_export_service.dart';
 import '../data/services/system_calendar_bridge.dart';
@@ -148,6 +149,15 @@ final purgeServiceProvider = Provider((ref) {
 /// actually be invoked.
 final systemCalendarBridgeProvider = Provider<SystemCalendarBridge>((ref) {
   return SystemCalendarBridge();
+});
+
+/// Encrypted device-wide backup. The service reads the open [HealthDb] when
+/// the vault is unlocked (export path) and tolerates a closed DB when
+/// applying a restore (the database file is overwritten while no handle is
+/// open). It deliberately does not `watch` the database future so a locked
+/// vault does not throw on construction.
+final backupServiceProvider = Provider<BackupService>((ref) {
+  return BackupService(dbReader: () => ref.read(databaseProvider).valueOrNull);
 });
 
 final rgpdExportServiceProvider = Provider((ref) {

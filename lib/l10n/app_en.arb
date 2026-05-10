@@ -274,6 +274,38 @@
   "legalDocPrivacy": "Privacy policy",
   "legalDocMentions": "Legal notice",
 
+  "settingsBackupTitle": "Encrypted backup",
+  "settingsBackupSubtitle": "Export and restore all your data in an encrypted file.",
+  "backupScreenTitle": "Encrypted backup",
+  "backupExplainer": "A backup bundles your database and attachments into an .htbk file encrypted with a dedicated passphrase. Keep this file AND your vault passphrase: both are required to restore.",
+  "backupExportTitle": "Export a backup",
+  "backupExportSubtitle": "Create an encrypted .htbk file and share it via the Android sheet.",
+  "backupExportPassphraseTitle": "Backup passphrase",
+  "backupExportPassphraseHint": "This passphrase only protects the backup file. Pick a different one from your vault passphrase. 12 characters minimum.",
+  "backupExportInProgress": "Preparing the backup…",
+  "backupRestoreTitle": "Restore a backup",
+  "backupRestoreSubtitle": "Replace all current data with the contents of the selected .htbk file.",
+  "backupRestorePassphraseTitle": "File passphrase",
+  "backupRestorePassphraseHint": "Enter the passphrase you used when exporting this backup.",
+  "backupRestoreConfirmTitle": "Confirm restore",
+  "backupRestoreConfirmBody": "This will erase all current data ({attachments} attachments will be replaced). Backup from {date}. Continue?",
+  "@backupRestoreConfirmBody": {
+    "placeholders": {
+      "attachments": {"type": "int"},
+      "date": {"type": "String"}
+    }
+  },
+  "backupRestoreConfirmAction": "Restore",
+  "backupRestoreDone": "Restore complete. Unlock with your usual vault passphrase.",
+  "backupRestoreWrongPassphrase": "Wrong passphrase.",
+  "backupBundleInvalid": "Backup file is invalid or corrupted.",
+  "backupSchemaUnsupported": "This backup was created with a newer version of Health Tech.",
+  "backupVaultMustBeUnlocked": "Vault must be unlocked to export.",
+  "backupPassphraseLabel": "Passphrase",
+  "backupPassphraseConfirmLabel": "Confirm",
+  "backupPassphraseTooShort": "12 characters minimum.",
+  "backupPassphraseMismatch": "Passphrases do not match.",
+
   "exportPdfButton": "Export PDF",
   "exportPdfHeader": "Session report",
   "exportPdfClientLine": "Client",
