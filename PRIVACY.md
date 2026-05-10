@@ -1,6 +1,6 @@
 # Politique de confidentialité — Health Tech
 
-_Version 0.7.0 — 9 mai 2026_
+_Version 1.4.3 — 10 mai 2026_
 
 ## En une phrase
 
@@ -11,7 +11,7 @@ _Version 0.7.0 — 9 mai 2026_
 L'application stocke localement, sur ton appareil uniquement :
 
 - identité et coordonnées des clients (nom, prénom, contact, adresse) ;
-- informations relatives à la santé physique et émotionnelle, y compris **données sensibles au sens de l'article 9 du RGPD** ;
+- informations relatives au suivi bien-être (motifs de séance, ressentis, observations) ;
 - fiches animaux (espèce, race, antécédents, identifiants) ;
 - comptes rendus de séances et notes du praticien ;
 - rendez-vous (dates, lieux, statuts) ;

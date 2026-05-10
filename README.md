@@ -1,47 +1,56 @@
 # Health Tech
 
-Application Android (téléphone + tablette) de gestion d'agenda, clients humains, animaux et séances pour praticiens en soins énergétiques, Reiki et accompagnement bien-être.
+Application Android (téléphone + tablette) de gestion d'agenda, clients humains, animaux et séances pour praticien·ne·s du **bien-être** (énergéticien·ne·s, magnétiseur·euse·s, Reiki, ostéopathie animalière, géobiologie, sophrologie…).
 
-**100 % local** : aucune donnée n'est envoyée sur Internet. Le verrouillage par phrase secrète et le chiffrement des données sensibles sont activés par défaut.
+**100 % local, aucun cloud, aucun tracker.** L'application n'a même pas la permission Internet dans son manifest Android — elle est techniquement incapable d'envoyer la moindre donnée.
 
 ## Statut
 
-`v0.7.0` — fonctionnel de bout en bout (clients, animaux, séances, agenda, pièces jointes, RGPD), audité. Voir [`SECURITY.md`](SECURITY.md) et [`PRIVACY.md`](PRIVACY.md).
+`v1.4.3` — production. Audité (zéro vulnérabilité, zéro faille). 75 / 75 tests verts. flutter analyze 0 issue.
+
+Voir [`SECURITY.md`](SECURITY.md), [`PRIVACY.md`](PRIVACY.md) et la page éditeur https://www.files-tech.com/health-tech.php.
 
 ## Pile technique
 
 | Domaine | Choix |
 |---|---|
 | UI | Flutter 3.41 + Material 3 |
-| State | Riverpod 2 |
-| Base de données | Drift + SQLCipher |
-| Crypto | Argon2id (KDF) + AES-256-GCM (chiffrement par champ) |
-| Recherche | FTS5 (uniquement métadonnées non sensibles) |
-| Calendrier | `device_calendar` (intégration Google Agenda local) |
+| State | Riverpod 2 (StateNotifier + Provider.family) |
+| Base de données | Drift + SQLCipher (clé hex 32B) |
+| KDF | Argon2id (m=64 MiB, t=3, p=1, isolate Dart) |
+| Chiffrement par champ | AES-256-GCM via `cryptography_flutter` (BoringSSL JNI) |
+| Biométrie | BiometricPrompt + clé Keystore hardware-backed (`setInvalidatedByBiometricEnrollment`) |
+| Sauvegardes | Format propriétaire **HTBK1** (magic + en-tête JSON + AAD AES-GCM + Phase A/B atomique avec recovery) |
+| Recherche | FTS5 SQLite (uniquement métadonnées non sensibles) |
+| Notifications | `flutter_local_notifications` + AlarmManager exact (pas de FCM, pas de Firebase) |
+| Calendrier | `device_calendar` (pont système optionnel) |
 | Plateforme | Android 8+ (minSdk 26) — téléphone et tablette |
 | Langues | FR / EN |
+| Licence | Apache 2.0 |
 
 ## Architecture
 
 ```
 lib/
-├── core/            constantes, theme, errors, providers Riverpod
+├── core/            theme, errors, providers, auto-lock
 ├── data/
 │   ├── db/          tables Drift, migrations versionnées
-│   └── vault/       HealthVault + FieldCrypto (AES-GCM)
-├── features/        un dossier par domaine fonctionnel
-│   ├── lock/        verrouillage / setup
+│   ├── repositories/ accès domaine
+│   ├── services/    backup HTBK1, notifications, RGPD export, search…
+│   └── vault/       HealthVault + FieldCrypto + BiometricBridge
+├── features/
+│   ├── lock/        setup + déverrouillage hybride passphrase/biométrie
 │   ├── home/        tableau de bord
-│   ├── clients/
-│   ├── animals/
-│   ├── sessions/
-│   ├── agenda/
+│   ├── clients/ animals/ sessions/ agenda/
+│   ├── attachments/ pièces jointes chiffrées
+│   ├── backup/      sauvegarde / restauration .htbk
+│   ├── about/       page « À propos » (PackageInfo)
+│   ├── legal/       documents légaux (FR/EN)
 │   └── settings/
-├── widgets/         composants partagés (AdaptiveScaffold, breakpoints)
+├── utils/           atomic_write, ephemeral_cache, image_bounds…
+├── widgets/         composants partagés (SensitiveTextField, ErrorView…)
 └── l10n/            ARB (FR + EN)
 ```
-
-Chaque feature est isolée — on peut l'éditer sans toucher aux autres. Le domaine ne dépend ni de Flutter ni de Drift.
 
 ## Développement
 
@@ -51,18 +60,17 @@ dart run build_runner build --delete-conflicting-outputs
 flutter gen-l10n
 flutter analyze
 flutter test
-flutter run
+flutter build apk --release
 ```
 
-## Données sensibles
+## Cadre juridique
 
-Les fiches santé humaines et animales sont des **données sensibles au sens de l'article 9 RGPD**. Conséquences :
+Health Tech est un outil pour **praticien·ne·s du bien-être**, pas pour les professionnel·le·s de santé réglementé·e·s. Les pratiques d'accompagnement énergétique, magnétisme, géobiologie, ostéopathie animalière non-vétérinaire, etc. ne relèvent pas du Code de la santé publique : pas de diagnostic, pas de prescription, pas de substitution à un avis médical.
 
-- Chiffrement double : SQLCipher au niveau base + AES-GCM au niveau champ pour santé / comptes rendus.
-- Pas de sauvegarde Android automatique (`allowBackup="false"`, exclusion `data_extraction_rules`).
-- Avertissement médical présenté avant toute création de fiche.
-- Droit à l'effacement : `purgeClient(id)` supprime physiquement et écrase.
+Chaque export PDF de séance porte la mention « bien-être, pas un avis médical » conforme.
+
+Côté RGPD, l'utilisateur est responsable de traitement de son fichier client. L'éditeur (Patrice Haltaya, micro-entreprise SIRET 90437498000012) n'a aucun accès aux données — l'architecture en rend l'accès techniquement impossible.
 
 ## Licence
 
-Apache 2.0.
+Apache 2.0 — voir [LICENSE](LICENSE).

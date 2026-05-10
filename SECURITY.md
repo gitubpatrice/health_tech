@@ -65,6 +65,19 @@
 | `flutter_secure_storage` | Persistance clé wrappée | community, EncryptedSharedPreferences |
 | `local_auth` | Biométrie | flutter team |
 
+## Historique des versions
+
+| Version | Date | Notes principales |
+|---|---|---|
+| **v1.4.3** | 2026-05-10 | Page « À propos » (version dynamique via PackageInfo). |
+| **v1.4.2** | 2026-05-10 | Biométrie : suppression de la fenêtre 1h (alignement Bitwarden/Aegis). Cold-start et anti-rollback clock conservés. |
+| **v1.4.1** | 2026-05-10 | UX : dialog « Import en cours » sur attachments, dropdown animal toujours visible (3 états). |
+| **v1.4.0** | 2026-05-09 | Audit zéro-vuln pass : `EphemeralCache`, `SensitiveTextField` anti-Gboard, retry counter sauvegarde, tz refresh, Argon2id passphrase Uint8List wipable, `PaintingBinding.imageCache.clear` au lock. |
+| **v1.3.x** | 2026-05-09 | Hybride passphrase / biométrie (Option D 1Password / Bitwarden), mode strict, AAD restore, ordre `_commitStaging` attachments → DB. |
+| **v1.2.x** | 2026-05-09 | Lockout passphrase backoff, grace 2 min `onPause`/`onHide` (correction régression écran noir picker), Stopwatch monotonique. |
+| **v1.1.x** | 2026-05-09 | KeystoreException distinguée (anti data-loss OTA Samsung), guard `_idFor` notification, `cancelAuthentication` Kotlin avant `deleteKey`. |
+| **v1.0.0** | 2026-05-08 | Mise en production : 13 audit-fixes, 19 tests, 3 refactors archi, identité éditeur, hybride pass/bio. |
+
 ## Signaler une faille
 
 Contact : security@files-tech.com (PGP à venir).
