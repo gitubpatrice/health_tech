@@ -331,6 +331,11 @@
   "searchEmptyHint": "Type a name, an address, a species, a session type… Encrypted notes (health, reports) are not indexed by design.",
   "searchNoResults": "No results.",
 
+  "attachmentsImporting": "Importing…",
+  "sessionFormPickClientFirst": "Pick a client first.",
+  "sessionFormNoAnimalForClient": "No animal for this client. You can create the session without an animal, or add an animal from the client record.",
+  "sessionFormNoAnimal": "No animal",
+
   "sessionFormImprovement0": "0 — none",
   "sessionFormImprovement1": "1 — slight",
   "sessionFormImprovement2": "2 — moderate",

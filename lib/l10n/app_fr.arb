@@ -331,6 +331,11 @@
   "searchEmptyHint": "Tape un nom, une adresse, une espèce, un type de séance… Les notes chiffrées (santé, comptes rendus) ne sont pas indexées par sécurité.",
   "searchNoResults": "Aucun résultat.",
 
+  "attachmentsImporting": "Import en cours…",
+  "sessionFormPickClientFirst": "Choisis d'abord un client.",
+  "sessionFormNoAnimalForClient": "Aucun animal pour ce client. Tu peux créer la séance sans animal, ou ajouter un animal depuis la fiche client.",
+  "sessionFormNoAnimal": "Sans animal",
+
   "sessionFormImprovement0": "0 — aucune",
   "sessionFormImprovement1": "1 — légère",
   "sessionFormImprovement2": "2 — moyenne",

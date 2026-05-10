@@ -103,6 +103,37 @@ class AttachmentsSection extends ConsumerWidget {
     }
 
     final mime = _guessMime(file.name);
+    // Affiche un dialog modal "Import en cours…" pendant le pipeline
+    // (compression isolate + chiffrement AES-GCM + écriture atomic +
+    // insert DB). Sans ça, sur photo 12 MP l'utilisateur voit "rien
+    // se passer" pendant 2-5s. PopScope canPop:false empêche la
+    // fermeture pendant le travail.
+    if (!context.mounted) return;
+    // showDialog n'est pas await : on le close manuellement après le
+    // pipeline. Le dialog est modal donc l'utilisateur ne peut pas
+    // déclencher un autre import en parallèle.
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 16),
+                Expanded(child: Text(l10n.attachmentsImporting)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
     try {
       await ref
           .read(attachmentRepositoryProvider)
@@ -114,13 +145,18 @@ class AttachmentsSection extends ConsumerWidget {
             mimeType: mime,
             bytes: bytes,
           );
+      if (!context.mounted) return;
+      // Ferme le dialog "Import en cours" après succès.
+      Navigator.of(context, rootNavigator: true).pop();
     } on AttachmentTooLargeError {
       if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.attachmentsTooLarge)));
     } on AttachmentRejectedError {
       if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.attachmentsRejectedImage)));

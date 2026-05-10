@@ -247,22 +247,57 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              animals.when(
-                loading: () => const SizedBox.shrink(),
-                error: (e, _) => Text(localiseError(context, e)),
-                data: (list) => DropdownButtonFormField<String?>(
-                  initialValue: _animalId,
-                  decoration: InputDecoration(labelText: l10n.navAnimals),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('—')),
-                    for (final a in list)
-                      DropdownMenuItem<String?>(
-                        value: a.id,
-                        child: Text(a.name),
+              // Dropdown animal : toujours rendue (avant : SizedBox.shrink
+              // pendant le loading post-client-change → impression que
+              // l'animal "n'apparaît pas"). On utilise valueOrNull pour
+              // afficher la dropdown même pendant le loading bref de
+              // Drift. Cas vide géré explicitement avec un message
+              // d'invitation à créer un animal.
+              Builder(
+                builder: (context) {
+                  final list = animals.valueOrNull ?? const <Animal>[];
+                  if (_clientId == null) {
+                    return DropdownButtonFormField<String?>(
+                      decoration: InputDecoration(
+                        labelText: l10n.navAnimals,
+                        helperText: l10n.sessionFormPickClientFirst,
                       ),
-                  ],
-                  onChanged: (v) => setState(() => _animalId = v),
-                ),
+                      items: const [],
+                      onChanged: null,
+                    );
+                  }
+                  if (animals.hasError) {
+                    return Text(localiseError(context, animals.error!));
+                  }
+                  if (animals.isLoading && list.isEmpty) {
+                    return DropdownButtonFormField<String?>(
+                      decoration: InputDecoration(labelText: l10n.navAnimals),
+                      items: const [],
+                      onChanged: null,
+                    );
+                  }
+                  return DropdownButtonFormField<String?>(
+                    initialValue: _animalId,
+                    decoration: InputDecoration(
+                      labelText: l10n.navAnimals,
+                      helperText: list.isEmpty
+                          ? l10n.sessionFormNoAnimalForClient
+                          : null,
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(l10n.sessionFormNoAnimal),
+                      ),
+                      for (final a in list)
+                        DropdownMenuItem<String?>(
+                          value: a.id,
+                          child: Text(a.name),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => _animalId = v),
+                  );
+                },
               ),
               const Divider(height: 32),
               SectionTitle(l10n.sessionFormSectionWhen),
