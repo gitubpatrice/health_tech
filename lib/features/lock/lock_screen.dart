@@ -163,6 +163,14 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_autoPromptScheduled || !mounted) return;
       _autoPromptScheduled = true;
+      // Mode hybride 1Password / Bitwarden : si on est sur cold-start ou
+      // après inactivité longue (> 1h) ou en mode strict, on skip l'auto
+      // prompt biométrique → la passphrase est forcée. La biométrie
+      // n'est qu'un raccourci pour les re-unlock à chaud.
+      final passphraseRequired = await ref.read(
+        requirePassphraseProvider.future,
+      );
+      if (!mounted || passphraseRequired) return;
       final status = await ref.read(biometricStatusProvider.future);
       if (!mounted) return;
       if (status.readyForUnlock) await _tryBiometric();
@@ -237,10 +245,14 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
   Widget build(BuildContext context) {
     final l10n = AppL10n.of(context);
     final bioStatus = ref.watch(biometricStatusProvider);
+    final passphraseRequired =
+        ref.watch(requirePassphraseProvider).valueOrNull ?? true;
     // L'auto-prompt est armé une seule fois dans initState() — pas ici
     // (le whenData() refire à chaque rebuild). On lit juste la valeur
     // pour conditionner l'affichage du bouton "Déverrouiller avec la
     // biométrie".
+    final biometricAllowed =
+        (bioStatus.valueOrNull?.readyForUnlock ?? false) && !passphraseRequired;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -286,7 +298,7 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
                           )
                         : Text(l10n.lockUnlockButton),
                   ),
-                  if (bioStatus.valueOrNull?.readyForUnlock ?? false) ...[
+                  if (biometricAllowed) ...[
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
                       onPressed: _busy

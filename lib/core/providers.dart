@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/db/database.dart';
 import '../data/repositories/animal_repository.dart';
@@ -58,6 +59,37 @@ final biometricStatusProvider = FutureProvider<BiometricStatus>((ref) async {
     return const BiometricStatus(available: false, enrolled: false);
   }
   return BiometricStatus(available: available, enrolled: enrolled);
+});
+
+/// Délai au-delà duquel la passphrase est forcée (la biométrie ne sert
+/// plus de raccourci). Implémente le pattern hybride 1Password / Bitwarden :
+///   - re-unlock à chaud (auto-lock 5 min d'inactivité, file picker, etc.)
+///     -> biométrie OK ;
+///   - cold-start ou inactivité longue (> 1h) -> passphrase forcée.
+const Duration _kBiometricSessionWindow = Duration(hours: 1);
+
+/// SharedPref booléen : si l'utilisateur active le « mode strict », la
+/// biométrie est désactivée même dans la fenêtre courte. Force toujours
+/// la passphrase. Permet aux pratiques les plus sensibles d'opter pour
+/// un facteur fort exclusif.
+const String kStrictModePrefKey = 'auto_lock.strict_mode_v1';
+
+/// Décide à chaque mount du Lock screen si la biométrie est autorisée
+/// comme raccourci de déverrouillage. Le LockScreen lit ce provider et
+/// désactive l'auto-prompt + le bouton biométrie quand `true`.
+final requirePassphraseProvider = FutureProvider<bool>((ref) async {
+  // 1) Mode strict (toggle Settings) : passphrase TOUJOURS exigée.
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getBool(kStrictModePrefKey) ?? false) return true;
+  // 2) Cold-start (jamais verrouillé sur ce device, ou destroy()) ->
+  // passphrase. La biométrie ne peut pas être un facteur unique au
+  // premier déverrouillage de la session.
+  final lastLocked = await ref.read(vaultProvider).lastLockedAtMs();
+  if (lastLocked == null) return true;
+  // 3) Inactivité longue dépassée -> passphrase.
+  final elapsed = DateTime.now().millisecondsSinceEpoch - lastLocked;
+  if (elapsed > _kBiometricSessionWindow.inMilliseconds) return true;
+  return false;
 });
 
 /// Auth state. `null` = locked, non-null = unlocked.

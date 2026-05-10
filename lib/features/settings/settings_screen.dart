@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/auto_lock.dart';
 import '../../core/providers.dart';
@@ -22,6 +23,8 @@ class SettingsScreen extends ConsumerWidget {
         const _AutoLockTile(),
         const Divider(height: 1),
         const _BiometricTile(),
+        const Divider(height: 1),
+        const _StrictModeTile(),
         const Divider(height: 1),
         const _ExportClientTile(),
         const Divider(height: 1),
@@ -162,6 +165,54 @@ class _BiometricTile extends ConsumerWidget {
         value: s.enrolled,
         onChanged: s.available ? (v) => _toggle(context, ref, v) : null,
       ),
+    );
+  }
+}
+
+/// Toggle « Mode strict » : force la passphrase à chaque déverrouillage,
+/// désactive la biométrie même dans la fenêtre courte. Pratiques sensibles.
+class _StrictModeTile extends ConsumerStatefulWidget {
+  const _StrictModeTile();
+
+  @override
+  ConsumerState<_StrictModeTile> createState() => _StrictModeTileState();
+}
+
+class _StrictModeTileState extends ConsumerState<_StrictModeTile> {
+  bool? _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() => _value = prefs.getBool(kStrictModePrefKey) ?? false);
+  }
+
+  Future<void> _toggle(bool v) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(kStrictModePrefKey, v);
+    if (!mounted) return;
+    setState(() => _value = v);
+    // Le LockScreen lit requirePassphraseProvider — on l'invalide pour
+    // que la prochaine ouverture du Lock screen reflète immédiatement
+    // le nouveau choix.
+    ref.invalidate(requirePassphraseProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    return SwitchListTile(
+      secondary: const Icon(Icons.shield_outlined),
+      title: Text(l10n.settingsStrictModeTitle),
+      subtitle: Text(l10n.settingsStrictModeSubtitle),
+      value: _value ?? false,
+      onChanged: _value == null ? null : _toggle,
     );
   }
 }

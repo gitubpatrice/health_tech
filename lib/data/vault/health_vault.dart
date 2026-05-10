@@ -65,6 +65,14 @@ class HealthVault {
   static const _kFailCount = 'health_vault.fail_count_v1';
   static const _kFailAt = 'health_vault.fail_at_ms_v1';
 
+  /// Timestamp du dernier verrouillage. Utilisé par le Lock screen pour
+  /// décider si la biométrie est autorisée comme raccourci (re-unlock à
+  /// chaud rapide) ou si la passphrase est forcée (cold-start, ou délai
+  /// d'inactivité long > 1h). Implémente le pattern hybride 1Password /
+  /// Bitwarden : la passphrase reste le facteur fort canonique, la
+  /// biométrie n'est qu'un raccourci dans les fenêtres de session active.
+  static const _kLastLockedAt = 'health_vault.last_locked_at_ms_v1';
+
   /// Identifier for the active Argon2id backend (`native` when
   /// `cryptography_flutter` is wired, `dart` otherwise).
   /// Identifiant du backend Argon2id réellement actif. Avant ce fix, la
@@ -323,9 +331,30 @@ class HealthVault {
     return Uint8List.fromList(vek);
   }
 
+  /// Lit le timestamp (epoch ms) du dernier verrouillage. `null` = jamais
+  /// verrouillé sur ce device (cold-start après install, ou destroy()).
+  /// Le Lock screen utilise ce timestamp pour décider si la biométrie est
+  /// autorisée (delta < 1h) ou si la passphrase est forcée (cold-start /
+  /// inactivité longue).
+  Future<int?> lastLockedAtMs() async {
+    final s = await _storage.read(key: _kLastLockedAt);
+    if (s == null) return null;
+    return int.tryParse(s);
+  }
+
   void lock() {
     _crypto?.dispose();
     _crypto = null;
+    // Stockage best-effort du timestamp de lock — tracked uniquement pour
+    // l'UX du Lock screen (autorisation biométrie). Si le write échoue,
+    // le défaut côté Lock screen est de FORCER la passphrase, donc
+    // fail-closed.
+    unawaited(
+      _storage.write(
+        key: _kLastLockedAt,
+        value: '${DateTime.now().millisecondsSinceEpoch}',
+      ),
+    );
     final v = _vek;
     if (v != null) {
       v.fillRange(0, v.length, 0);
@@ -344,6 +373,7 @@ class HealthVault {
     await _storage.delete(key: _kKdfParallelism);
     await _storage.delete(key: _kFailCount);
     await _storage.delete(key: _kFailAt);
+    await _storage.delete(key: _kLastLockedAt);
     await disableBiometric();
   }
 

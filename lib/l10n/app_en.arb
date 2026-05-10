@@ -311,6 +311,8 @@
   "settingsBiometricUnavailable": "No strong biometric is enrolled on this device.",
   "settingsBiometricEnrollSubtitle": "Confirm your biometric to enable unlock shortcuts.",
   "settingsBiometricEnabled": "Biometric unlock enabled.",
+  "settingsStrictModeTitle": "Strict mode",
+  "settingsStrictModeSubtitle": "Always require the passphrase on every unlock. Biometrics remain a shortcut for very recent reminders only.",
   "settingsBiometricDisabled": "Biometric unlock disabled.",
   "lockBiometricTitle": "Health Tech unlock",
   "lockBiometricSubtitle": "Touch the sensor to open your vault.",

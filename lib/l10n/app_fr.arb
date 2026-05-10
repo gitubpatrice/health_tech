@@ -311,6 +311,8 @@
   "settingsBiometricUnavailable": "Aucune empreinte forte enregistrée sur cet appareil.",
   "settingsBiometricEnrollSubtitle": "Confirme ton empreinte pour activer le déverrouillage biométrique.",
   "settingsBiometricEnabled": "Biométrie activée.",
+  "settingsStrictModeTitle": "Mode strict",
+  "settingsStrictModeSubtitle": "Toujours demander la phrase secrète à chaque déverrouillage. La biométrie reste un raccourci uniquement pour les rappels rapprochés.",
   "settingsBiometricDisabled": "Biométrie désactivée.",
   "lockBiometricTitle": "Déverrouillage Health Tech",
   "lockBiometricSubtitle": "Place ton doigt sur le capteur pour ouvrir le coffre.",
