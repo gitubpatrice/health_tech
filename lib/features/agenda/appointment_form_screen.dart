@@ -35,8 +35,18 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
 
   late final TextEditingController _title;
   late final TextEditingController _location;
-  late final TextEditingController _reminder;
   late final TextEditingController _notes;
+
+  /// Reminder presets in minutes. `null` is "no reminder".
+  static const List<int?> _reminderPresets = [
+    null,
+    15,
+    30,
+    60,
+    120,
+    1440, // 1 day
+  ];
+  int? _reminderMinutes;
 
   String? _clientId;
   String? _animalId;
@@ -52,9 +62,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
     final a = widget.initial;
     _title = TextEditingController(text: a?.title ?? '');
     _location = TextEditingController(text: a?.location ?? '');
-    _reminder = TextEditingController(
-      text: a?.reminderMinutesBefore?.toString() ?? '',
-    );
+    _reminderMinutes = a?.reminderMinutesBefore;
     _notes = TextEditingController(text: a?.notes ?? '');
     _clientId = a?.clientId ?? widget.defaultClientId;
     _animalId = a?.animalId;
@@ -71,9 +79,23 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
   void dispose() {
     _title.dispose();
     _location.dispose();
-    _reminder.dispose();
     _notes.dispose();
     super.dispose();
+  }
+
+  /// Localised label for a reminder preset. `null` is "no reminder",
+  /// `1440` is shown as "1 jour" rather than "1440 min" for readability.
+  static String _reminderLabel(AppL10n l10n, int? minutes) {
+    if (minutes == null) return l10n.appointmentFormReminderNone;
+    if (minutes >= 1440 && minutes % 1440 == 0) {
+      final days = minutes ~/ 1440;
+      return l10n.appointmentFormReminderDays(days);
+    }
+    if (minutes >= 60 && minutes % 60 == 0) {
+      final hours = minutes ~/ 60;
+      return l10n.appointmentFormReminderHours(hours);
+    }
+    return l10n.appointmentFormReminderMinutes(minutes);
   }
 
   static DateTime _roundToNextHalfHour(DateTime now) {
@@ -125,7 +147,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       title: _title.text.trim().isEmpty ? null : _title.text.trim(),
       location: _location.text.trim().isEmpty ? null : _location.text.trim(),
       status: _status,
-      reminderMinutesBefore: int.tryParse(_reminder.text.trim()),
+      reminderMinutesBefore: _reminderMinutes,
       notes: _notes.text,
     );
 
@@ -138,6 +160,14 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
         saved = await repo.create(draft);
       } else {
         saved = await repo.update(draft);
+      }
+      // Schedule (or reschedule) the local reminder. scheduleFor cancels
+      // the previous alarm before queuing the new one, so an edit that
+      // changes the time / minutesBefore / status updates cleanly.
+      try {
+        await ref.read(notificationServiceProvider).scheduleFor(saved);
+      } on Object {
+        // Best-effort — a reminder failure must not block the save.
       }
       // Opt-in: push to (or update in) the system calendar AFTER the row
       // is durable. The bridge reuses externalCalendarEventId when present
@@ -333,12 +363,20 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                 onChanged: (v) => setState(() => _status = v ?? _status),
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _reminder,
-                keyboardType: TextInputType.number,
+              DropdownButtonFormField<int?>(
+                initialValue: _reminderMinutes,
                 decoration: InputDecoration(
                   labelText: l10n.appointmentFormReminder,
+                  helperText: l10n.appointmentFormReminderHelper,
                 ),
+                items: [
+                  for (final m in _reminderPresets)
+                    DropdownMenuItem<int?>(
+                      value: m,
+                      child: Text(_reminderLabel(l10n, m)),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _reminderMinutes = v),
               ),
               const SizedBox(height: 12),
               TextFormField(

@@ -318,6 +318,21 @@
   "lockBiometricButton": "Unlock with biometrics",
   "lockBiometricFailed": "Biometric authentication refused.",
 
+  "appointmentFormReminderHelper": "Local notification sent before the appointment.",
+  "appointmentFormReminderNone": "No reminder",
+  "appointmentFormReminderMinutes": "{n} min before",
+  "@appointmentFormReminderMinutes": {
+    "placeholders": {"n": {"type": "int"}}
+  },
+  "appointmentFormReminderHours": "{n} h before",
+  "@appointmentFormReminderHours": {
+    "placeholders": {"n": {"type": "int"}}
+  },
+  "appointmentFormReminderDays": "{n} day(s) before",
+  "@appointmentFormReminderDays": {
+    "placeholders": {"n": {"type": "int"}}
+  },
+
   "homeStatsSessionsMonth": "Sessions this month",
   "homeStatsClientsMonth": "Clients seen",
   "homeStatsClientsTotal": "Total clients",

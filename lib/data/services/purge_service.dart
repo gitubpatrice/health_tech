@@ -4,6 +4,7 @@ import '../repositories/appointment_repository.dart';
 import '../repositories/attachment_repository.dart';
 import '../repositories/client_repository.dart';
 import '../repositories/session_repository.dart';
+import 'notification_service.dart';
 import 'system_calendar_bridge.dart';
 
 /// Orchestrates cascading soft- and hard-delete across all entities.
@@ -24,6 +25,7 @@ class PurgeService {
     required this.appointments,
     required this.attachments,
     required this.calendar,
+    required this.notifications,
   });
 
   final ClientRepository clients;
@@ -32,6 +34,7 @@ class PurgeService {
   final AppointmentRepository appointments;
   final AttachmentRepository attachments;
   final SystemCalendarBridge calendar;
+  final NotificationService notifications;
 
   /// Soft-deletes a client and cascades to their animals, sessions and
   /// appointments. Attachments stay on disk (soft-delete is reversible —
@@ -156,6 +159,7 @@ class PurgeService {
   ) async {
     await appointments.softDelete(id);
     await _removeCalendarEvent(calendarId, eventId);
+    await _cancelLocalReminder(id);
   }
 
   Future<void> _purgeAppointment(
@@ -165,6 +169,18 @@ class PurgeService {
   ) async {
     await appointments.purge(id);
     await _removeCalendarEvent(calendarId, eventId);
+    await _cancelLocalReminder(id);
+  }
+
+  /// Local notification cancel is best-effort: any failure (binding not
+  /// initialised, permission revoked) must not block the delete.
+  Future<void> _cancelLocalReminder(String appointmentId) async {
+    try {
+      await notifications.cancelFor(appointmentId);
+    } on Object {
+      // ignore — alarm will fire harmlessly and the receiver will see no
+      // matching appointment in DB.
+    }
   }
 
   /// Calendar removal is best-effort: a revoked permission or a missing

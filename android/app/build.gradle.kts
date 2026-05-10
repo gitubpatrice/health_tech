@@ -20,6 +20,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Required by flutter_local_notifications: AlarmManager APIs use
+        // java.time / Instant which need core library desugaring on API < 26.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -94,4 +97,9 @@ dependencies {
     // Keystore key bound to user authentication. Required by
     // BiometricBridge.kt.
     implementation("androidx.biometric:biometric:1.1.0")
+
+    // Core library desugaring runtime — pairs with the
+    // `isCoreLibraryDesugaringEnabled = true` flag above so that
+    // flutter_local_notifications can use java.time APIs on API < 26.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

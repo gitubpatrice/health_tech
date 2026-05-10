@@ -228,6 +228,11 @@ Future<String?> _askPassphrase(
   final ctrl = TextEditingController();
   final ctrlConfirm = TextEditingController();
   String? error;
+  // Per-field visibility toggles, mirroring the lock screen UX so users
+  // can verify what they typed before committing — critical with a
+  // 12-character passphrase typed on a phone keyboard.
+  var obscured = true;
+  var obscuredConfirm = true;
 
   return showDialog<String>(
     context: context,
@@ -247,6 +252,23 @@ Future<String?> _askPassphrase(
             Navigator.of(ctx).pop(v);
           }
 
+          Widget visibility({
+            required bool current,
+            required VoidCallback onPressed,
+          }) {
+            return IconButton(
+              icon: Icon(
+                current
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+              ),
+              tooltip: current
+                  ? l10n.lockShowPassphrase
+                  : l10n.lockHidePassphrase,
+              onPressed: onPressed,
+            );
+          }
+
           return AlertDialog(
             title: Text(title),
             content: Column(
@@ -256,20 +278,31 @@ Future<String?> _askPassphrase(
                 const SizedBox(height: 12),
                 TextField(
                   controller: ctrl,
-                  obscureText: true,
+                  obscureText: obscured,
                   autofocus: true,
                   decoration: InputDecoration(
                     labelText: l10n.backupPassphraseLabel,
                     errorText: error,
+                    suffixIcon: visibility(
+                      current: obscured,
+                      onPressed: () =>
+                          setState(() => obscured = !obscured),
+                    ),
                   ),
                 ),
                 if (confirm) ...[
                   const SizedBox(height: 12),
                   TextField(
                     controller: ctrlConfirm,
-                    obscureText: true,
+                    obscureText: obscuredConfirm,
                     decoration: InputDecoration(
                       labelText: l10n.backupPassphraseConfirmLabel,
+                      suffixIcon: visibility(
+                        current: obscuredConfirm,
+                        onPressed: () => setState(
+                          () => obscuredConfirm = !obscuredConfirm,
+                        ),
+                      ),
                     ),
                   ),
                 ],

@@ -9,6 +9,7 @@ import '../data/repositories/client_repository.dart';
 import '../data/repositories/session_repository.dart';
 import '../data/repositories/tag_repository.dart';
 import '../data/services/backup_service.dart';
+import '../data/services/notification_service.dart';
 import '../data/services/purge_service.dart';
 import '../data/services/rgpd_export_service.dart';
 import '../data/services/system_calendar_bridge.dart';
@@ -177,6 +178,7 @@ final purgeServiceProvider = Provider((ref) {
     appointments: ref.watch(appointmentRepositoryProvider),
     attachments: ref.watch(attachmentRepositoryProvider),
     calendar: ref.watch(systemCalendarBridgeProvider),
+    notifications: ref.watch(notificationServiceProvider),
   );
 });
 
@@ -185,6 +187,13 @@ final purgeServiceProvider = Provider((ref) {
 /// actually be invoked.
 final systemCalendarBridgeProvider = Provider<SystemCalendarBridge>((ref) {
   return SystemCalendarBridge();
+});
+
+/// On-device appointment reminder scheduler. Stateless wrapper around
+/// `flutter_local_notifications` — kept as a singleton so the
+/// `_initialised` / `_tzReady` caches survive across screens.
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService();
 });
 
 /// Encrypted device-wide backup. The service reads the open [HealthDb] when
