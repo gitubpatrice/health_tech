@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
@@ -216,6 +217,13 @@ class NotificationService {
   /// We hash the appointment UUID into that range so the same appointment
   /// always maps to the same alarm slot — required for cancel-before-reschedule
   /// to actually cancel the right thing.
+  ///
+  /// Exposé `@visibleForTesting` pour qu'on puisse vérifier l'absence de
+  /// collision sur 100k UUIDs tirés au hasard (probabilité de naissance
+  /// ~1.2e-5 sur 31 bits).
+  @visibleForTesting
+  static int idForTesting(String appointmentId) => _idFor(appointmentId);
+
   static int _idFor(String appointmentId) {
     var hash = 0x811C9DC5;
     for (final code in appointmentId.codeUnits) {
