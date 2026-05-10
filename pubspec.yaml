@@ -22,6 +22,9 @@ dependencies:
   # transitively, which collides with sqlcipher's plugin class at dexing).
   drift: ^2.21.0
   sqlcipher_flutter_libs: ^0.6.4
+  # sqlite3 is the Dart binding (no native .so of its own); we use it only
+  # to redirect open.overrideFor → openCipherOnAndroid in main().
+  sqlite3: ^2.4.7
 
   # Crypto & secure storage
   flutter_secure_storage: ^9.2.2

@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:cryptography_flutter/cryptography_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
+import 'package:sqlite3/open.dart';
 
 import 'core/auto_lock.dart';
 import 'core/providers.dart';
@@ -20,6 +24,13 @@ void main() {
   // visible to readers and guard against a future tree-shaker mistake.
   // ignore: unnecessary_statements
   FlutterCryptography;
+  // Redirect package:sqlite3 (used by Drift) to the SQLCipher .so bundled
+  // with sqlcipher_flutter_libs. Without this, runtime tries to load the
+  // system libsqlite3.so which (a) doesn't exist on Android and (b) would
+  // not understand the encrypted database.
+  if (Platform.isAndroid) {
+    open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+  }
   SystemChrome.setPreferredOrientations(const [
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,

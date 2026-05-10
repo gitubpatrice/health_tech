@@ -4,9 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/breakpoints.dart';
 import '../../widgets/disclaimer_dialog.dart';
-import '../animals/animal_form_screen.dart';
-import '../clients/client_form_screen.dart';
 import '../sessions/session_form_screen.dart';
+import 'home_shell.dart';
 
 /// Dashboard with large, legible icon shortcuts (the user-facing default
 /// "front door" for the app).
@@ -22,32 +21,32 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
     final scheme = Theme.of(context).colorScheme;
+    void goTo(int tab) =>
+        ref.read(homeTabProvider.notifier).state = tab;
     final shortcuts = <_HomeShortcut>[
       _HomeShortcut(
-        icon: Icons.person_add_alt,
+        icon: Icons.person_outline,
         label: l10n.navClients,
         color: scheme.primaryContainer,
-        onTap: () => _addClient(context),
+        onTap: () => goTo(HomeTab.clients),
       ),
       _HomeShortcut(
         icon: Icons.pets,
         label: l10n.navAnimals,
         color: scheme.secondaryContainer,
-        onTap: () => _addAnimal(context),
+        onTap: () => goTo(HomeTab.animals),
       ),
       _HomeShortcut(
         icon: Icons.event_note,
         label: l10n.homeQuickSession,
         color: scheme.tertiaryContainer,
-        onTap: () => _addSession(context),
+        onTap: () => _newSession(context),
       ),
       _HomeShortcut(
         icon: Icons.event,
         label: l10n.navAgenda,
         color: scheme.surfaceContainerHigh,
-        onTap: () {
-          /* agenda v0.4 */
-        },
+        onTap: () => goTo(HomeTab.agenda),
       ),
     ];
 
@@ -77,7 +76,6 @@ class HomeScreen extends ConsumerWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          // TODO replace with real list bound to providers
           const _EmptyState(),
         ],
       ),
@@ -85,27 +83,12 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-Future<void> _addClient(BuildContext context) async {
+Future<void> _newSession(BuildContext context) async {
+  // Sessions touch sensitive health data, so the disclaimer is shown here
+  // even though the form itself is a "create only" path (consents on the
+  // client are mandatory before the session can persist).
   final accepted = await DisclaimerDialog.show(context);
   if (!accepted || !context.mounted) return;
-  await Navigator.of(context).push<bool>(
-    MaterialPageRoute<bool>(
-      builder: (_) => const ClientFormScreen(),
-      fullscreenDialog: true,
-    ),
-  );
-}
-
-Future<void> _addAnimal(BuildContext context) async {
-  await Navigator.of(context).push<bool>(
-    MaterialPageRoute<bool>(
-      builder: (_) => const AnimalFormScreen(),
-      fullscreenDialog: true,
-    ),
-  );
-}
-
-Future<void> _addSession(BuildContext context) async {
   await Navigator.of(context).push<bool>(
     MaterialPageRoute<bool>(
       builder: (_) => const SessionFormScreen(),
