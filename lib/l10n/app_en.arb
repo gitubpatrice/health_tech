@@ -306,6 +306,13 @@
   "backupPassphraseTooShort": "12 characters minimum.",
   "backupPassphraseMismatch": "Passphrases do not match.",
 
+  "homeStatsSessionsMonth": "Sessions this month",
+  "homeStatsClientsMonth": "Clients seen",
+  "homeStatsClientsTotal": "Total clients",
+  "homeUpcoming": "Upcoming appointments",
+  "homeNoAppointmentsToday": "No appointments today.",
+  "homeNoUpcoming": "No upcoming appointments.",
+
   "exportPdfButton": "Export PDF",
   "exportPdfHeader": "Session report",
   "exportPdfClientLine": "Client",
