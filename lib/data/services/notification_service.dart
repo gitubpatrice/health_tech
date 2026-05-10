@@ -94,12 +94,17 @@ class NotificationService {
     await requestPermission();
     final tzDate = tz.TZDateTime.from(fireAt, tz.local);
 
+    // visibility = secret: lockscreen shows the channel name only, never the
+    // appointment title or location. Practitioner data (client name, place)
+    // is sensitive — we treat it as we would health notes. The full body is
+    // still displayed inside the unlocked notification shade.
     const androidDetails = AndroidNotificationDetails(
       _channelId,
       _channelName,
       channelDescription: _channelDescription,
       importance: Importance.high,
       priority: Priority.high,
+      visibility: NotificationVisibility.secret,
     );
 
     await _plugin.zonedSchedule(
@@ -130,6 +135,23 @@ class NotificationService {
   Future<void> cancelAll() async {
     await ensureInitialised();
     await _plugin.cancelAll();
+  }
+
+  /// Re-schedule every appointment in [upcoming] from scratch. Idempotent:
+  /// `scheduleFor` cancels-before-scheduling, so calling this on every
+  /// fresh unlock keeps the queue in sync with the DB even if the user
+  /// restored a backup, manually edited the DB, or the boot receiver
+  /// reinstated stale alarms after reboot.
+  Future<void> rescheduleAll(Iterable<Appointment> upcoming) async {
+    await ensureInitialised();
+    for (final appt in upcoming) {
+      try {
+        await scheduleFor(appt);
+      } on Object {
+        // Skip individual failures — one malformed row should not abort
+        // the whole reschedule pass.
+      }
+    }
   }
 
   /// flutter_local_notifications stores alarms by 32-bit signed int IDs.

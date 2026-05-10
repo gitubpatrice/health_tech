@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/errors.dart';
 import '../../utils/atomic_write.dart';
 import '../db/database.dart';
+import 'notification_service.dart';
 
 /// Encrypted device-wide backup of the entire vault.
 ///
@@ -45,6 +46,7 @@ import '../db/database.dart';
 class BackupService {
   BackupService({
     required this.dbReader,
+    required this.notifications,
     FlutterSecureStorage? secureStorage,
     Future<PackageInfo> Function()? packageInfo,
   }) : _storage =
@@ -56,6 +58,12 @@ class BackupService {
              ),
            ),
        _packageInfo = packageInfo ?? PackageInfo.fromPlatform;
+
+  /// Required so `applyRestore` can flush every pending alarm before we
+  /// overwrite the database — alarms scheduled against the previous DB
+  /// would otherwise fire with payload pointing at appointments that no
+  /// longer exist.
+  final NotificationService notifications;
 
   /// Returns the currently-open [HealthDb] when the vault is unlocked, or
   /// null when locked (the export path requires unlocked, the import path
@@ -114,13 +122,13 @@ class BackupService {
     final aes = AesGcm.with256bits();
     final nonce = aes.newNonce();
     try {
-      final box = await aes.encrypt(
-        inner,
-        secretKey: SecretKey(key),
-        nonce: nonce,
-      );
+      // Build the header FIRST so we can pass its bytes as AAD: the AES-GCM
+      // tag now authenticates BOTH the ciphertext AND the header. Without
+      // this, an attacker could rewrite `iterations: 3 → 1` (or `memory_kb`)
+      // in the header without invalidating the MAC, weakening the brute-force
+      // budget at restore time. With AAD, any header tweak fails decrypt.
       final pkg = await _packageInfo();
-      final header = utf8.encode(
+      final headerJson = utf8.encode(
         jsonEncode({
           'v': _bundleSchemaVersion,
           'kdf': 'argon2id',
@@ -134,13 +142,19 @@ class BackupService {
           'created_at': DateTime.now().toUtc().toIso8601String(),
         }),
       );
-      if (header.length > 0xFFFF) {
+      if (headerJson.length > 0xFFFF) {
         throw StateError('Header too large for uint16 length prefix');
       }
+      final box = await aes.encrypt(
+        inner,
+        secretKey: SecretKey(key),
+        nonce: nonce,
+        aad: headerJson,
+      );
       final out = BytesBuilder(copy: false);
       out.add(_magic);
-      out.add([(header.length >> 8) & 0xFF, header.length & 0xFF]);
-      out.add(header);
+      out.add([(headerJson.length >> 8) & 0xFF, headerJson.length & 0xFF]);
+      out.add(headerJson);
       out.add(box.cipherText);
       out.add(box.mac.bytes);
       return out.toBytes();
@@ -203,7 +217,13 @@ class BackupService {
     required String backupPassphrase,
   }) async {
     final parsed = _parseEnvelope(bundle);
-    final key = await _deriveKey(backupPassphrase, parsed.salt);
+    final key = await _deriveKey(
+      backupPassphrase,
+      parsed.salt,
+      memoryKb: parsed.memoryKb,
+      iterations: parsed.iterations,
+      parallelism: parsed.parallelism,
+    );
     Uint8List clear;
     try {
       final aes = AesGcm.with256bits();
@@ -213,7 +233,14 @@ class BackupService {
         mac: Mac(parsed.mac),
       );
       try {
-        final plain = await aes.decrypt(box, secretKey: SecretKey(key));
+        // Pass the header bytes as AAD: must match what was used at
+        // encrypt-time, otherwise AES-GCM rejects the tag. Catches the
+        // attacker-rewrites-KDF-params attack outright.
+        final plain = await aes.decrypt(
+          box,
+          secretKey: SecretKey(key),
+          aad: parsed.headerBytes,
+        );
         clear = Uint8List.fromList(plain);
       } on SecretBoxAuthenticationError {
         throw const ValidationError('backup_wrong_passphrase', 'passphrase');
@@ -252,6 +279,15 @@ class BackupService {
     if (dbReader() != null) {
       throw StateError('applyRestore requires the vault to be locked first');
     }
+    // Flush every alarm before swapping the DB. Without this, the previous
+    // device's reminders would still fire — pointing at appointments whose
+    // ids no longer match anything in the restored DB. Boot-receiver replay
+    // would resurrect them after every reboot too.
+    try {
+      await notifications.cancelAll();
+    } on Object {
+      // best-effort: do not block restore on a notif plugin glitch.
+    }
     final support = await getApplicationSupportDirectory();
     final dbDir = Directory(p.join(support.path, 'db'));
     final attDir = Directory(p.join(support.path, 'attachments'));
@@ -284,10 +320,20 @@ class BackupService {
       if (!f.isFile) continue;
       final name = f.name;
       final bytes = Uint8List.fromList(f.content as List<int>);
+      // Strict allow-list: ANY entry whose name does not match exactly
+      // `db/health.db` or `attachments/<safeName>` is silently dropped.
+      // Defends against zip-slip — a forged bundle that named an entry
+      // `db/../../../shared_prefs/com.filestech.evil.xml` would otherwise
+      // escape the destination directory.
       if (name == 'db/health.db') {
         await atomicWriteBytes(dbFile, bytes);
       } else if (name.startsWith('attachments/')) {
-        final safe = _safeName(p.basename(name));
+        final basename = p.basename(name);
+        final safe = _safeName(basename);
+        // Reject any path traversal attempt inside attachments/ too.
+        if (safe.isEmpty || safe.contains('..') || safe != basename) {
+          continue;
+        }
         await atomicWriteBytes(File(p.join(attDir.path, safe)), bytes);
       }
     }
@@ -313,11 +359,17 @@ class BackupService {
 
   // -- Helpers --------------------------------------------------------------
 
-  Future<Uint8List> _deriveKey(String passphrase, Uint8List salt) async {
+  Future<Uint8List> _deriveKey(
+    String passphrase,
+    Uint8List salt, {
+    int memoryKb = _kdfMemoryKb,
+    int iterations = _kdfIterations,
+    int parallelism = _kdfParallelism,
+  }) async {
     final algo = Argon2id(
-      memory: _kdfMemoryKb,
-      parallelism: _kdfParallelism,
-      iterations: _kdfIterations,
+      memory: memoryKb,
+      parallelism: parallelism,
+      iterations: iterations,
       hashLength: 32,
     );
     final key = await algo.deriveKey(
@@ -327,6 +379,14 @@ class BackupService {
     final bytes = await key.extractBytes();
     return Uint8List.fromList(bytes);
   }
+
+  /// Reject bundles that declare absurdly weak Argon2id params — they could
+  /// only get through here by being forged, since [export] always uses the
+  /// safe defaults. Without this floor, an attacker who substitutes the
+  /// header (and re-MAC's it under their own passphrase) could feed us a
+  /// 1-iteration / 1 MiB derivation and brute-force at will.
+  static const int _kdfMemoryKbFloor = 32 * 1024;
+  static const int _kdfIterationsFloor = 2;
 
   _Envelope _parseEnvelope(Uint8List bundle) {
     if (bundle.length < _magic.length + _headerLenSize + _nonceLen + _macLen) {
@@ -342,20 +402,30 @@ class BackupService {
     if (bundle.length < headerStart + headerLen + _macLen) {
       throw const ValidationError('backup_truncated', 'bundle');
     }
+    final headerBytes = bundle.sublist(headerStart, headerStart + headerLen);
     final headerJson =
-        jsonDecode(
-              utf8.decode(bundle.sublist(headerStart, headerStart + headerLen)),
-            )
-            as Map<String, dynamic>;
+        jsonDecode(utf8.decode(headerBytes)) as Map<String, dynamic>;
     final salt = base64Decode(headerJson['salt'] as String);
     final nonce = base64Decode(headerJson['nonce'] as String);
+    final memoryKb = (headerJson['memory_kb'] as num?)?.toInt() ?? _kdfMemoryKb;
+    final iterations =
+        (headerJson['iterations'] as num?)?.toInt() ?? _kdfIterations;
+    final parallelism =
+        (headerJson['parallelism'] as num?)?.toInt() ?? _kdfParallelism;
+    if (memoryKb < _kdfMemoryKbFloor || iterations < _kdfIterationsFloor) {
+      throw const ValidationError('backup_kdf_params_too_weak', 'bundle');
+    }
     final cipherStart = headerStart + headerLen;
     final cipher = bundle.sublist(cipherStart, bundle.length - _macLen);
     final mac = bundle.sublist(bundle.length - _macLen);
     return _Envelope(
       header: headerJson,
+      headerBytes: headerBytes,
       salt: salt,
       nonce: nonce,
+      memoryKb: memoryKb,
+      iterations: iterations,
+      parallelism: parallelism,
       cipher: cipher,
       mac: mac,
     );
@@ -406,14 +476,25 @@ class BackupPreview {
 class _Envelope {
   _Envelope({
     required this.header,
+    required this.headerBytes,
     required this.salt,
     required this.nonce,
+    required this.memoryKb,
+    required this.iterations,
+    required this.parallelism,
     required this.cipher,
     required this.mac,
   });
   final Map<String, dynamic> header;
+
+  /// Raw bytes of the JSON header — needed verbatim as AAD for the AES-GCM
+  /// decrypt so the tag also covers the KDF parameters.
+  final Uint8List headerBytes;
   final Uint8List salt;
   final Uint8List nonce;
+  final int memoryKb;
+  final int iterations;
+  final int parallelism;
   final Uint8List cipher;
   final Uint8List mac;
 }

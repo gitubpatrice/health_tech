@@ -23,7 +23,12 @@ class GlobalSearchService {
         .trim()
         .split(RegExp(r'\s+'))
         .where((t) => t.isNotEmpty)
-        .map((t) => '%$t%')
+        // Strip SQL LIKE wildcards from user input. Drift binds tokens as
+        // parameters (no SQL-injection risk), but unescaped `%` / `_` would
+        // match any character, producing surprising over-broad results.
+        // Drift's .like() does not emit an ESCAPE clause, so we just remove
+        // the metacharacters — typing "%100" searches for "100".
+        .map((t) => '%${t.replaceAll(RegExp(r'[%_\\]'), '')}%')
         .toList(growable: false);
     if (tokens.isEmpty) return const [];
 

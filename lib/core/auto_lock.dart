@@ -140,16 +140,18 @@ class _AutoLockGuardState extends ConsumerState<AutoLockGuard> {
   void initState() {
     super.initState();
     _lifecycleListener = AppLifecycleListener(
-      // Schedule a lock with a grace period instead of locking instantly:
-      // Android fires onPause/onHide on transient events like file picker,
-      // biometric prompt, share sheet, system dialog — locking on every one
-      // of them would force a re-unlock after the most common user actions.
+      // onPause = a transient overlay (file picker, biometric prompt, share
+      // sheet, system dialog, notification shade pull-down). Defer the lock
+      // with a grace period so ordinary user actions do not force a
+      // re-unlock every time.
       onPause: () => ref
           .read(autoLockControllerProvider.notifier)
           .scheduleBackgroundLock(),
-      onHide: () => ref
-          .read(autoLockControllerProvider.notifier)
-          .scheduleBackgroundLock(),
+      // onHide = the app window is no longer visible to the user (Android
+      // sends this when the user actually backgrounds the app, not for
+      // mere overlays). Lock immediately — no reason to leave the vault
+      // unlocked once the practitioner has switched away.
+      onHide: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
       // onDetach means the app is being torn down — lock immediately, no grace.
       onDetach: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
       onResume: () =>

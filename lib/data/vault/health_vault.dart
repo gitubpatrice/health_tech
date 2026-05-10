@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/errors.dart';
@@ -347,18 +347,22 @@ class HealthVault {
     required int iterations,
     required int parallelism,
   }) async {
-    final algo = Argon2id(
-      memory: memoryKb,
-      parallelism: parallelism,
-      iterations: iterations,
-      hashLength: 32,
+    // 64 MiB / 3 iter Argon2id is ~750 ms on S24 FE and ~1.5 s on S9 — too
+    // long to run on the UI isolate without freezing the lock screen
+    // pinwheel. Push it off to a background isolate via `compute()`. The
+    // passphrase is a Dart String (immutable, GC-only) so its in-memory
+    // lifetime is the same regardless of isolate; the serialisation cost
+    // here is negligible compared to the 750-1500 ms KDF itself.
+    return compute<_KdfInput, Uint8List>(
+      _deriveMasterKeyIsolate,
+      _KdfInput(
+        passphrase: passphrase,
+        salt: salt,
+        memoryKb: memoryKb,
+        iterations: iterations,
+        parallelism: parallelism,
+      ),
     );
-    final key = await algo.deriveKey(
-      secretKey: SecretKey(utf8.encode(passphrase)),
-      nonce: salt,
-    );
-    final bytes = await key.extractBytes();
-    return Uint8List.fromList(bytes);
   }
 
   Future<Uint8List> _wrapVek(Uint8List vek, Uint8List masterKey) async {
@@ -404,4 +408,40 @@ class HealthVault {
     }
     return out;
   }
+}
+
+/// Top-level inputs for [_deriveMasterKeyIsolate]. Must be a top-level (not
+/// a private inner) class because `compute()` sends the value across an
+/// isolate boundary and therefore needs trivially-serialisable data.
+class _KdfInput {
+  const _KdfInput({
+    required this.passphrase,
+    required this.salt,
+    required this.memoryKb,
+    required this.iterations,
+    required this.parallelism,
+  });
+  final String passphrase;
+  final Uint8List salt;
+  final int memoryKb;
+  final int iterations;
+  final int parallelism;
+}
+
+/// Worker entry point: must be a top-level function so `compute()` can
+/// resolve it inside the spawned isolate. Returns the 32-byte master key
+/// derived from the passphrase + salt under Argon2id.
+Future<Uint8List> _deriveMasterKeyIsolate(_KdfInput input) async {
+  final algo = Argon2id(
+    memory: input.memoryKb,
+    parallelism: input.parallelism,
+    iterations: input.iterations,
+    hashLength: 32,
+  );
+  final key = await algo.deriveKey(
+    secretKey: SecretKey(utf8.encode(input.passphrase)),
+    nonce: input.salt,
+  );
+  final bytes = await key.extractBytes();
+  return Uint8List.fromList(bytes);
 }
