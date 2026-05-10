@@ -55,19 +55,25 @@ class _AutoLockTile extends ConsumerWidget {
       },
     );
     if (picked != null) {
-      await ref.read(autoLockControllerProvider).setDurationMinutes(picked);
+      await ref
+          .read(autoLockControllerProvider.notifier)
+          .setDurationMinutes(picked);
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
-    final ctrl = ref.watch(autoLockControllerProvider);
+    // Watch the Duration so the trailing label refreshes as soon as the
+    // user picks a new value — previously the controller was a plain
+    // class and the change was invisible (the tile still showed the
+    // initial 5 min, even though the actual lock interval had changed).
+    final duration = ref.watch(autoLockControllerProvider);
     return ListTile(
       leading: const Icon(Icons.timer_outlined),
       title: Text(l10n.settingsAutoLockTitle),
       subtitle: Text(l10n.settingsAutoLockSubtitle),
-      trailing: Text(l10n.settingsAutoLockMinutes(ctrl.duration.inMinutes)),
+      trailing: Text(l10n.settingsAutoLockMinutes(duration.inMinutes)),
       onTap: () => _pick(context, ref),
     );
   }

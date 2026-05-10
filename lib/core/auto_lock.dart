@@ -9,8 +9,13 @@ import 'providers.dart';
 /// Auto-lock policy + timer driven by a [Stopwatch] (monotonic — immune to
 /// clock-skew attacks where a rooted attacker could rewind the system clock
 /// to keep the session alive).
-class AutoLockController {
-  AutoLockController(this._ref) {
+///
+/// Exposed as a [StateNotifier] so the Settings tile listens to the
+/// configured [Duration] reactively: changing the value via
+/// [setDurationMinutes] both persists it AND rebuilds anything that
+/// `ref.watch`es the provider.
+class AutoLockController extends StateNotifier<Duration> {
+  AutoLockController(this._ref) : super(_defaultDuration) {
     _stopwatch.start();
   }
 
@@ -20,24 +25,24 @@ class AutoLockController {
   final Ref _ref;
   final Stopwatch _stopwatch = Stopwatch();
   Timer? _ticker;
-  Duration _allowed = _defaultDuration;
 
   /// Loads the user-configured duration from prefs (or falls back to 5 min).
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getInt(_kDurationKey);
     if (stored != null && stored > 0) {
-      _allowed = Duration(minutes: stored);
+      state = Duration(minutes: stored);
     }
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 10), (_) => _tick());
   }
 
-  Duration get duration => _allowed;
+  /// Convenience getter for callers that don't want to watch the state.
+  Duration get duration => state;
 
   Future<void> setDurationMinutes(int minutes) async {
     if (minutes < 1) return;
-    _allowed = Duration(minutes: minutes);
+    state = Duration(minutes: minutes);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kDurationKey, minutes);
     onUserActivity();
@@ -61,23 +66,22 @@ class AutoLockController {
 
   void _tick() {
     if (_ref.read(vaultSessionProvider) == null) return; // already locked
-    if (_stopwatch.elapsed >= _allowed) {
+    if (_stopwatch.elapsed >= state) {
       lockNow();
     }
   }
 
+  @override
   void dispose() {
     _ticker?.cancel();
     _ticker = null;
     _stopwatch.stop();
+    super.dispose();
   }
 }
 
-final autoLockControllerProvider = Provider<AutoLockController>((ref) {
-  final controller = AutoLockController(ref);
-  ref.onDispose(controller.dispose);
-  return controller;
-});
+final autoLockControllerProvider =
+    StateNotifierProvider<AutoLockController, Duration>(AutoLockController.new);
 
 /// Wraps the app with a [Listener] that records pointer events as activity
 /// and an [AppLifecycleListener] that locks on background.
@@ -97,17 +101,18 @@ class _AutoLockGuardState extends ConsumerState<AutoLockGuard> {
   void initState() {
     super.initState();
     _lifecycleListener = AppLifecycleListener(
-      onPause: () => ref.read(autoLockControllerProvider).lockNow(),
-      onHide: () => ref.read(autoLockControllerProvider).lockNow(),
-      onDetach: () => ref.read(autoLockControllerProvider).lockNow(),
-      onResume: () => ref.read(autoLockControllerProvider).onUserActivity(),
+      onPause: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
+      onHide: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
+      onDetach: () => ref.read(autoLockControllerProvider.notifier).lockNow(),
+      onResume: () =>
+          ref.read(autoLockControllerProvider.notifier).onUserActivity(),
     );
     Future<void>.microtask(() async {
-      await ref.read(autoLockControllerProvider).init();
+      await ref.read(autoLockControllerProvider.notifier).init();
       // Reset the stopwatch the very first time we land in the guarded tree.
       // Without this, a stale stopwatch from a previous session could relock
       // the user immediately after unlock.
-      ref.read(autoLockControllerProvider).onUserActivity();
+      ref.read(autoLockControllerProvider.notifier).onUserActivity();
       if (mounted) setState(() => _initialised = true);
     });
   }
@@ -126,9 +131,9 @@ class _AutoLockGuardState extends ConsumerState<AutoLockGuard> {
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) =>
-          ref.read(autoLockControllerProvider).onUserActivity(),
+          ref.read(autoLockControllerProvider.notifier).onUserActivity(),
       onPointerMove: (_) =>
-          ref.read(autoLockControllerProvider).onUserActivity(),
+          ref.read(autoLockControllerProvider.notifier).onUserActivity(),
       child: widget.child,
     );
   }
