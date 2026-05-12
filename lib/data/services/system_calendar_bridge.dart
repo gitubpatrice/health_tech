@@ -50,8 +50,14 @@ class SystemCalendarBridge {
     final res = await _plugin.retrieveCalendars();
     if (!res.isSuccess) return null;
     final list = res.data ?? <Calendar>[];
+    // First pass: prefer explicitly writable calendars.
     for (final c in list) {
-      if ((c.isReadOnly ?? true) == false) return c;
+      if (c.isReadOnly == false) return c;
+    }
+    // Second pass: accept calendars where isReadOnly is null (Samsung/AOSP
+    // implementations sometimes omit the field on writable accounts).
+    for (final c in list) {
+      if (c.isReadOnly == null) return c;
     }
     return null;
   }
