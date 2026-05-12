@@ -69,7 +69,7 @@
 
 | Version | Date | Notes principales |
 |---|---|---|
-| **v1.4.4** | 2026-05-12 | Synchronisation agenda automatique à la sauvegarde d'une séance (DB v4). |
+| **v1.4.5** | 2026-05-12 | Synchronisation agenda automatique à la sauvegarde d'une séance (DB v4). |
 | **v1.4.3** | 2026-05-10 | Page « À propos » (version dynamique via PackageInfo). |
 | **v1.4.2** | 2026-05-10 | Biométrie : suppression de la fenêtre 1h (alignement Bitwarden/Aegis). Cold-start et anti-rollback clock conservés. |
 | **v1.4.1** | 2026-05-10 | UX : dialog « Import en cours » sur attachments, dropdown animal toujours visible (3 états). |

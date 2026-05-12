@@ -166,6 +166,15 @@ class _SessionBody extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       children: [
         TagEditor(ownerType: TagOwner.session, ownerId: session.id),
+        if (session.externalCalendarEventId != null) ...[
+          const SizedBox(height: 8),
+          Chip(
+            avatar: const Icon(Icons.event_available, size: 16),
+            label: Text(l10n.sessionDetailCalendarSynced),
+            visualDensity: VisualDensity.compact,
+            backgroundColor: const Color(0xFFC8F0C0),
+          ),
+        ],
         const SizedBox(height: 12),
         DetailRow(
           icon: Icons.schedule,
@@ -187,15 +196,6 @@ class _SessionBody extends ConsumerWidget {
             text:
                 '${(session.priceCents! / 100).toStringAsFixed(2)} € · '
                 '${paymentStatusLabel(l10n, session.paymentStatus)}',
-          ),
-        if (session.externalCalendarEventId != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Chip(
-              avatar: const Icon(Icons.event_available, size: 16),
-              label: Text(l10n.sessionDetailCalendarSynced),
-              visualDensity: VisualDensity.compact,
-            ),
           ),
         if (session.motives.isNotEmpty) ...[
           const SizedBox(height: 8),
