@@ -241,6 +241,19 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
           } on Object {
             // Tout autre échec calendrier ne bloque pas la navigation.
           }
+        } else if (saved.externalCalendarId != null &&
+            saved.externalCalendarEventId != null) {
+          // Case décochée sur une séance déjà liée : supprime l'événement
+          // du calendrier et efface les IDs en base.
+          try {
+            await bridge.remove(
+              calendarId: saved.externalCalendarId!,
+              eventId: saved.externalCalendarEventId!,
+            );
+          } on Object {
+            // best-effort : l'événement a peut-être déjà été supprimé manuellement
+          }
+          await repo.clearCalendarIds(saved.id);
         }
 
         if (!mounted) return;

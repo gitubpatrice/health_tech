@@ -41,6 +41,15 @@ class SessionRepository {
     return (await getById(session.id))!;
   }
 
+  Future<void> clearCalendarIds(String id) async {
+    await (_db.update(_db.sessions)..where((t) => t.id.equals(id))).write(
+      const SessionsCompanion(
+        externalCalendarId: Value(null),
+        externalCalendarEventId: Value(null),
+      ),
+    );
+  }
+
   Future<Session?> getById(String id) async {
     final row = await (_db.select(
       _db.sessions,
