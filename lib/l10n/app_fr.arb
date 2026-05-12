@@ -112,6 +112,7 @@
   "sessionDetailDeleteTitle": "Supprimer cette séance ?",
   "sessionDetailDeleteBody": "Cette action archive le compte rendu de la séance.",
   "sessionDetailDeleteSuccess": "Séance supprimée.",
+  "sessionDetailCalendarSynced": "Agenda ✓",
 
   "animalsListEmpty": "Aucun animal pour le moment.",
   "animalFormTitleNew": "Nouvel animal",

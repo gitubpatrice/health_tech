@@ -112,6 +112,7 @@
   "sessionDetailDeleteTitle": "Delete this session?",
   "sessionDetailDeleteBody": "This action soft-deletes the session report.",
   "sessionDetailDeleteSuccess": "Session deleted.",
+  "sessionDetailCalendarSynced": "Calendar ✓",
 
   "animalsListEmpty": "No animals yet.",
   "animalFormTitleNew": "New animal",

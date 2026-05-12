@@ -185,6 +185,15 @@ class _SessionBody extends ConsumerWidget {
                 '${(session.priceCents! / 100).toStringAsFixed(2)} € · '
                 '${paymentStatusLabel(l10n, session.paymentStatus)}',
           ),
+        if (session.externalCalendarEventId != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Chip(
+              avatar: const Icon(Icons.event_available, size: 16),
+              label: Text(l10n.sessionDetailCalendarSynced),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
         if (session.motives.isNotEmpty) ...[
           const SizedBox(height: 8),
           Wrap(
