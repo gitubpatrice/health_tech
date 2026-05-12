@@ -12,6 +12,7 @@ import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
 import '../../utils/ephemeral_cache.dart';
+import '../../widgets/breakpoints.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
 import '../../widgets/error_view.dart';
@@ -54,14 +55,20 @@ class _SessionBody extends ConsumerWidget {
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final l10n = AppL10n.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showConfirmDeleteDialog(
       context,
       title: l10n.sessionDetailDeleteTitle,
       body: l10n.sessionDetailDeleteBody,
     );
     if (!confirmed) return;
-    await ref.read(sessionRepositoryProvider).softDelete(session.id);
+    await ref.read(purgeServiceProvider).softDeleteSession(session.id);
+    messenger.showSnackBar(
+      SnackBar(content: Text(l10n.sessionDetailDeleteSuccess)),
+    );
+    if (!context.mounted) return;
     ref.read(selectedSessionIdProvider.notifier).state = null;
+    if (context.isCompact) Navigator.of(context).pop();
   }
 
   Future<void> _exportPdf(BuildContext context, WidgetRef ref) async {

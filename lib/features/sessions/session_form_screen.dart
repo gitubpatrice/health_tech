@@ -208,15 +208,16 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
         try {
           final title = '${kindLabel(l10n, saved.kind)} – Health Tech';
           final pushed = await bridge.pushSession(saved, calendarTitle: title);
-          if (pushed != null && saved.externalCalendarEventId == null) {
-            await repo.update(
-              saved.copyWith(
-                externalCalendarId: pushed.calendarId,
-                externalCalendarEventId: pushed.eventId,
-              ),
-            );
-          }
           if (pushed != null) {
+            if (saved.externalCalendarId != pushed.calendarId ||
+                saved.externalCalendarEventId != pushed.eventId) {
+              await repo.update(
+                saved.copyWith(
+                  externalCalendarId: pushed.calendarId,
+                  externalCalendarEventId: pushed.eventId,
+                ),
+              );
+            }
             messenger.showSnackBar(
               SnackBar(content: Text(l10n.sessionFormSyncedToCalendar)),
             );

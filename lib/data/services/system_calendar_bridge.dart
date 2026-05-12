@@ -38,11 +38,12 @@ class SystemCalendarBridge {
     _tzReady = true;
   }
 
-  Future<bool> _ensurePermission() async {
+  Future<void> _ensurePermission() async {
     final hasPerm = await _plugin.hasPermissions();
-    if (hasPerm.isSuccess && (hasPerm.data ?? false)) return true;
+    if (hasPerm.isSuccess && (hasPerm.data ?? false)) return;
     final req = await _plugin.requestPermissions();
-    return req.isSuccess && (req.data ?? false);
+    if (req.isSuccess && (req.data ?? false)) return;
+    throw const CalendarPermissionDenied();
   }
 
   Future<Calendar?> _firstWritableCalendar() async {
@@ -100,7 +101,6 @@ class SystemCalendarBridge {
       title: calendarTitle,
       start: tz.TZDateTime.from(session.startAt, tz.local),
       end: tz.TZDateTime.from(session.endAt, tz.local),
-      location: session.location,
     );
     return _createOrUpdate(event);
   }
@@ -131,7 +131,11 @@ class SystemCalendarBridge {
     required String calendarId,
     required String eventId,
   }) async {
-    if (!await _ensurePermission()) return;
+    try {
+      await _ensurePermission();
+    } on CalendarPermissionDenied {
+      return;
+    }
     await _plugin.deleteEvent(calendarId, eventId);
   }
 }

@@ -111,6 +111,7 @@
   "animalDetailDeleteBody": "This action soft-deletes the animal. Use 'Erase permanently' to apply the GDPR right to erasure.",
   "sessionDetailDeleteTitle": "Delete this session?",
   "sessionDetailDeleteBody": "This action soft-deletes the session report.",
+  "sessionDetailDeleteSuccess": "Session deleted.",
 
   "animalsListEmpty": "No animals yet.",
   "animalFormTitleNew": "New animal",

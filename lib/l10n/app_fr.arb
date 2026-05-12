@@ -111,6 +111,7 @@
   "animalDetailDeleteBody": "Cette action archive l’animal. Utilise « Effacer définitivement » pour appliquer le droit à l’effacement RGPD.",
   "sessionDetailDeleteTitle": "Supprimer cette séance ?",
   "sessionDetailDeleteBody": "Cette action archive le compte rendu de la séance.",
+  "sessionDetailDeleteSuccess": "Séance supprimée.",
 
   "animalsListEmpty": "Aucun animal pour le moment.",
   "animalFormTitleNew": "Nouvel animal",
