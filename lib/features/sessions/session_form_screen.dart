@@ -57,6 +57,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
   String? _paymentMethod;
   final Set<String> _motives = <String>{};
   int? _improvement;
+  bool _addToCalendar = true;
   bool _busy = false;
 
   @override
@@ -90,6 +91,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
     _paymentMethod = s?.paymentMethod;
     _motives.addAll(s?.motives ?? const []);
     _improvement = s?.improvementLevel;
+    _addToCalendar = true;
   }
 
   @override
@@ -205,35 +207,37 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
         }
 
         // Synchronisation agenda — best-effort, ne bloque jamais la sauvegarde.
-        try {
-          final title = '${kindLabel(l10n, saved.kind)} – Health Tech';
-          final pushed = await bridge.pushSession(saved, calendarTitle: title);
-          if (pushed != null) {
-            if (saved.externalCalendarId != pushed.calendarId ||
-                saved.externalCalendarEventId != pushed.eventId) {
-              await repo.update(
-                saved.copyWith(
-                  externalCalendarId: pushed.calendarId,
-                  externalCalendarEventId: pushed.eventId,
-                ),
+        if (_addToCalendar) {
+          try {
+            final title = '${kindLabel(l10n, saved.kind)} – Health Tech';
+            final pushed = await bridge.pushSession(saved, calendarTitle: title);
+            if (pushed != null) {
+              if (saved.externalCalendarId != pushed.calendarId ||
+                  saved.externalCalendarEventId != pushed.eventId) {
+                await repo.update(
+                  saved.copyWith(
+                    externalCalendarId: pushed.calendarId,
+                    externalCalendarEventId: pushed.eventId,
+                  ),
+                );
+              }
+              messenger.showSnackBar(
+                SnackBar(content: Text(l10n.sessionFormSyncedToCalendar)),
               );
             }
+          } on CalendarPermissionDenied {
             messenger.showSnackBar(
-              SnackBar(content: Text(l10n.sessionFormSyncedToCalendar)),
+              SnackBar(
+                content: Text(l10n.appointmentFormCalendarPermissionDenied),
+              ),
             );
+          } on CalendarUnavailable {
+            messenger.showSnackBar(
+              SnackBar(content: Text(l10n.appointmentFormCalendarMissing)),
+            );
+          } on Object {
+            // Tout autre échec calendrier ne bloque pas la navigation.
           }
-        } on CalendarPermissionDenied {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(l10n.appointmentFormCalendarPermissionDenied),
-            ),
-          );
-        } on CalendarUnavailable {
-          messenger.showSnackBar(
-            SnackBar(content: Text(l10n.appointmentFormCalendarMissing)),
-          );
-        } on Object {
-          // Tout autre échec calendrier ne bloque pas la navigation.
         }
 
         if (!mounted) return;
@@ -548,7 +552,15 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                   labelText: l10n.sessionFormPrivateNote,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _addToCalendar,
+                onChanged: (v) => setState(() => _addToCalendar = v ?? false),
+                title: Text(l10n.appointmentFormAddToCalendar),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+              const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: _busy ? null : _save,
                 icon: _busy

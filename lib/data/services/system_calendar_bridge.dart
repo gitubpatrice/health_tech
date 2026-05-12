@@ -1,4 +1,5 @@
 import 'package:device_calendar/device_calendar.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -14,29 +15,24 @@ class CalendarUnavailable implements Exception {
   const CalendarUnavailable();
 }
 
-/// Pushes [Appointment]s into the user's local Android calendar (default
-/// app, typically Google Agenda) on demand.
+/// Pushes Appointments and Sessions into the user's system calendar.
 ///
-/// Strictly opt-in: callers invoke [push] when the user toggles "Add to
-/// system calendar". The bridge never syncs silently.
+/// Permission check uses [DeviceCalendarPlugin.hasPermissions] /
+/// [DeviceCalendarPlugin.requestPermissions] (still works on all devices).
 ///
-/// Timezone handling: we initialise the IANA database lazily and resolve the
-/// device's actual zone via flutter_timezone — this avoids the classic
-/// daylight-saving drift you get with naive UTC offsets.
+/// Calendar retrieval and event creation/deletion go through a direct
+/// `MethodChannel` to Android's ContentResolver.  The `device_calendar` 4.3.3
+/// plugin deserialises Calendar objects as all-null on Samsung Android 14
+/// (access-level field mapping regression), so we bypass those methods.
 class SystemCalendarBridge {
   SystemCalendarBridge([DeviceCalendarPlugin? plugin])
     : _plugin = plugin ?? DeviceCalendarPlugin();
 
   final DeviceCalendarPlugin _plugin;
+  static const _ch = MethodChannel('com.filestech.health_tech/calendar_sync');
   bool _tzReady = false;
 
-  Future<void> _ensureTimezones() async {
-    if (_tzReady) return;
-    tzdata.initializeTimeZones();
-    final name = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(name));
-    _tzReady = true;
-  }
+  // ── Permission ─────────────────────────────────────────────────────────────
 
   Future<void> _ensurePermission() async {
     final hasPerm = await _plugin.hasPermissions();
@@ -46,54 +42,66 @@ class SystemCalendarBridge {
     throw const CalendarPermissionDenied();
   }
 
-  Future<Calendar?> _firstWritableCalendar() async {
-    final res = await _plugin.retrieveCalendars();
-    if (!res.isSuccess) return null;
-    final list = res.data ?? <Calendar>[];
-    // First pass: prefer explicitly writable calendars.
-    for (final c in list) {
-      if (c.isReadOnly == false) return c;
-    }
-    // Second pass: accept calendars where isReadOnly is null (Samsung/AOSP
-    // implementations sometimes omit the field on writable accounts).
-    for (final c in list) {
-      if (c.isReadOnly == null) return c;
-    }
-    return null;
+  // ── Timezone ───────────────────────────────────────────────────────────────
+
+  Future<void> _ensureTimezones() async {
+    if (_tzReady) return;
+    tzdata.initializeTimeZones();
+    final name = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(name));
+    _tzReady = true;
   }
 
-  /// Creates OR updates a calendar event for [appointment] and returns the
-  /// `(calendarId, eventId)` pair the caller persists on the row.
-  ///
-  /// Reuses `externalCalendarId` / `externalCalendarEventId` when present
-  /// so the existing event is updated in place rather than duplicated.
+  // ── Calendar ID resolution (via ContentResolver MethodChannel) ─────────────
+
+  Future<String> _resolveCalendarId(String? existing) async {
+    if (existing != null) return existing;
+    final id = await _ch.invokeMethod<String>('getFirstWritableCalendarId');
+    if (id == null) throw const CalendarUnavailable();
+    return id;
+  }
+
+  // ── Event write/delete (via ContentResolver MethodChannel) ─────────────────
+
+  Future<({String calendarId, String eventId})?> _createOrUpdate({
+    required String calendarId,
+    String? eventId,
+    required String title,
+    required DateTime startAt,
+    required DateTime endAt,
+  }) async {
+    final newEventId = await _ch.invokeMethod<String>('createOrUpdateEvent', {
+      'calendarId': calendarId,
+      'eventId': ?eventId,
+      'title': title,
+      'startMs': startAt.millisecondsSinceEpoch,
+      'endMs': endAt.millisecondsSinceEpoch,
+      'timeZone': tz.local.name,
+    });
+    return newEventId == null
+        ? null
+        : (calendarId: calendarId, eventId: newEventId);
+  }
+
+  // ── Public API ─────────────────────────────────────────────────────────────
+
+  /// Creates or updates a calendar event for [appointment].
   Future<({String calendarId, String eventId})?> push(
     Appointment appointment,
   ) async {
-    await _ensurePermission(); // throws CalendarPermissionDenied if denied
+    await _ensurePermission();
     await _ensureTimezones();
     final calendarId = await _resolveCalendarId(appointment.externalCalendarId);
-    final event = Event(
-      calendarId,
+    return _createOrUpdate(
+      calendarId: calendarId,
       eventId: appointment.externalCalendarEventId,
       title: appointment.title ?? 'Health Tech',
-      description: appointment.notes.isEmpty ? null : appointment.notes,
-      start: tz.TZDateTime.from(appointment.startAt, tz.local),
-      end: tz.TZDateTime.from(appointment.endAt, tz.local),
-      location: appointment.location,
-      reminders: switch (appointment.reminderMinutesBefore) {
-        null => null,
-        final int m => <Reminder>[Reminder(minutes: m)],
-      },
+      startAt: appointment.startAt,
+      endAt: appointment.endAt,
     );
-    return _createOrUpdate(event);
   }
 
-  /// Creates OR updates a calendar event for [session] and returns the
-  /// `(calendarId, eventId)` pair. Called automatically on every session save.
-  ///
-  /// [calendarTitle] is provided by the caller (l10n-aware) since the bridge
-  /// has no access to localisation. Reuses existing IDs on edits.
+  /// Creates or updates a calendar event for [session].
   Future<({String calendarId, String eventId})?> pushSession(
     Session session, {
     required String calendarTitle,
@@ -101,38 +109,16 @@ class SystemCalendarBridge {
     await _ensurePermission();
     await _ensureTimezones();
     final calendarId = await _resolveCalendarId(session.externalCalendarId);
-    final event = Event(
-      calendarId,
+    return _createOrUpdate(
+      calendarId: calendarId,
       eventId: session.externalCalendarEventId,
       title: calendarTitle,
-      start: tz.TZDateTime.from(session.startAt, tz.local),
-      end: tz.TZDateTime.from(session.endAt, tz.local),
+      startAt: session.startAt,
+      endAt: session.endAt,
     );
-    return _createOrUpdate(event);
   }
 
-  // -- private helpers -------------------------------------------------------
-
-  /// Returns the calendar id to use: the existing one if the entity already
-  /// has a linked event, otherwise picks the first writable calendar.
-  Future<String> _resolveCalendarId(String? existing) async {
-    if (existing != null) return existing;
-    final cal = await _firstWritableCalendar();
-    if (cal == null || cal.id == null) throw const CalendarUnavailable();
-    return cal.id!;
-  }
-
-  Future<({String calendarId, String eventId})?> _createOrUpdate(
-    Event event,
-  ) async {
-    final res = await _plugin.createOrUpdateEvent(event);
-    if (res == null || !res.isSuccess) return null;
-    final eventId = res.data;
-    final calendarId = event.calendarId;
-    if (eventId == null || calendarId == null) return null;
-    return (calendarId: calendarId, eventId: eventId);
-  }
-
+  /// Removes a previously created calendar event. Best-effort.
   Future<void> remove({
     required String calendarId,
     required String eventId,
@@ -142,6 +128,10 @@ class SystemCalendarBridge {
     } on CalendarPermissionDenied {
       return;
     }
-    await _plugin.deleteEvent(calendarId, eventId);
+    try {
+      await _ch.invokeMethod<void>('deleteEvent', {'eventId': eventId});
+    } on Object {
+      // best-effort
+    }
   }
 }
