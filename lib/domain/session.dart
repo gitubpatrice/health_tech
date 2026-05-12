@@ -199,6 +199,8 @@ class Session {
     this.privateNote = '',
     this.improvementLevel,
     this.nextSuggestedAt,
+    this.externalCalendarId,
+    this.externalCalendarEventId,
     this.createdAt,
     this.updatedAt,
   });
@@ -223,6 +225,12 @@ class Session {
   /// 0..4 (none, light, moderate, important, follow up).
   final int? improvementLevel;
   final DateTime? nextSuggestedAt;
+
+  /// IDs du calendrier système (device_calendar). Null tant que la session
+  /// n'a pas encore été synchronisée, puis renseignés automatiquement.
+  final String? externalCalendarId;
+  final String? externalCalendarEventId;
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -245,6 +253,8 @@ class Session {
     String? privateNote,
     int? improvementLevel,
     DateTime? nextSuggestedAt,
+    String? externalCalendarId,
+    String? externalCalendarEventId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Session(
@@ -264,6 +274,9 @@ class Session {
     privateNote: privateNote ?? this.privateNote,
     improvementLevel: improvementLevel ?? this.improvementLevel,
     nextSuggestedAt: nextSuggestedAt ?? this.nextSuggestedAt,
+    externalCalendarId: externalCalendarId ?? this.externalCalendarId,
+    externalCalendarEventId:
+        externalCalendarEventId ?? this.externalCalendarEventId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );

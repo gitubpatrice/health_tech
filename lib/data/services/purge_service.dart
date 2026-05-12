@@ -1,4 +1,5 @@
 import '../../domain/attachment.dart';
+import '../../domain/session.dart';
 import '../repositories/animal_repository.dart';
 import '../repositories/appointment_repository.dart';
 import '../repositories/attachment_repository.dart';
@@ -46,7 +47,7 @@ class PurgeService {
     }
     final clientSessions = await sessions.watchByClient(clientId).first;
     for (final s in clientSessions) {
-      await sessions.softDelete(s.id);
+      await _softDeleteSession(s);
     }
     final clientAppointments = await appointments.watchByClient(clientId).first;
     for (final apt in clientAppointments) {
@@ -64,10 +65,8 @@ class PurgeService {
   Future<void> softDeleteAnimal(String animalId) async {
     final animalSessions = await sessions.watchByAnimal(animalId).first;
     for (final s in animalSessions) {
-      await sessions.softDelete(s.id);
+      await _softDeleteSession(s);
     }
-    // Appointments owned by this animal — fetched via a one-shot range
-    // query because AppointmentRepository doesn't expose watchByAnimal yet.
     final animalAppointments = await appointments.watchByAnimal(animalId).first;
     for (final apt in animalAppointments) {
       await _softDeleteAppointment(
@@ -91,7 +90,7 @@ class PurgeService {
     // process — animal-bound ones were already cascaded by purgeAnimal.
     final clientSessions = await sessions.watchByClient(clientId).first;
     for (final s in clientSessions.where((x) => x.animalId == null)) {
-      await purgeSession(s.id);
+      await purgeSession(s);
     }
     final clientAppointments = await appointments.watchByClient(clientId).first;
     for (final apt in clientAppointments) {
@@ -111,7 +110,7 @@ class PurgeService {
   Future<void> purgeAnimal(String animalId) async {
     final animalSessions = await sessions.watchByAnimal(animalId).first;
     for (final s in animalSessions) {
-      await purgeSession(s.id);
+      await purgeSession(s);
     }
     final animalAppointments = await appointments.watchByAnimal(animalId).first;
     for (final apt in animalAppointments) {
@@ -128,12 +127,24 @@ class PurgeService {
     await animals.purge(animalId);
   }
 
-  Future<void> purgeSession(String sessionId) async {
+  /// Soft-deletes a single session and best-effort removes its calendar event.
+  Future<void> softDeleteSession(String sessionId) async {
+    final s = await sessions.getById(sessionId);
+    if (s == null) return;
+    await _softDeleteSession(s);
+  }
+
+  /// Permanently erases a session, its attachments and its calendar event.
+  Future<void> purgeSession(Session session) async {
+    await _removeCalendarEvent(
+      session.externalCalendarId,
+      session.externalCalendarEventId,
+    );
     await attachments.purgeAllForOwner(
       ownerType: AttachmentOwner.session,
-      ownerId: sessionId,
+      ownerId: session.id,
     );
-    await sessions.purge(sessionId);
+    await sessions.purge(session.id);
   }
 
   /// Soft-deletes a single appointment and best-effort removes its
@@ -146,6 +157,11 @@ class PurgeService {
       apt.externalCalendarId,
       apt.externalCalendarEventId,
     );
+  }
+
+  Future<void> _softDeleteSession(Session s) async {
+    await sessions.softDelete(s.id);
+    await _removeCalendarEvent(s.externalCalendarId, s.externalCalendarEventId);
   }
 
   Future<void> _softDeleteAppointment(

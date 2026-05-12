@@ -28,7 +28,7 @@ class HealthDb extends _$HealthDb {
   HealthDb(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -48,6 +48,12 @@ class HealthDb extends _$HealthDb {
       // table scan à 1000+ rdv.
       if (from < 3) {
         await _createIndexesV3();
+      }
+      // v3 → v4 : colonnes de synchronisation agenda sur sessions. Nullable
+      // sur toutes les rows existantes — aucun event à recréer rétrospectivement.
+      if (from < 4) {
+        await m.addColumn(sessions, sessions.externalCalendarId);
+        await m.addColumn(sessions, sessions.externalCalendarEventId);
       }
     },
     beforeOpen: (details) async {

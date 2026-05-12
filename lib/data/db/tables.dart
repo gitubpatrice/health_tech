@@ -119,6 +119,11 @@ class Sessions extends Table with _AuditCols {
   IntColumn get improvementLevel => integer().nullable()();
   IntColumn get nextSuggestedAt => integer().nullable()();
 
+  /// Bridge to the device calendar (device_calendar plugin event id).
+  /// Populated automatically when the session is saved, for two-way sync.
+  TextColumn get externalCalendarEventId => text().nullable()();
+  TextColumn get externalCalendarId => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

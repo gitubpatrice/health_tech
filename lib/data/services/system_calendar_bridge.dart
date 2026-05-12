@@ -4,6 +4,7 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../domain/appointment.dart';
+import '../../domain/session.dart';
 
 class CalendarPermissionDenied implements Exception {
   const CalendarPermissionDenied();
@@ -57,29 +58,14 @@ class SystemCalendarBridge {
   /// Creates OR updates a calendar event for [appointment] and returns the
   /// `(calendarId, eventId)` pair the caller persists on the row.
   ///
-  /// When the appointment already carries `externalCalendarEventId` /
-  /// `externalCalendarId`, those values are reused so the existing event
-  /// is updated in place (instead of creating a duplicate). When they are
-  /// null, a fresh event is created in the first writable calendar.
+  /// Reuses `externalCalendarId` / `externalCalendarEventId` when present
+  /// so the existing event is updated in place rather than duplicated.
   Future<({String calendarId, String eventId})?> push(
     Appointment appointment,
   ) async {
-    if (!await _ensurePermission()) {
-      throw const CalendarPermissionDenied();
-    }
+    await _ensurePermission(); // throws CalendarPermissionDenied if denied
     await _ensureTimezones();
-
-    final String calendarId;
-    if (appointment.externalCalendarId != null) {
-      calendarId = appointment.externalCalendarId!;
-    } else {
-      final cal = await _firstWritableCalendar();
-      if (cal == null || cal.id == null) {
-        throw const CalendarUnavailable();
-      }
-      calendarId = cal.id!;
-    }
-
+    final calendarId = await _resolveCalendarId(appointment.externalCalendarId);
     final event = Event(
       calendarId,
       eventId: appointment.externalCalendarEventId,
@@ -93,10 +79,51 @@ class SystemCalendarBridge {
         final int m => <Reminder>[Reminder(minutes: m)],
       },
     );
+    return _createOrUpdate(event);
+  }
+
+  /// Creates OR updates a calendar event for [session] and returns the
+  /// `(calendarId, eventId)` pair. Called automatically on every session save.
+  ///
+  /// [calendarTitle] is provided by the caller (l10n-aware) since the bridge
+  /// has no access to localisation. Reuses existing IDs on edits.
+  Future<({String calendarId, String eventId})?> pushSession(
+    Session session, {
+    required String calendarTitle,
+  }) async {
+    await _ensurePermission();
+    await _ensureTimezones();
+    final calendarId = await _resolveCalendarId(session.externalCalendarId);
+    final event = Event(
+      calendarId,
+      eventId: session.externalCalendarEventId,
+      title: calendarTitle,
+      start: tz.TZDateTime.from(session.startAt, tz.local),
+      end: tz.TZDateTime.from(session.endAt, tz.local),
+      location: session.location,
+    );
+    return _createOrUpdate(event);
+  }
+
+  // -- private helpers -------------------------------------------------------
+
+  /// Returns the calendar id to use: the existing one if the entity already
+  /// has a linked event, otherwise picks the first writable calendar.
+  Future<String> _resolveCalendarId(String? existing) async {
+    if (existing != null) return existing;
+    final cal = await _firstWritableCalendar();
+    if (cal == null || cal.id == null) throw const CalendarUnavailable();
+    return cal.id!;
+  }
+
+  Future<({String calendarId, String eventId})?> _createOrUpdate(
+    Event event,
+  ) async {
     final res = await _plugin.createOrUpdateEvent(event);
     if (res == null || !res.isSuccess) return null;
     final eventId = res.data;
-    if (eventId == null) return null;
+    final calendarId = event.calendarId;
+    if (eventId == null || calendarId == null) return null;
     return (calendarId: calendarId, eventId: eventId);
   }
 

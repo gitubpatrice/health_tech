@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../data/services/system_calendar_bridge.dart';
 import '../../domain/animal.dart';
 import '../../domain/session.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -147,7 +148,6 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
       ).showSnackBar(SnackBar(content: Text(l10n.sessionFormDurationInvalid)));
       return;
     }
-    setState(() => _busy = true);
 
     int? cents;
     final p = _price.text.replaceAll(',', '.').trim();
@@ -156,6 +156,8 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
       if (v != null && v >= 0) cents = (v * 100).round();
     }
 
+    // Préserver les IDs calendrier existants pour que le bridge mette à jour
+    // l'événement déjà créé plutôt qu'en créer un doublon.
     final draft = Session(
       id: widget.initial?.id ?? '',
       clientId: _clientId!,
@@ -182,18 +184,57 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
       ),
       privateNote: _privateNote.text,
       improvementLevel: _improvement,
+      externalCalendarId: widget.initial?.externalCalendarId,
+      externalCalendarEventId: widget.initial?.externalCalendarEventId,
     );
 
     final repo = ref.read(sessionRepositoryProvider);
+    final bridge = ref.read(systemCalendarBridgeProvider);
+    // Capture avant le premier await pour éviter l'accès à context après gap.
+    final messenger = ScaffoldMessenger.of(context);
+
     await runWithBusy(
       context: context,
       setBusy: (bool v) => setState(() => _busy = v),
       action: () async {
+        final Session saved;
         if (widget.initial == null) {
-          await repo.create(draft);
+          saved = await repo.create(draft);
         } else {
-          await repo.update(draft);
+          saved = await repo.update(draft);
         }
+
+        // Synchronisation agenda — best-effort, ne bloque jamais la sauvegarde.
+        try {
+          final title = '${kindLabel(l10n, saved.kind)} – Health Tech';
+          final pushed = await bridge.pushSession(saved, calendarTitle: title);
+          if (pushed != null && saved.externalCalendarEventId == null) {
+            await repo.update(
+              saved.copyWith(
+                externalCalendarId: pushed.calendarId,
+                externalCalendarEventId: pushed.eventId,
+              ),
+            );
+          }
+          if (pushed != null) {
+            messenger.showSnackBar(
+              SnackBar(content: Text(l10n.sessionFormSyncedToCalendar)),
+            );
+          }
+        } on CalendarPermissionDenied {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(l10n.appointmentFormCalendarPermissionDenied),
+            ),
+          );
+        } on CalendarUnavailable {
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.appointmentFormCalendarMissing)),
+          );
+        } on Object {
+          // Tout autre échec calendrier ne bloque pas la navigation.
+        }
+
         if (!mounted) return;
         Navigator.of(context).pop(true);
       },

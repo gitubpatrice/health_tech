@@ -179,6 +179,7 @@
   "sessionFormPrivateNote": "Note privée (jamais exportée)",
   "sessionFormDurationInvalid": "La fin doit être après le début.",
   "sessionFormSelectClient": "Sélectionne d’abord un client.",
+  "sessionFormSyncedToCalendar": "Séance ajoutée à l’agenda.",
   "kindHuman": "Humain",
   "kindAnimal": "Animal",
   "kindDuo": "Duo (humain + animal)",

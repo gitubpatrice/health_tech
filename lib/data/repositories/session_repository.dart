@@ -121,6 +121,8 @@ class SessionRepository {
       nextSuggestedAt: Value(
         s.nextSuggestedAt == null ? null : dateToSeconds(s.nextSuggestedAt!),
       ),
+      externalCalendarId: Value(s.externalCalendarId),
+      externalCalendarEventId: Value(s.externalCalendarEventId),
       updatedAt: Value(epoch),
       createdAt: isInsert ? Value(epoch) : const Value.absent(),
     );
@@ -158,6 +160,8 @@ class SessionRepository {
     nextSuggestedAt: row.nextSuggestedAt == null
         ? null
         : secondsToDate(row.nextSuggestedAt!),
+    externalCalendarId: row.externalCalendarId,
+    externalCalendarEventId: row.externalCalendarEventId,
     createdAt: secondsToDate(row.createdAt),
     updatedAt: secondsToDate(row.updatedAt),
   );
