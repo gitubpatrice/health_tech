@@ -210,7 +210,10 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
         if (_addToCalendar) {
           try {
             final title = '${kindLabel(l10n, saved.kind)} – Health Tech';
-            final pushed = await bridge.pushSession(saved, calendarTitle: title);
+            final pushed = await bridge.pushSession(
+              saved,
+              calendarTitle: title,
+            );
             if (pushed != null) {
               if (saved.externalCalendarId != pushed.calendarId ||
                   saved.externalCalendarEventId != pushed.eventId) {
