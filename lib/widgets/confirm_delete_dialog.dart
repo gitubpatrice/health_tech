@@ -24,10 +24,11 @@ Future<bool> showConfirmDeleteDialog(
           onPressed: () => Navigator.of(ctx).pop(false),
           child: Text(l10n.actionCancel),
         ),
-        FilledButton.tonal(
+        FilledButton(
           onPressed: () => Navigator.of(ctx).pop(true),
           style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(ctx).colorScheme.errorContainer,
+            backgroundColor: Theme.of(ctx).colorScheme.error,
+            foregroundColor: Theme.of(ctx).colorScheme.onError,
           ),
           child: Text(l10n.actionDelete),
         ),

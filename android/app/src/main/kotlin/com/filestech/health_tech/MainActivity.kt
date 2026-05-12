@@ -117,6 +117,7 @@ class MainActivity : FlutterFragmentActivity() {
                 put(CalendarContract.Events.DTSTART,        startMs)
                 put(CalendarContract.Events.DTEND,          endMs)
                 put(CalendarContract.Events.EVENT_TIMEZONE, timeZone)
+                put(CalendarContract.Events.EVENT_COLOR,    0xFFE07B39.toInt())
             }
 
             val resolvedId = eventId ?: findExistingEventId(calendarId, startMs, endMs)

@@ -130,7 +130,10 @@ class _SessionBody extends ConsumerWidget {
               onPressed: () => _edit(context, ref),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline),
+              icon: Icon(
+                Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error,
+              ),
               onPressed: () => _delete(context, ref),
             ),
           ],
