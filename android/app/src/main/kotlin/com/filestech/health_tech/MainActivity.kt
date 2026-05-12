@@ -119,12 +119,13 @@ class MainActivity : FlutterFragmentActivity() {
                 put(CalendarContract.Events.EVENT_TIMEZONE, timeZone)
             }
 
-            if (eventId != null) {
+            val resolvedId = eventId ?: findExistingEventId(calendarId, startMs, endMs)
+            if (resolvedId != null) {
                 val uri = ContentUris.withAppendedId(
-                    CalendarContract.Events.CONTENT_URI, eventId.toLong(),
+                    CalendarContract.Events.CONTENT_URI, resolvedId.toLong(),
                 )
                 contentResolver.update(uri, values, null, null)
-                result.success(eventId)
+                result.success(resolvedId)
             } else {
                 val uri = contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
                     ?: throw Exception("ContentResolver.insert returned null")
@@ -133,6 +134,23 @@ class MainActivity : FlutterFragmentActivity() {
         } catch (e: Exception) {
             result.error("CALENDAR_ERROR", e.message, null)
         }
+    }
+
+    private fun findExistingEventId(calendarId: String, startMs: Long, endMs: Long): String? {
+        val projection = arrayOf(CalendarContract.Events._ID)
+        val sel = "${CalendarContract.Events.CALENDAR_ID} = ? AND " +
+                  "${CalendarContract.Events.DTSTART} = ? AND " +
+                  "${CalendarContract.Events.DTEND} = ? AND " +
+                  "${CalendarContract.Events.DELETED} = 0"
+        contentResolver.query(
+            CalendarContract.Events.CONTENT_URI,
+            projection, sel,
+            arrayOf(calendarId, startMs.toString(), endMs.toString()),
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) return cursor.getLong(0).toString()
+        }
+        return null
     }
 
     @Suppress("UNCHECKED_CAST")
