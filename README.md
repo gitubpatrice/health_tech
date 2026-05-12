@@ -6,7 +6,7 @@ Application Android (téléphone + tablette) de gestion d'agenda, clients humain
 
 ## Statut
 
-`v1.4.3` — production. Audité (zéro vulnérabilité, zéro faille). 75 / 75 tests verts. flutter analyze 0 issue.
+`v1.4.4` — production. Audité (zéro vulnérabilité, zéro faille). 75 / 75 tests verts. flutter analyze 0 issue.
 
 Voir [`SECURITY.md`](SECURITY.md), [`PRIVACY.md`](PRIVACY.md) et la page éditeur https://www.files-tech.com/health-tech.php.
 
