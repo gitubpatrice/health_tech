@@ -91,6 +91,16 @@ dev_dependencies:
   custom_lint: ^0.7.0
   riverpod_lint: ^2.6.3
 
+  # Génération des icônes mipmap Android (5 densités + adaptive icon).
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#262660"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
+
 flutter:
   uses-material-design: true
   generate: true
