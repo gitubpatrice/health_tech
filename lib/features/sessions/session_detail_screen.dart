@@ -121,7 +121,10 @@ class _SessionBody extends ConsumerWidget {
           title: Text(formatDate(session.startAt)),
           actions: [
             IconButton(
-              icon: const Icon(Icons.picture_as_pdf_outlined),
+              icon: Icon(
+                Icons.picture_as_pdf_outlined,
+                color: Theme.of(context).colorScheme.error,
+              ),
               tooltip: l10n.exportPdfButton,
               onPressed: () => _exportPdf(context, ref),
             ),
@@ -168,11 +171,14 @@ class _SessionBody extends ConsumerWidget {
         TagEditor(ownerType: TagOwner.session, ownerId: session.id),
         if (session.externalCalendarEventId != null) ...[
           const SizedBox(height: 8),
-          Chip(
-            avatar: const Icon(Icons.event_available, size: 16),
-            label: Text(l10n.sessionDetailCalendarSynced),
-            visualDensity: VisualDensity.compact,
-            backgroundColor: const Color(0xFFC8F0C0),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Chip(
+              avatar: const Icon(Icons.event_available, size: 16),
+              label: Text(l10n.sessionDetailCalendarSynced),
+              visualDensity: VisualDensity.compact,
+              backgroundColor: const Color(0xFFC8F0C0),
+            ),
           ),
         ],
         const SizedBox(height: 12),
