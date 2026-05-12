@@ -72,16 +72,26 @@ class MainActivity : FlutterFragmentActivity() {
     private fun getFirstWritableCalendarId(result: MethodChannel.Result) {
         try {
             val projection  = arrayOf(CalendarContract.Calendars._ID)
-            // ACCESS_CONTRIBUTOR (600) and above are writable; ACCESS_OWNER = 700
-            val selection   = "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ?"
-            val selArgs     = arrayOf("500")
-            val cursor = contentResolver.query(
-                CalendarContract.Calendars.CONTENT_URI,
-                projection, selection, selArgs,
-                "${CalendarContract.Calendars._ID} ASC",
-            )
+            val accessFilter = "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ?"
+
+            // Pass 1 — prefer a real Google account (syncs with Google Agenda).
+            val googleSel  = "$accessFilter AND ${CalendarContract.Calendars.ACCOUNT_TYPE} = ?"
             var calId: String? = null
-            cursor?.use { if (it.moveToFirst()) calId = it.getLong(0).toString() }
+            contentResolver.query(
+                CalendarContract.Calendars.CONTENT_URI,
+                projection, googleSel, arrayOf("500", "com.google"),
+                "${CalendarContract.Calendars._ID} ASC",
+            )?.use { if (it.moveToFirst()) calId = it.getLong(0).toString() }
+
+            // Pass 2 — fallback to any writable calendar (local, Exchange, etc.)
+            if (calId == null) {
+                contentResolver.query(
+                    CalendarContract.Calendars.CONTENT_URI,
+                    projection, accessFilter, arrayOf("500"),
+                    "${CalendarContract.Calendars._ID} ASC",
+                )?.use { if (it.moveToFirst()) calId = it.getLong(0).toString() }
+            }
+
             result.success(calId)
         } catch (e: Exception) {
             result.error("CALENDAR_ERROR", e.message, null)
