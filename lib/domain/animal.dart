@@ -31,13 +31,21 @@ class AnimalSex {
 }
 
 /// Identifiers bag — kept extensible via JSON. Empty fields are not persisted.
+///
+/// **v1.6.0** : ajout de `vetClinic`, `nextVaccinationAt`, `vaccinationNotes`
+/// pour structurer la fiche vétérinaire et le suivi vaccinal. Tous
+/// optionnels et écrits/lus via `identifiers_json` — pas de migration DB
+/// requise, les anciennes rows s'auto-complètent par `''` / `null`.
 class AnimalIdentifiers {
   const AnimalIdentifiers({
     this.chipNumber = '',
     this.tattooNumber = '',
     this.pedigreeNumber = '',
     this.lastVaccinationAt,
+    this.nextVaccinationAt,
+    this.vaccinationNotes = '',
     this.vetName = '',
+    this.vetClinic = '',
     this.vetPhone = '',
     this.vetEmail = '',
   });
@@ -46,7 +54,10 @@ class AnimalIdentifiers {
   final String tattooNumber;
   final String pedigreeNumber;
   final DateTime? lastVaccinationAt;
+  final DateTime? nextVaccinationAt;
+  final String vaccinationNotes;
   final String vetName;
+  final String vetClinic;
   final String vetPhone;
   final String vetEmail;
 
@@ -55,16 +66,41 @@ class AnimalIdentifiers {
       tattooNumber.isEmpty &&
       pedigreeNumber.isEmpty &&
       lastVaccinationAt == null &&
+      nextVaccinationAt == null &&
+      vaccinationNotes.isEmpty &&
       vetName.isEmpty &&
+      vetClinic.isEmpty &&
       vetPhone.isEmpty &&
       vetEmail.isEmpty;
+
+  /// Au moins un champ vétérinaire structuré renseigné.
+  bool get hasVet =>
+      vetName.isNotEmpty ||
+      vetClinic.isNotEmpty ||
+      vetPhone.isNotEmpty ||
+      vetEmail.isNotEmpty;
+
+  /// Au moins une donnée de suivi vaccinal renseignée.
+  bool get hasVaccination =>
+      lastVaccinationAt != null ||
+      nextVaccinationAt != null ||
+      vaccinationNotes.isNotEmpty;
+
+  /// `true` si la date de prochain rappel est dans le passé.
+  bool get nextVaccinationOverdue {
+    final next = nextVaccinationAt;
+    return next != null && next.isBefore(DateTime.now());
+  }
 
   AnimalIdentifiers copyWith({
     String? chipNumber,
     String? tattooNumber,
     String? pedigreeNumber,
     DateTime? lastVaccinationAt,
+    DateTime? nextVaccinationAt,
+    String? vaccinationNotes,
     String? vetName,
+    String? vetClinic,
     String? vetPhone,
     String? vetEmail,
   }) => AnimalIdentifiers(
@@ -72,7 +108,10 @@ class AnimalIdentifiers {
     tattooNumber: tattooNumber ?? this.tattooNumber,
     pedigreeNumber: pedigreeNumber ?? this.pedigreeNumber,
     lastVaccinationAt: lastVaccinationAt ?? this.lastVaccinationAt,
+    nextVaccinationAt: nextVaccinationAt ?? this.nextVaccinationAt,
+    vaccinationNotes: vaccinationNotes ?? this.vaccinationNotes,
     vetName: vetName ?? this.vetName,
+    vetClinic: vetClinic ?? this.vetClinic,
     vetPhone: vetPhone ?? this.vetPhone,
     vetEmail: vetEmail ?? this.vetEmail,
   );
@@ -83,21 +122,31 @@ class AnimalIdentifiers {
     if (pedigreeNumber.isNotEmpty) 'pedigree': pedigreeNumber,
     if (lastVaccinationAt != null)
       'last_vaccin_ms': lastVaccinationAt!.millisecondsSinceEpoch,
+    if (nextVaccinationAt != null)
+      'next_vaccin_ms': nextVaccinationAt!.millisecondsSinceEpoch,
+    if (vaccinationNotes.isNotEmpty) 'vaccin_notes': vaccinationNotes,
     if (vetName.isNotEmpty) 'vet_name': vetName,
+    if (vetClinic.isNotEmpty) 'vet_clinic': vetClinic,
     if (vetPhone.isNotEmpty) 'vet_phone': vetPhone,
     if (vetEmail.isNotEmpty) 'vet_email': vetEmail,
   };
 
   static AnimalIdentifiers fromJson(Map<String, dynamic> json) {
-    final ms = json['last_vaccin_ms'] as int?;
+    final lastMs = json['last_vaccin_ms'] as int?;
+    final nextMs = json['next_vaccin_ms'] as int?;
     return AnimalIdentifiers(
       chipNumber: json['chip'] as String? ?? '',
       tattooNumber: json['tattoo'] as String? ?? '',
       pedigreeNumber: json['pedigree'] as String? ?? '',
-      lastVaccinationAt: ms == null
+      lastVaccinationAt: lastMs == null
           ? null
-          : DateTime.fromMillisecondsSinceEpoch(ms),
+          : DateTime.fromMillisecondsSinceEpoch(lastMs),
+      nextVaccinationAt: nextMs == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(nextMs),
+      vaccinationNotes: json['vaccin_notes'] as String? ?? '',
       vetName: json['vet_name'] as String? ?? '',
+      vetClinic: json['vet_clinic'] as String? ?? '',
       vetPhone: json['vet_phone'] as String? ?? '',
       vetEmail: json['vet_email'] as String? ?? '',
     );

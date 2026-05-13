@@ -366,9 +366,10 @@ class BackupService {
   /// (audit critique C1) v1.5.0 a bumpé schemaVersion → 5 (filenameEncrypted)
   /// mais ce plafond était resté à 4, rendant les `.htbk` v1.5.x
   /// **impossibles à restaurer** par l'utilisateur qui les avait pourtant
-  /// créés. Aligné à 5 ici. Un test de garde vit dans
+  /// créés. v1.6.0 a bumpé → 6 (table `report_templates`) ; ce plafond
+  /// est maintenu en phase. Un test de garde vit dans
   /// `test/services/backup_envelope_test.dart` pour rappeler ce contrat.
-  static const int _maxSupportedDbUserVersion = 5;
+  static const int _maxSupportedDbUserVersion = 6;
 
   /// Replace the device's current vault state with the contents of a
   /// previously-validated [BackupPreview]. The vault MUST be locked: we are

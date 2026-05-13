@@ -16,6 +16,7 @@ import '../about/about_screen.dart';
 import '../backup/backup_screen.dart';
 import '../clients/client_providers.dart';
 import '../legal/legal_screen.dart';
+import '../templates/report_templates_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -37,6 +38,17 @@ class SettingsScreen extends ConsumerWidget {
         const _PurgeClientTile(),
         const Divider(height: 1),
         const _PanicWipeTile(),
+        const Divider(height: 1),
+        ListTile(
+          leading: const Icon(Icons.description_outlined),
+          title: Text(l10n.settingsTemplatesTitle),
+          subtitle: Text(l10n.settingsTemplatesSubtitle),
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => const ReportTemplatesScreen(),
+            ),
+          ),
+        ),
         const Divider(height: 1),
         ListTile(
           leading: const Icon(Icons.backup_outlined),

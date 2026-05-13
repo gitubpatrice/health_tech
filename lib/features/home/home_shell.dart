@@ -64,6 +64,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       } on Object {
         // best-effort : alarms manquées plutôt que crash
       }
+      // v1.6.0 : sème les 6 templates par défaut au 1er unlock post-upgrade
+      // (DB v6). Idempotent — si l'utilisateur a déjà supprimé un template
+      // système, le seed ne le ressuscitera pas. `read` (pas `watch`) :
+      // on n'a pas besoin d'écouter l'AsyncValue.
+      try {
+        await ref.read(reportTemplateSeedProvider.future);
+      } on Object {
+        // best-effort : pas critique au boot, l'utilisateur peut créer ses
+        // propres canevas depuis Réglages si le seed échoue.
+      }
     });
   }
 

@@ -10,6 +10,7 @@ import '../data/repositories/animal_repository.dart';
 import '../data/repositories/appointment_repository.dart';
 import '../data/repositories/attachment_repository.dart';
 import '../data/repositories/client_repository.dart';
+import '../data/repositories/report_template_repository.dart';
 import '../data/repositories/session_repository.dart';
 import '../data/repositories/tag_repository.dart';
 import '../data/services/backup_service.dart';
@@ -17,9 +18,11 @@ import '../data/services/global_search_service.dart';
 import '../data/services/notification_reconciler.dart';
 import '../data/services/notification_service.dart';
 import '../data/services/purge_service.dart';
+import '../data/services/report_template_seed.dart';
 import '../data/services/rgpd_export_service.dart';
 import '../data/services/system_calendar_bridge.dart';
 import '../data/vault/health_vault.dart';
+import '../domain/report_template.dart';
 import '../domain/tag.dart';
 
 /// Single instance of the vault for the app lifetime.
@@ -226,6 +229,39 @@ final appointmentRepositoryProvider = Provider<AppointmentRepository>((ref) {
 final tagRepositoryProvider = Provider<TagRepository>((ref) {
   final db = ref.watch(databaseProvider).requireValue;
   return TagRepository(db);
+});
+
+/// CRUD live des modèles de comptes rendus (DB v6, v1.6.0). Idempotent et
+/// stateless — pas de chiffrement champ-à-champ.
+final reportTemplateRepositoryProvider = Provider<ReportTemplateRepository>((
+  ref,
+) {
+  final db = ref.watch(databaseProvider).requireValue;
+  return ReportTemplateRepository(db);
+});
+
+/// Stream live de TOUS les templates (tri système d'abord puis nom).
+/// Alimente l'écran Réglages → Modèles de comptes rendus.
+final allReportTemplatesProvider = StreamProvider<List<ReportTemplate>>((ref) {
+  return ref.watch(reportTemplateRepositoryProvider).watchAll();
+});
+
+/// Stream live filtré par `SessionKind` — alimente le `BottomSheet`
+/// "Insérer un modèle" du formulaire de séance. Les templates `other`
+/// et `distance` sont toujours inclus côté repository.
+final reportTemplatesByKindProvider =
+    StreamProvider.family<List<ReportTemplate>, String>(
+      (ref, kind) =>
+          ref.watch(reportTemplateRepositoryProvider).watchByKind(kind),
+    );
+
+/// One-shot seed des canevas par défaut au 1er unlock après upgrade vers
+/// v1.6.0. Appelé depuis `HomeShell.initState` (post-frame) ; idempotent :
+/// si la table contient déjà ≥ 1 template `is_system = 1`, ne fait rien.
+final reportTemplateSeedProvider = FutureProvider<void>((ref) async {
+  final repo = ref.watch(reportTemplateRepositoryProvider);
+  final seed = ReportTemplateSeed(repo);
+  await seed.seedDefaultsIfEmpty();
 });
 
 /// Live list of every tag in the catalogue, sorted by label. Shared by

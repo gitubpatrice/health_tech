@@ -22,6 +22,7 @@ part 'database.g.dart';
     Attachments,
     Tags,
     TagLinks,
+    ReportTemplates,
   ],
 )
 class HealthDb extends _$HealthDb {
@@ -31,7 +32,7 @@ class HealthDb extends _$HealthDb {
   /// `BackupService._maxSupportedDbUserVersion`** — sinon les utilisateurs
   /// ne peuvent plus restaurer leur propre `.htbk` (audit C1 v1.5.2).
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -66,6 +67,15 @@ class HealthDb extends _$HealthDb {
       // (voir AttachmentRepository._fromRow).
       if (from < 5) {
         await m.addColumn(attachments, attachments.filenameEncrypted);
+      }
+      // v5 → v6 : table `report_templates` (modèles de comptes rendus).
+      // Pure création de table — aucune migration de données sur les tables
+      // existantes (les champs cosmétiques v1.6.0 — source contact /
+      // contact d'urgence / hygiène de vie / vétérinaire structuré /
+      // vaccination — passent par les JSON déjà en place
+      // `clients.profile_json` et `animals.identifiers_json`).
+      if (from < 6) {
+        await m.createTable(reportTemplates);
       }
     },
     beforeOpen: (details) async {

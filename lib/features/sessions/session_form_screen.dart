@@ -4,15 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/services/system_calendar_bridge.dart';
 import '../../domain/animal.dart';
+import '../../domain/report_template.dart';
 import '../../domain/session.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
 import '../../widgets/busy_helpers.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/sensitive_text_field.dart';
+import '../../widgets/snack_utils.dart';
 import '../animals/animal_providers.dart';
 import '../clients/client_providers.dart';
+import '../templates/templates_l10n.dart';
 import 'session_l10n.dart';
 
 class SessionFormScreen extends ConsumerStatefulWidget {
@@ -539,6 +543,15 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
               ),
               const Divider(height: 32),
               SectionTitle(l10n.sessionFormSectionReport),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OutlinedButton.icon(
+                  onPressed: _busy ? null : _openTemplatePicker,
+                  icon: const Icon(Icons.description_outlined),
+                  label: Text(l10n.templatesInsertButton),
+                ),
+              ),
+              const SizedBox(height: 12),
               _reportField(_before, l10n.sessionFormReportBefore),
               _reportField(_client, l10n.sessionFormReportClient),
               _reportField(_observations, l10n.sessionFormReportObservations),
@@ -607,6 +620,80 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
     );
   }
 
+  /// `true` si au moins un des 9 champs du compte rendu contient déjà du
+  /// texte non vide. Sert à décider d'afficher la confirmation de remplace
+  /// ment avant d'appliquer un modèle.
+  bool _reportHasContent() {
+    for (final c in [
+      _before,
+      _client,
+      _observations,
+      _flow,
+      _zones,
+      _energetic,
+      _after,
+      _advice,
+      _next,
+    ]) {
+      if (c.text.trim().isNotEmpty) return true;
+    }
+    return false;
+  }
+
+  /// Applique un [ReportTemplate] : remplace tous les controllers report
+  /// par les valeurs du canevas (les champs absents du canevas sont
+  /// vidés — on insère un canevas complet, pas un patch).
+  void _applyTemplate(ReportTemplate t) {
+    final report = t.toSessionReport();
+    setState(() {
+      _before.text = report.beforeState;
+      _client.text = report.clientPerception;
+      _observations.text = report.observations;
+      _flow.text = report.flow;
+      _zones.text = report.zonesWorked;
+      _energetic.text = report.energetic;
+      _after.text = report.afterState;
+      _advice.text = report.advice;
+      _next.text = report.nextRecommendation;
+    });
+  }
+
+  /// Ouvre le `BottomSheet` de sélection d'un modèle filtré par la séance
+  /// courante (`_kind`). Si le compte rendu contient déjà du texte, demande
+  /// confirmation avant remplacement.
+  Future<void> _openTemplatePicker() async {
+    final l10n = AppL10n.of(context);
+    final picked = await showModalBottomSheet<ReportTemplate>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => _TemplatePickerSheet(kind: _kind),
+    );
+    if (picked == null || !mounted) return;
+    if (_reportHasContent()) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.templatesInsertConfirmTitle),
+          content: Text(l10n.templatesInsertConfirmBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.actionCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.templatesInsertConfirmAction),
+            ),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+    }
+    _applyTemplate(picked);
+    if (mounted) showSuccessSnack(context, l10n.templatesInserted);
+  }
+
   /// Champs de rapport de séance — données sensibles → SensitiveTextField
   /// pour bloquer le cloud autocomplete des claviers tiers (audit M8).
   Widget _reportField(TextEditingController c, String label) => Padding(
@@ -617,6 +704,80 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
       decoration: InputDecoration(labelText: label),
     ),
   );
+}
+
+/// BottomSheet de sélection d'un modèle de compte rendu, filtré par
+/// `kind` (les templates `other` / `distance` sont toujours inclus côté
+/// repository pour rester polyvalents). Affiche un état vide explicite
+/// si aucun modèle ne matche.
+class _TemplatePickerSheet extends ConsumerWidget {
+  const _TemplatePickerSheet({required this.kind});
+
+  final String kind;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
+    final templates = ref.watch(reportTemplatesByKindProvider(kind));
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                l10n.templatesInsertSheetTitle,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            Flexible(
+              child: templates.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) => Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(localiseError(context, e)),
+                ),
+                data: (list) {
+                  if (list.isEmpty) {
+                    return EmptyState(
+                      icon: Icons.description_outlined,
+                      title: l10n.templatesInsertSheetEmpty,
+                    );
+                  }
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: list.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final t = list[i];
+                      return ListTile(
+                        leading: const Icon(Icons.description_outlined),
+                        title: Text(t.name),
+                        subtitle: Text(reportTemplateKindLabel(l10n, t.kind)),
+                        trailing: t.isSystem
+                            ? Icon(
+                                Icons.verified_outlined,
+                                color: Theme.of(context).colorScheme.secondary,
+                              )
+                            : null,
+                        onTap: () => Navigator.of(context).pop(t),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Card de promotion claire pour la synchronisation agenda Android.

@@ -218,6 +218,44 @@ class TagLinks extends Table {
   Set<Column> get primaryKey => {tagId, ownerType, ownerId};
 }
 
+/// Modèles de comptes rendus (templates) — DB v6.
+///
+/// Permettent au praticien de pré-remplir les 9 champs du compte rendu d'une
+/// séance à partir d'un canevas réutilisable. Six templates par défaut sont
+/// semés au 1er unlock après upgrade vers v1.6.0 (`is_system = 1`).
+///
+/// **Pas de chiffrement champ-à-champ** : les sections d'un template ne
+/// contiennent pas de PII — c'est du texte canevas générique. Le coffre
+/// SQLCipher protège déjà la table de bout en bout.
+@DataClassName('ReportTemplateRow')
+class ReportTemplates extends Table {
+  TextColumn get id => text().clientDefault(genId)();
+  TextColumn get name => text()();
+
+  /// `'human'` | `'animal'` | `'duo'` | `'distance'` | `'other'`. Sert au
+  /// filtrage côté `BottomSheet` du formulaire de séance.
+  TextColumn get kind => text()();
+
+  /// 9 clés JSON sérialisées (avant/client/observations/déroulé/zones/
+  /// énergétique/après/conseils/prochaine étape).
+  TextColumn get sectionsJson =>
+      text().map(const JsonMapConverter()).withDefault(const Constant(''))();
+
+  /// `1` = template semé par l'app, `0` = créé / dupliqué par l'utilisateur.
+  /// L'utilisateur peut supprimer un template système ; le seed est
+  /// idempotent : si la table contient déjà ≥ 1 row `is_system = 1`, le
+  /// service de seed ne ré-injecte rien.
+  BoolColumn get isSystem => boolean().withDefault(const Constant(false))();
+
+  IntColumn get createdAt =>
+      integer().withDefault(currentDateAndTime.unixepoch)();
+  IntColumn get updatedAt =>
+      integer().withDefault(currentDateAndTime.unixepoch)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Default ID generator used when callers omit an explicit id at insert time.
 /// Repositories should provide their own UUID v4; this is a safety fallback.
 String genId() => 'fb-${DateTime.now().microsecondsSinceEpoch}';

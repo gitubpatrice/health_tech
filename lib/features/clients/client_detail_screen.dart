@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../domain/attachment.dart';
 import '../../domain/client.dart';
+import '../../domain/lifestyle.dart';
 import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
@@ -19,6 +20,7 @@ import '../sessions/session_form_screen.dart';
 import '../sessions/session_l10n.dart';
 import '../sessions/session_providers.dart';
 import '../tags/tag_editor.dart';
+import '../templates/templates_l10n.dart';
 import 'client_form_screen.dart';
 import 'client_providers.dart';
 
@@ -166,6 +168,23 @@ class _InfoTab extends StatelessWidget {
           ),
         if (!client.isBusiness && client.ageYears != null)
           DetailRow(icon: Icons.cake_outlined, text: '${client.ageYears} ans'),
+        if (!client.isBusiness) ...[
+          if (ClientProfileExt.contactSource(client.profile) != null)
+            DetailRow(
+              icon: Icons.people_alt_outlined,
+              text:
+                  '${l10n.clientDetailContactSourceLabel} : '
+                  '${contactSourceLabel(l10n, ClientProfileExt.contactSource(client.profile))}',
+            ),
+          if (ClientProfileExt.emergencyContactName(client.profile) != null ||
+              ClientProfileExt.emergencyContactPhone(client.profile) != null)
+            DetailRow(
+              icon: Icons.emergency_outlined,
+              text:
+                  '${l10n.clientDetailEmergencyLabel} : '
+                  '${_formatEmergencyContact(client.profile)}',
+            ),
+        ],
         if (client.healthNotes.isNotEmpty) ...[
           const SizedBox(height: 16),
           DetailSectionCard(
@@ -184,8 +203,73 @@ class _InfoTab extends StatelessWidget {
             child: Text(client.notes),
           ),
         ],
+        if (!client.isBusiness &&
+            ClientProfileExt.hasLifestyle(client.profile)) ...[
+          const SizedBox(height: 16),
+          DetailSectionCard(
+            title: l10n.clientFormSectionLifestyle,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _lifestyleRow(
+                  l10n.clientFormSmoker,
+                  ClientProfileExt.lifestyle(
+                    client.profile,
+                    Lifestyle.keySmoker,
+                  ),
+                  l10n,
+                ),
+                _lifestyleRow(
+                  l10n.clientFormSport,
+                  ClientProfileExt.lifestyle(
+                    client.profile,
+                    Lifestyle.keySport,
+                  ),
+                  l10n,
+                ),
+                _lifestyleRow(
+                  l10n.clientFormSleep,
+                  ClientProfileExt.lifestyle(
+                    client.profile,
+                    Lifestyle.keySleep,
+                  ),
+                  l10n,
+                ),
+                _lifestyleRow(
+                  l10n.clientFormStress,
+                  ClientProfileExt.lifestyle(
+                    client.profile,
+                    Lifestyle.keyStress,
+                  ),
+                  l10n,
+                ),
+                _lifestyleRow(
+                  l10n.clientFormDiet,
+                  ClientProfileExt.lifestyle(client.profile, Lifestyle.keyDiet),
+                  l10n,
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  /// `null` → ligne omise (on n'affiche que les axes renseignés).
+  Widget _lifestyleRow(String label, String? value, AppL10n l10n) {
+    if (value == null || value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Text('$label : ${lifestyleLabel(l10n, value)}'),
+    );
+  }
+
+  String _formatEmergencyContact(Map<String, dynamic> profile) {
+    final name = ClientProfileExt.emergencyContactName(profile);
+    final phone = ClientProfileExt.emergencyContactPhone(profile);
+    if (name != null && phone != null) return '$name · $phone';
+    return name ?? phone ?? '';
   }
 
   String _formatAddress(Client c) {

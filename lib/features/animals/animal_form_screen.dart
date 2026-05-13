@@ -35,8 +35,10 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
   late final TextEditingController _tattoo;
   late final TextEditingController _pedigree;
   late final TextEditingController _vetName;
+  late final TextEditingController _vetClinic;
   late final TextEditingController _vetPhone;
   late final TextEditingController _vetEmail;
+  late final TextEditingController _vaccinationNotes;
   late final TextEditingController _healthNotes;
   late final TextEditingController _behaviorNotes;
 
@@ -44,6 +46,7 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
   String _sex = AnimalSex.unknown;
   DateTime? _birthDate;
   DateTime? _lastVaccin;
+  DateTime? _nextVaccin;
   String? _clientId;
   bool _busy = false;
 
@@ -63,14 +66,19 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
       text: a?.identifiers.pedigreeNumber ?? '',
     );
     _vetName = TextEditingController(text: a?.identifiers.vetName ?? '');
+    _vetClinic = TextEditingController(text: a?.identifiers.vetClinic ?? '');
     _vetPhone = TextEditingController(text: a?.identifiers.vetPhone ?? '');
     _vetEmail = TextEditingController(text: a?.identifiers.vetEmail ?? '');
+    _vaccinationNotes = TextEditingController(
+      text: a?.identifiers.vaccinationNotes ?? '',
+    );
     _healthNotes = TextEditingController(text: a?.healthNotes ?? '');
     _behaviorNotes = TextEditingController(text: a?.behaviorNotes ?? '');
     _species = a?.species ?? Species.dog;
     _sex = a?.sex ?? AnimalSex.unknown;
     _birthDate = a?.birthDate;
     _lastVaccin = a?.identifiers.lastVaccinationAt;
+    _nextVaccin = a?.identifiers.nextVaccinationAt;
     _clientId = a?.clientId ?? widget.defaultClientId;
   }
 
@@ -85,8 +93,10 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
       _tattoo,
       _pedigree,
       _vetName,
+      _vetClinic,
       _vetPhone,
       _vetEmail,
+      _vaccinationNotes,
       _healthNotes,
       _behaviorNotes,
     ]) {
@@ -136,7 +146,10 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
       tattooNumber: _tattoo.text.trim(),
       pedigreeNumber: _pedigree.text.trim(),
       lastVaccinationAt: _lastVaccin,
+      nextVaccinationAt: _nextVaccin,
+      vaccinationNotes: _vaccinationNotes.text.trim(),
       vetName: _vetName.text.trim(),
+      vetClinic: _vetClinic.text.trim(),
       vetPhone: _vetPhone.text.trim(),
       vetEmail: _vetEmail.text.trim(),
     );
@@ -320,7 +333,34 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
                 controller: _pedigree,
                 decoration: InputDecoration(labelText: l10n.animalFormPedigree),
               ),
+              const Divider(height: 32),
+              SectionTitle(l10n.animalFormSectionVet),
+              TextFormField(
+                controller: _vetName,
+                decoration: InputDecoration(labelText: l10n.animalFormVetName),
+              ),
               const SizedBox(height: 12),
+              TextFormField(
+                controller: _vetClinic,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: l10n.animalFormVetClinic,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _vetPhone,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(labelText: l10n.animalFormVetPhone),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _vetEmail,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(labelText: l10n.animalFormVetEmail),
+              ),
+              const Divider(height: 32),
+              SectionTitle(l10n.animalFormSectionVaccination),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.animalFormLastVaccination),
@@ -334,23 +374,26 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
                   onPicked: (d) => setState(() => _lastVaccin = d),
                 ),
               ),
-              const Divider(height: 32),
-              SectionTitle(l10n.animalFormSectionVet),
-              TextFormField(
-                controller: _vetName,
-                decoration: InputDecoration(labelText: l10n.animalFormVetName),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.animalFormNextVaccination),
+                subtitle: Text(
+                  _nextVaccin == null ? '—' : formatDate(_nextVaccin!),
+                ),
+                trailing: const Icon(Icons.event_outlined),
+                onTap: () => _pickDate(
+                  context,
+                  current: _nextVaccin,
+                  onPicked: (d) => setState(() => _nextVaccin = d),
+                ),
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _vetPhone,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(labelText: l10n.animalFormVetPhone),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _vetEmail,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(labelText: l10n.animalFormVetEmail),
+              SensitiveTextField(
+                controller: _vaccinationNotes,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: l10n.animalFormVaccinationNotes,
+                ),
               ),
               const Divider(height: 32),
               SectionTitle(l10n.animalFormSectionHealth),

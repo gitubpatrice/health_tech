@@ -5,10 +5,12 @@ import '../../core/providers.dart';
 import '../../domain/address.dart';
 import '../../domain/client.dart';
 import '../../domain/consent.dart';
+import '../../domain/lifestyle.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/busy_helpers.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/sensitive_text_field.dart';
+import '../templates/templates_l10n.dart';
 
 /// Create / edit form for a client. Uses one [Form] with a [GlobalKey] for
 /// validation, no per-field controller leak (controllers disposed in dispose).
@@ -40,6 +42,8 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
   late final TextEditingController _companyName;
   late final TextEditingController _siret;
   late final TextEditingController _siren;
+  late final TextEditingController _emergencyName;
+  late final TextEditingController _emergencyPhone;
 
   String _kind = ClientKind.individual;
   String _civility = Civility.unspecified;
@@ -52,6 +56,13 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
   bool _consentReminder = false;
   bool _consentNewsletter = false;
   bool _busy = false;
+
+  String? _contactSource;
+  String? _lifestyleSmoker;
+  String? _lifestyleSport;
+  String? _lifestyleSleep;
+  String? _lifestyleStress;
+  String? _lifestyleDiet;
 
   @override
   void initState() {
@@ -79,6 +90,19 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
     _siren = TextEditingController(
       text: (c?.business['siren'] as String?) ?? '',
     );
+    final profile = c?.profile ?? const <String, dynamic>{};
+    _emergencyName = TextEditingController(
+      text: ClientProfileExt.emergencyContactName(profile) ?? '',
+    );
+    _emergencyPhone = TextEditingController(
+      text: ClientProfileExt.emergencyContactPhone(profile) ?? '',
+    );
+    _contactSource = ClientProfileExt.contactSource(profile);
+    _lifestyleSmoker = ClientProfileExt.lifestyle(profile, Lifestyle.keySmoker);
+    _lifestyleSport = ClientProfileExt.lifestyle(profile, Lifestyle.keySport);
+    _lifestyleSleep = ClientProfileExt.lifestyle(profile, Lifestyle.keySleep);
+    _lifestyleStress = ClientProfileExt.lifestyle(profile, Lifestyle.keyStress);
+    _lifestyleDiet = ClientProfileExt.lifestyle(profile, Lifestyle.keyDiet);
     _kind = c?.kind ?? ClientKind.individual;
     _civility = c?.civility ?? Civility.unspecified;
     _birthDate = c?.birthDate;
@@ -109,6 +133,8 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
       _companyName,
       _siret,
       _siren,
+      _emergencyName,
+      _emergencyPhone,
     ]) {
       ctrl.dispose();
     }
@@ -148,11 +174,36 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
       if (isBusiness && _siren.text.trim().isNotEmpty)
         'siren': _siren.text.trim(),
     };
-    final profile = <String, dynamic>{
-      ...?widget.initial?.profile,
-      if (isBusiness) 'geobiology': _geobiology,
-      if (isBusiness) 'em_waves': _emWaves,
-    };
+    // Source de vérité : on repart du profile existant (préserve les
+    // champs futurs / inconnus) puis on superpose les valeurs cosmétiques
+    // v1.6.0 via les helpers `ClientProfileExt` — eux retirent les clés
+    // au lieu de les laisser vides quand l'utilisateur efface tout.
+    var profile = <String, dynamic>{...?widget.initial?.profile};
+    if (isBusiness) {
+      profile['geobiology'] = _geobiology;
+      profile['em_waves'] = _emWaves;
+    } else {
+      profile.remove('geobiology');
+      profile.remove('em_waves');
+    }
+    profile = ClientProfileExt.writeString(
+      profile,
+      ContactSource.key,
+      _contactSource,
+    );
+    profile = ClientProfileExt.writeEmergencyContact(
+      profile,
+      name: _emergencyName.text,
+      phone: _emergencyPhone.text,
+    );
+    profile = ClientProfileExt.writeLifestyle(
+      profile,
+      smoker: _lifestyleSmoker,
+      sport: _lifestyleSport,
+      sleep: _lifestyleSleep,
+      stress: _lifestyleStress,
+      diet: _lifestyleDiet,
+    );
 
     final draft = Client(
       id: widget.initial?.id ?? '',
@@ -449,6 +500,99 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
                       : l10n.clientFormFreeNotes,
                 ),
               ),
+              if (_kind == ClientKind.individual) ...[
+                const Divider(height: 32),
+                SectionTitle(l10n.clientFormSectionSource),
+                DropdownButtonFormField<String?>(
+                  initialValue: _contactSource,
+                  decoration: InputDecoration(
+                    labelText: l10n.clientFormContactSourceLabel,
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: null,
+                      child: Text(l10n.contactSourceUnspecified),
+                    ),
+                    for (final s in ContactSource.all)
+                      DropdownMenuItem<String?>(
+                        value: s,
+                        child: Text(contactSourceLabel(l10n, s)),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() => _contactSource = v),
+                ),
+                const Divider(height: 32),
+                SectionTitle(l10n.clientFormSectionEmergency),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    l10n.clientFormEmergencyHint,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                TextFormField(
+                  controller: _emergencyName,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: l10n.clientFormEmergencyName,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _emergencyPhone,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: l10n.clientFormEmergencyPhone,
+                  ),
+                ),
+                const Divider(height: 32),
+                SectionTitle(l10n.clientFormSectionLifestyle),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    l10n.clientFormLifestyleHint,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                _LifestyleDropdown(
+                  label: l10n.clientFormSmoker,
+                  value: _lifestyleSmoker,
+                  values: Lifestyle.smokerValues,
+                  onChanged: (v) => setState(() => _lifestyleSmoker = v),
+                ),
+                const SizedBox(height: 12),
+                _LifestyleDropdown(
+                  label: l10n.clientFormSport,
+                  value: _lifestyleSport,
+                  values: Lifestyle.sportValues,
+                  onChanged: (v) => setState(() => _lifestyleSport = v),
+                ),
+                const SizedBox(height: 12),
+                _LifestyleDropdown(
+                  label: l10n.clientFormSleep,
+                  value: _lifestyleSleep,
+                  values: Lifestyle.sleepValues,
+                  onChanged: (v) => setState(() => _lifestyleSleep = v),
+                ),
+                const SizedBox(height: 12),
+                _LifestyleDropdown(
+                  label: l10n.clientFormStress,
+                  value: _lifestyleStress,
+                  values: Lifestyle.stressValues,
+                  onChanged: (v) => setState(() => _lifestyleStress = v),
+                ),
+                const SizedBox(height: 12),
+                _LifestyleDropdown(
+                  label: l10n.clientFormDiet,
+                  value: _lifestyleDiet,
+                  values: Lifestyle.dietValues,
+                  onChanged: (v) => setState(() => _lifestyleDiet = v),
+                ),
+              ],
               const Divider(height: 32),
               SectionTitle(l10n.clientFormSectionConsent),
               CheckboxListTile(
@@ -498,3 +642,38 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
 }
 
 final RegExp _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+/// Dropdown réutilisable pour les 5 axes d'hygiène de vie. La 1re option
+/// (`null`) est toujours « Non renseigné » — pas d'imposition d'une
+/// réponse, conformément à la philosophie RGPD du soft consent.
+class _LifestyleDropdown extends StatelessWidget {
+  const _LifestyleDropdown({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String? value;
+  final List<String> values;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    return DropdownButtonFormField<String?>(
+      initialValue: value,
+      decoration: InputDecoration(labelText: label),
+      items: [
+        DropdownMenuItem(value: null, child: Text(l10n.lifestyleUnspecified)),
+        for (final v in values)
+          DropdownMenuItem<String?>(
+            value: v,
+            child: Text(lifestyleLabel(l10n, v)),
+          ),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}

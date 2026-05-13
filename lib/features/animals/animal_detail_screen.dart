@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
@@ -10,6 +11,7 @@ import '../../utils/date_format.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/snack_utils.dart';
 import '../attachments/attachments_section.dart';
 import '../sessions/session_form_screen.dart';
 import '../sessions/session_l10n.dart';
@@ -143,7 +145,9 @@ class _InfoTab extends StatelessWidget {
           ),
         if (animal.color != null)
           DetailRow(icon: Icons.palette_outlined, text: animal.color!),
-        if (!animal.identifiers.isEmpty) ...[
+        if (animal.identifiers.chipNumber.isNotEmpty ||
+            animal.identifiers.tattooNumber.isNotEmpty ||
+            animal.identifiers.pedigreeNumber.isNotEmpty) ...[
           const SizedBox(height: 16),
           DetailSectionCard(
             title: l10n.animalFormSectionIdentifiers,
@@ -168,6 +172,14 @@ class _InfoTab extends StatelessWidget {
               ],
             ),
           ),
+        ],
+        if (animal.identifiers.hasVet) ...[
+          const SizedBox(height: 16),
+          _VetCard(identifiers: animal.identifiers),
+        ],
+        if (animal.identifiers.hasVaccination) ...[
+          const SizedBox(height: 16),
+          _VaccinationCard(identifiers: animal.identifiers),
         ],
         if (animal.healthNotes.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -256,6 +268,143 @@ class _SessionsTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Card vétérinaire (animal_detail). Affichée seulement si au moins un
+/// champ vétérinaire structuré est renseigné. Tap sur téléphone / email
+/// copie dans le presse-papiers (pattern aligné `about_screen` — pas de
+/// dépendance `url_launcher` ajoutée pour cette release).
+class _VetCard extends StatelessWidget {
+  const _VetCard({required this.identifiers});
+  final AnimalIdentifiers identifiers;
+
+  Future<void> _copy(BuildContext context, String value, String label) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (context.mounted) {
+      showSuccessSnack(context, '$label : $value');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    return DetailSectionCard(
+      title: l10n.animalFormSectionVet,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (identifiers.vetName.isNotEmpty)
+            _row(context, Icons.person_outline, identifiers.vetName),
+          if (identifiers.vetClinic.isNotEmpty)
+            _row(context, Icons.local_hospital_outlined, identifiers.vetClinic),
+          if (identifiers.vetPhone.isNotEmpty)
+            _row(
+              context,
+              Icons.phone_outlined,
+              identifiers.vetPhone,
+              onTap: () => _copy(
+                context,
+                identifiers.vetPhone,
+                l10n.animalDetailVetCallTooltip,
+              ),
+              tooltip: l10n.animalDetailVetCallTooltip,
+            ),
+          if (identifiers.vetEmail.isNotEmpty)
+            _row(
+              context,
+              Icons.email_outlined,
+              identifiers.vetEmail,
+              onTap: () => _copy(
+                context,
+                identifiers.vetEmail,
+                l10n.animalDetailVetEmailTooltip,
+              ),
+              tooltip: l10n.animalDetailVetEmailTooltip,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(
+    BuildContext context,
+    IconData icon,
+    String text, {
+    VoidCallback? onTap,
+    String? tooltip,
+  }) {
+    final child = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text)),
+        ],
+      ),
+    );
+    if (onTap == null) return child;
+    return InkWell(
+      onTap: onTap,
+      child: Tooltip(message: tooltip ?? '', child: child),
+    );
+  }
+}
+
+/// Card vaccination — dernière date, prochaine date avec mise en évidence
+/// rouge si dépassée, notes facultatives. Aligné sur `DetailSectionCard`
+/// pour conserver la cohérence visuelle avec les autres sections.
+class _VaccinationCard extends StatelessWidget {
+  const _VaccinationCard({required this.identifiers});
+  final AnimalIdentifiers identifiers;
+
+  String _fmt(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/'
+      '${d.month.toString().padLeft(2, '0')}/'
+      '${d.year}';
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final overdue = identifiers.nextVaccinationOverdue;
+    return DetailSectionCard(
+      title: l10n.animalFormSectionVaccination,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (identifiers.lastVaccinationAt != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                '${l10n.animalDetailVaccinationLastLabel} : '
+                '${_fmt(identifiers.lastVaccinationAt!)}',
+              ),
+            ),
+          if (identifiers.nextVaccinationAt != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                overdue
+                    ? l10n.animalDetailVaccinationOverdue(
+                        _fmt(identifiers.nextVaccinationAt!),
+                      )
+                    : '${l10n.animalDetailVaccinationNextLabel} : '
+                          '${_fmt(identifiers.nextVaccinationAt!)}',
+                style: TextStyle(
+                  color: overdue ? cs.error : null,
+                  fontWeight: overdue ? FontWeight.w600 : null,
+                ),
+              ),
+            ),
+          if (identifiers.vaccinationNotes.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(identifiers.vaccinationNotes),
+          ],
+        ],
+      ),
     );
   }
 }
