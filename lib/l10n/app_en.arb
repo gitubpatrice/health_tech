@@ -55,6 +55,21 @@
   "actionSearch": "Search",
   "actionRetry": "Retry",
 
+  "settingsPanicTitle": "Erase everything (panic)",
+  "settingsPanicSubtitle": "Destroys all Health Tech data on this device. Irreversible.",
+  "settingsPanicWarning": "All client records, animals, sessions, appointments, attachments, backups, biometric tokens and cryptographic keys will be wiped immediately and permanently. This cannot be undone.",
+  "settingsPanicConfirmToken": "ERASE",
+  "@settingsPanicConfirmInstruction": {
+    "placeholders": { "token": { "type": "String" } }
+  },
+  "settingsPanicConfirmInstruction": "To confirm, type: {token}",
+  "settingsPanicConfirmAction": "Erase everything",
+  "settingsPanicSuccess": "All Health Tech data has been erased.",
+
+  "backupSamePassphraseTitle": "Same passphrase as vault",
+  "backupSamePassphraseBody": "You picked the same passphrase as the one that protects your vault. An attacker who got hold of this backup file would only need to break one secret instead of two. We recommend using a DIFFERENT passphrase for backups.",
+  "backupSamePassphraseContinue": "Continue anyway",
+
   "fieldRequired": "Required",
   "fieldInvalidEmail": "Invalid email",
   "fieldInvalidPhone": "Invalid phone",
@@ -255,6 +270,13 @@
   "appointmentFormReminder": "Reminder (minutes before)",
   "appointmentFormNotes": "Notes (encrypted)",
   "appointmentFormAddToCalendar": "Add to system calendar",
+  "sessionFormCalendarTitle": "Sync with your calendar",
+  "sessionFormCalendarHelperOn": "An event will be created in your Android Calendar at save — you'll get system reminders automatically.",
+  "sessionFormCalendarHelperOff": "No system reminder will be created. You can enable this at any time.",
+  "sessionFormCalendarHelperLinked": "This session is already linked to your calendar. The event will be updated.",
+  "sessionFormCalendarHelperWillRemove": "This session is linked to your calendar. The event will be removed at save.",
+  "sessionDetailAddToCalendar": "Add to calendar",
+  "sessionDetailAddToCalendarFailed": "Unable to add to calendar.",
   "appointmentFormCalendarPermissionDenied": "Calendar permission denied.",
   "appointmentFormCalendarMissing": "No writable calendar found.",
   "appointmentFormSyncedToCalendar": "Added to your system calendar.",

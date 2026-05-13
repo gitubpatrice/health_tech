@@ -6,6 +6,7 @@ import 'package:printing/printing.dart';
 
 import '../../core/providers.dart';
 import '../../data/services/session_pdf_exporter.dart';
+import '../../data/services/system_calendar_bridge.dart';
 import '../../domain/attachment.dart';
 import '../../domain/session.dart';
 import '../../domain/tag.dart';
@@ -16,6 +17,7 @@ import '../../widgets/breakpoints.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/snack_utils.dart';
 import '../attachments/attachments_section.dart';
 import '../tags/tag_editor.dart';
 import 'session_form_screen.dart';
@@ -69,6 +71,63 @@ class _SessionBody extends ConsumerWidget {
     if (!context.mounted) return;
     ref.read(selectedSessionIdProvider.notifier).state = null;
     if (context.isCompact) Navigator.of(context).pop();
+  }
+
+  /// Ajoute la séance au Calendar Android **sans rouvrir le formulaire**.
+  /// Action one-tap depuis la vue Détail quand la séance n'est pas encore
+  /// liée. Met à jour la DB avec les IDs retournés par le bridge — la
+  /// prochaine reconstruction affiche le badge « Agenda ✓ » à la place.
+  Future<void> _addToCalendar(BuildContext context, WidgetRef ref) async {
+    final l10n = AppL10n.of(context);
+    final bridge = ref.read(systemCalendarBridgeProvider);
+    final repo = ref.read(sessionRepositoryProvider);
+    try {
+      final title = '${kindLabel(l10n, session.kind)} – Health Tech';
+      final pushed = await bridge.pushSession(session, calendarTitle: title);
+      if (pushed == null) {
+        if (!context.mounted) return;
+        showFloatingSnack(
+          context,
+          l10n.sessionDetailAddToCalendarFailed,
+          tone: SnackTone.error,
+        );
+        return;
+      }
+      await repo.update(
+        session.copyWith(
+          externalCalendarId: pushed.calendarId,
+          externalCalendarEventId: pushed.eventId,
+        ),
+      );
+      if (!context.mounted) return;
+      ref.invalidate(selectedSessionProvider);
+      showFloatingSnack(
+        context,
+        l10n.sessionFormSyncedToCalendar,
+        tone: SnackTone.success,
+      );
+    } on CalendarPermissionDenied {
+      if (!context.mounted) return;
+      showFloatingSnack(
+        context,
+        l10n.appointmentFormCalendarPermissionDenied,
+        tone: SnackTone.error,
+      );
+    } on CalendarUnavailable {
+      if (!context.mounted) return;
+      showFloatingSnack(
+        context,
+        l10n.appointmentFormCalendarMissing,
+        tone: SnackTone.error,
+      );
+    } on Object {
+      if (!context.mounted) return;
+      showFloatingSnack(
+        context,
+        l10n.sessionDetailAddToCalendarFailed,
+        tone: SnackTone.error,
+      );
+    }
   }
 
   Future<void> _exportPdf(BuildContext context, WidgetRef ref) async {
@@ -171,33 +230,41 @@ class _SessionBody extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       children: [
         TagEditor(ownerType: TagOwner.session, ownerId: session.id),
-        if (session.externalCalendarEventId != null) ...[
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Builder(
-              builder: (ctx) {
-                // (audit UI C1) Couleur dérivée du ColorScheme courant —
-                // contraste WCAG AA garanti light ET dark mode. Le
-                // précédent `0xFFC8F0C0` hardcoded échouait le ratio en
-                // thème sombre (texte clair sur fond vert pâle).
-                final cs = Theme.of(ctx).colorScheme;
-                return Chip(
-                  avatar: Icon(
-                    Icons.event_available,
-                    size: 16,
-                    color: cs.onTertiaryContainer,
+        const SizedBox(height: 8),
+        // (UX v1.5) Affichage stateful agenda : si lié → badge ; sinon →
+        // bouton one-tap qui pousse l'event Calendar Android sans
+        // rouvrir le formulaire.
+        Align(
+          alignment: Alignment.centerLeft,
+          child: session.externalCalendarEventId != null
+              ? Builder(
+                  builder: (ctx) {
+                    // (audit UI C1) Couleur dérivée du ColorScheme
+                    // courant — contraste WCAG AA garanti light ET dark
+                    // mode (le précédent 0xFFC8F0C0 échouait en dark).
+                    final cs = Theme.of(ctx).colorScheme;
+                    return Chip(
+                      avatar: Icon(
+                        Icons.event_available,
+                        size: 16,
+                        color: cs.onTertiaryContainer,
+                      ),
+                      label: Text(l10n.sessionDetailCalendarSynced),
+                      labelStyle: TextStyle(color: cs.onTertiaryContainer),
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: cs.tertiaryContainer,
+                      side: BorderSide(color: cs.outlineVariant),
+                    );
+                  },
+                )
+              : Consumer(
+                  builder: (ctx, refInner, _) => OutlinedButton.icon(
+                    onPressed: () => _addToCalendar(ctx, refInner),
+                    icon: const Icon(Icons.event_available_outlined, size: 18),
+                    label: Text(l10n.sessionDetailAddToCalendar),
                   ),
-                  label: Text(l10n.sessionDetailCalendarSynced),
-                  labelStyle: TextStyle(color: cs.onTertiaryContainer),
-                  visualDensity: VisualDensity.compact,
-                  backgroundColor: cs.tertiaryContainer,
-                  side: BorderSide(color: cs.outlineVariant),
-                );
-              },
-            ),
-          ),
-        ],
+                ),
+        ),
         const SizedBox(height: 12),
         DetailRow(
           icon: Icons.schedule,

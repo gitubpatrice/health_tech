@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/auto_lock.dart';
 import '../../core/providers.dart';
+import '../../data/services/panic_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/ephemeral_cache.dart';
 import '../../widgets/error_view.dart' show localiseError;
@@ -33,6 +34,8 @@ class SettingsScreen extends ConsumerWidget {
         const _ExportClientTile(),
         const Divider(height: 1),
         const _PurgeClientTile(),
+        const Divider(height: 1),
+        const _PanicWipeTile(),
         const Divider(height: 1),
         ListTile(
           leading: const Icon(Icons.backup_outlined),
@@ -346,6 +349,112 @@ class _PurgeClientTile extends ConsumerWidget {
       title: Text(l10n.settingsRgpdPurgeTitle),
       subtitle: Text(l10n.settingsRgpdPurgeSubtitle),
       onTap: () => _pickAndPurge(context, ref),
+    );
+  }
+}
+
+/// Panic-wipe : effacement total et irréversible de toute trace Health Tech
+/// sur l'appareil. Pattern Files Tech aligné sur Pass / Notes / RFT / AI / PDF.
+class _PanicWipeTile extends ConsumerWidget {
+  const _PanicWipeTile();
+
+  Future<void> _confirmAndWipe(BuildContext context, WidgetRef ref) async {
+    final l10n = AppL10n.of(context);
+    // Double confirmation : on impose à l'utilisateur de TAPER le mot
+    // EFFACER (localisé) pour valider. Évite un déclenchement par
+    // double-tap accidentel ou enfant qui joue avec le téléphone.
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => _PanicConfirmDialog(token: l10n.settingsPanicConfirmToken),
+    );
+    if (ok != true || !context.mounted) return;
+    final service = ref.read(panicServiceProvider);
+    await service.wipe();
+    // Le coffre est détruit → vault.lock() a déjà été invoqué par
+    // destroy(). La session passe à null, le LockScreen reprend la
+    // main et l'utilisateur tombe sur le setup vierge.
+    await ref.read(vaultSessionProvider.notifier).lock();
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(Icons.local_fire_department_outlined, color: cs.error),
+      title: Text(l10n.settingsPanicTitle),
+      subtitle: Text(l10n.settingsPanicSubtitle),
+      onTap: () => _confirmAndWipe(context, ref),
+    );
+  }
+}
+
+class _PanicConfirmDialog extends StatefulWidget {
+  const _PanicConfirmDialog({required this.token});
+  final String token;
+  @override
+  State<_PanicConfirmDialog> createState() => _PanicConfirmDialogState();
+}
+
+class _PanicConfirmDialogState extends State<_PanicConfirmDialog> {
+  late final TextEditingController _ctrl;
+  bool _ok = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return AlertDialog(
+      icon: Icon(Icons.local_fire_department_outlined, color: cs.error),
+      title: Text(l10n.settingsPanicTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.settingsPanicWarning),
+          const SizedBox(height: 16),
+          Text(
+            l10n.settingsPanicConfirmInstruction(widget.token),
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _ctrl,
+            autocorrect: false,
+            enableSuggestions: false,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              hintText: widget.token,
+            ),
+            onChanged: (v) =>
+                setState(() => _ok = v.trim().toUpperCase() == widget.token),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l10n.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _ok ? () => Navigator.of(context).pop(true) : null,
+          style: FilledButton.styleFrom(backgroundColor: cs.error),
+          child: Text(l10n.settingsPanicConfirmAction),
+        ),
+      ],
     );
   }
 }

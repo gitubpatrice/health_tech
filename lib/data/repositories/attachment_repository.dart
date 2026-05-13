@@ -107,6 +107,12 @@ class AttachmentRepository {
     final file = await _fileFor(storagePath);
     await atomicWriteBytes(file, encrypted);
 
+    // (audit sécu B1, DB v5) Filename chiffré au champ : empêche un
+    // attaquant qui aurait cassé SQLCipher mais pas la VEK de lire le
+    // nom (souvent identifiant : "facture-mme-durand.pdf"). La colonne
+    // legacy `filename` reste vide pour les nouvelles rows.
+    final filenameEnc = await _crypto.encryptString(workingFilename);
+
     final epoch = nowEpochSeconds();
     await _db
         .into(_db.attachments)
@@ -116,7 +122,10 @@ class AttachmentRepository {
             ownerType: ownerType,
             ownerId: ownerId,
             kind: kind,
-            filename: workingFilename,
+            // Plus jamais en clair : la colonne legacy reçoit "" pour les
+            // nouvelles rows. C'est `filenameEncrypted` qui porte la donnée.
+            filename: const Value(''),
+            filenameEncrypted: Value(filenameEnc),
             mimeType: workingMime,
             sizeBytes: workingBytes.length,
             storagePath: storagePath,
@@ -173,9 +182,13 @@ class AttachmentRepository {
     if (kindFilter != null) {
       select.where((t) => t.kind.equals(kindFilter));
     }
-    return select.watch().map(
-      (rows) => rows.map(_fromRow).toList(growable: false),
-    );
+    return select.watch().asyncMap((rows) async {
+      final out = <Attachment>[];
+      for (final r in rows) {
+        out.add(await _fromRow(r));
+      }
+      return out;
+    });
   }
 
   /// Removes the row AND the encrypted file. Best-effort: row deletion is
@@ -243,15 +256,41 @@ class AttachmentRepository {
     return removed;
   }
 
-  Attachment _fromRow(AttachmentRow r) => Attachment(
-    id: r.id,
-    ownerType: r.ownerType,
-    ownerId: r.ownerId,
-    kind: r.kind,
-    filename: r.filename,
-    mimeType: r.mimeType,
-    sizeBytes: r.sizeBytes,
-    storagePath: r.storagePath,
-    createdAt: secondsToDate(r.createdAt),
-  );
+  /// (DB v5) Décrypte le filename si disponible (`filenameEncrypted`),
+  /// retombe sinon sur la colonne legacy `filename` clair (rows v4-).
+  /// Migration paresseuse : si on lit une row legacy, on la re-saisit
+  /// avec sa version chiffrée + on vide `filename`. Idempotente.
+  Future<Attachment> _fromRow(AttachmentRow r) async {
+    String name;
+    final enc = r.filenameEncrypted;
+    if (enc != null && enc.isNotEmpty) {
+      name = await _crypto.decryptString(enc);
+    } else if (r.filename.isNotEmpty) {
+      name = r.filename;
+      // Migration paresseuse (audit sécu B1) — best-effort.
+      try {
+        final ciphertext = await _crypto.encryptString(name);
+        await (_db.update(_db.attachments)..where((t) => t.id.equals(r.id)))
+            .write(AttachmentsCompanion(
+          filename: const Value(''),
+          filenameEncrypted: Value(ciphertext),
+        ));
+      } on Object {
+        // ignore : on retentera à la prochaine lecture.
+      }
+    } else {
+      name = '';
+    }
+    return Attachment(
+      id: r.id,
+      ownerType: r.ownerType,
+      ownerId: r.ownerId,
+      kind: r.kind,
+      filename: name,
+      mimeType: r.mimeType,
+      sizeBytes: r.sizeBytes,
+      storagePath: r.storagePath,
+      createdAt: secondsToDate(r.createdAt),
+    );
+  }
 }

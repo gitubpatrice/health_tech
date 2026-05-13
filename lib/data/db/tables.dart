@@ -170,7 +170,18 @@ class Attachments extends Table with _AuditCols {
 
   /// 'photo' | 'document' | 'vaccination' | 'prescription' | 'consent' | 'other'
   TextColumn get kind => text()();
-  TextColumn get filename => text()();
+
+  /// Filename *legacy* — conservé en clair pour les rows v4 et antérieures
+  /// (migration v5). Toute écriture neuve passe désormais par
+  /// [filenameEncrypted]. Les rows v4 sont migrées paresseusement à la
+  /// première lecture (voir AttachmentRepository._fromRow). Une fois
+  /// migrée, la valeur est vidée.
+  TextColumn get filename => text().withDefault(const Constant(''))();
+
+  /// Filename chiffré au champ (FieldCrypto) — évite que le nom du
+  /// client (`facture-mme-durand-2026.pdf`) ne soit lisible si SQLCipher
+  /// est cassé mais pas la VEK (audit sécu B1).
+  TextColumn get filenameEncrypted => text().nullable()();
   TextColumn get mimeType => text()();
   IntColumn get sizeBytes => integer()();
 

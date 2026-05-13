@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -51,6 +50,14 @@ class PdfStrings {
 
 /// Renders a one-pager PDF for a session. Excludes the practitioner private
 /// note by design (never exported).
+///
+/// **Audit perf C2** : `render()` pousse la sérialisation PDF (layout +
+/// zlib) sur un isolate via `compute()`. Sur une séance avec long
+/// rapport et accents UTF-8, ce travail peut dépasser 300 ms en main
+/// thread et provoque un jank visible avant le partage. L'isolate prend
+/// le coup ; la frame reste à 60 fps. `Session`/`Client`/`PdfStrings`
+/// sont des valeurs immuables trivialement sérialisables — donc safe
+/// à transporter via SendPort.
 class SessionPdfExporter {
   const SessionPdfExporter();
 
@@ -58,117 +65,143 @@ class SessionPdfExporter {
     required Session session,
     required Client client,
     required PdfStrings s,
-  }) async {
-    final doc = pw.Document(
-      title: s.title,
-      author: 'Health Tech',
-      creator: 'Health Tech',
+  }) {
+    return compute(
+      _renderPdfInIsolate,
+      _PdfJob(session: session, client: client, strings: s),
     );
-
-    doc.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(36),
-        build: (ctx) => [
-          _header(s.title),
-          pw.SizedBox(height: 16),
-          _meta(s, session, client),
-          pw.SizedBox(height: 16),
-          if (session.motives.isNotEmpty) ...[
-            _line(
-              s.motivesLine,
-              session.motives.map((k) => s.motivesByKey[k] ?? k).join(' · '),
-            ),
-            pw.SizedBox(height: 12),
-          ],
-          if (!session.report.isEmpty) _reportBlock(session, s),
-          pw.Spacer(),
-          pw.Divider(),
-          pw.Text(
-            s.disclaimer,
-            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
-          ),
-        ],
-      ),
-    );
-    return doc.save();
   }
+}
 
-  pw.Widget _header(String title) => pw.Container(
-    padding: const pw.EdgeInsets.only(bottom: 8),
-    decoration: const pw.BoxDecoration(
-      border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400)),
-    ),
-    child: pw.Text(
-      title,
-      style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
-    ),
+/// Charge transportée vers l'isolate. Top-level pour pouvoir être
+/// instanciée depuis `compute()`.
+class _PdfJob {
+  const _PdfJob({
+    required this.session,
+    required this.client,
+    required this.strings,
+  });
+  final Session session;
+  final Client client;
+  final PdfStrings strings;
+}
+
+/// Entry point exécuté côté isolate worker. Renvoie les bytes du PDF
+/// finalisé — l'isolate est terminé dès que la valeur est postée au
+/// SendPort. `compute()` accepte un `FutureOr<R>` ; on renvoie donc
+/// directement le `Future` de `doc.save()` sans bridge synchrone.
+Future<Uint8List> _renderPdfInIsolate(_PdfJob job) async {
+  final s = job.strings;
+  final session = job.session;
+  final client = job.client;
+  final doc = pw.Document(
+    title: s.title,
+    author: 'Health Tech',
+    creator: 'Health Tech',
   );
-
-  pw.Widget _meta(PdfStrings s, Session session, Client client) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        _line(s.clientLine, client.fullName),
-        _line(s.dateLine, formatDateTime(session.startAt)),
-        _line(s.durationLine, _formatDuration(session.duration)),
-      ],
-    );
-  }
-
-  pw.Widget _reportBlock(Session session, PdfStrings s) {
-    final r = session.report;
-    final entries = <(String, String)>[
-      if (r.beforeState.isNotEmpty) (s.before, r.beforeState),
-      if (r.clientPerception.isNotEmpty) (s.client, r.clientPerception),
-      if (r.observations.isNotEmpty) (s.observations, r.observations),
-      if (r.flow.isNotEmpty) (s.flow, r.flow),
-      if (r.zonesWorked.isNotEmpty) (s.zones, r.zonesWorked),
-      if (r.energetic.isNotEmpty) (s.energetic, r.energetic),
-      if (r.afterState.isNotEmpty) (s.after, r.afterState),
-      if (r.advice.isNotEmpty) (s.advice, r.advice),
-      if (r.nextRecommendation.isNotEmpty) (s.next, r.nextRecommendation),
-    ];
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
+  doc.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(36),
+      build: (ctx) => [
+        _header(s.title),
+        pw.SizedBox(height: 16),
+        _meta(s, session, client),
+        pw.SizedBox(height: 16),
+        if (session.motives.isNotEmpty) ...[
+          _line(
+            s.motivesLine,
+            session.motives.map((k) => s.motivesByKey[k] ?? k).join(' · '),
+          ),
+          pw.SizedBox(height: 12),
+        ],
+        if (!session.report.isEmpty) _reportBlock(session, s),
+        pw.Spacer(),
+        pw.Divider(),
         pw.Text(
-          s.sectionReport,
-          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          s.disclaimer,
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
         ),
-        pw.SizedBox(height: 8),
-        for (final e in entries) ...[
-          pw.Text(
-            e.$1,
-            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 2),
-          pw.Text(e.$2, style: const pw.TextStyle(fontSize: 11)),
-          pw.SizedBox(height: 8),
-        ],
       ],
-    );
-  }
-
-  pw.Widget _line(String label, String value) => pw.Padding(
-    padding: const pw.EdgeInsets.symmetric(vertical: 2),
-    child: pw.RichText(
-      text: pw.TextSpan(
-        children: [
-          pw.TextSpan(
-            text: '$label : ',
-            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-          ),
-          pw.TextSpan(text: value),
-        ],
-      ),
     ),
   );
+  return doc.save();
+}
 
-  static String _formatDuration(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes.remainder(60);
-    if (h > 0) return '${h}h ${m.toString().padLeft(2, '0')}min';
-    return '${m}min';
-  }
+pw.Widget _header(String title) => pw.Container(
+  padding: const pw.EdgeInsets.only(bottom: 8),
+  decoration: const pw.BoxDecoration(
+    border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400)),
+  ),
+  child: pw.Text(
+    title,
+    style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+  ),
+);
+
+pw.Widget _meta(PdfStrings s, Session session, Client client) {
+  return pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.start,
+    children: [
+      _line(s.clientLine, client.fullName),
+      _line(s.dateLine, formatDateTime(session.startAt)),
+      _line(s.durationLine, _formatDuration(session.duration)),
+    ],
+  );
+}
+
+pw.Widget _reportBlock(Session session, PdfStrings s) {
+  final r = session.report;
+  final entries = <(String, String)>[
+    if (r.beforeState.isNotEmpty) (s.before, r.beforeState),
+    if (r.clientPerception.isNotEmpty) (s.client, r.clientPerception),
+    if (r.observations.isNotEmpty) (s.observations, r.observations),
+    if (r.flow.isNotEmpty) (s.flow, r.flow),
+    if (r.zonesWorked.isNotEmpty) (s.zones, r.zonesWorked),
+    if (r.energetic.isNotEmpty) (s.energetic, r.energetic),
+    if (r.afterState.isNotEmpty) (s.after, r.afterState),
+    if (r.advice.isNotEmpty) (s.advice, r.advice),
+    if (r.nextRecommendation.isNotEmpty) (s.next, r.nextRecommendation),
+  ];
+  return pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.start,
+    children: [
+      pw.Text(
+        s.sectionReport,
+        style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+      ),
+      pw.SizedBox(height: 8),
+      for (final e in entries) ...[
+        pw.Text(
+          e.$1,
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 2),
+        pw.Text(e.$2, style: const pw.TextStyle(fontSize: 11)),
+        pw.SizedBox(height: 8),
+      ],
+    ],
+  );
+}
+
+pw.Widget _line(String label, String value) => pw.Padding(
+  padding: const pw.EdgeInsets.symmetric(vertical: 2),
+  child: pw.RichText(
+    text: pw.TextSpan(
+      children: [
+        pw.TextSpan(
+          text: '$label : ',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+        ),
+        pw.TextSpan(text: value),
+      ],
+    ),
+  ),
+);
+
+String _formatDuration(Duration d) {
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60);
+  if (h > 0) return '${h}h ${m.toString().padLeft(2, '0')}min';
+  return '${m}min';
 }

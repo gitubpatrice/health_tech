@@ -111,6 +111,15 @@ class HealthVault {
   Uint8List? _vek;
   FieldCrypto? _crypto;
 
+  /// Fingerprint éphémère de la passphrase vault (HKDF du UTF-8 + un sel
+  /// dérivé du wrappedVek, jamais persisté). Permet à
+  /// [matchesUnlockedPassphrase] de comparer une passphrase candidate
+  /// (typiquement la passphrase de backup choisie par l'utilisateur)
+  /// SANS rejouer Argon2id, et SANS jamais stocker la passphrase
+  /// elle-même. Nettoyé par [lock]. Vit uniquement pendant que le
+  /// coffre est ouvert (audit sécu M5).
+  Uint8List? _passphraseFp;
+
   /// Mutex preventing concurrent setup/unlock/lock operations from
   /// interleaving in unsafe ways (a double-tap on "Unlock" would otherwise
   /// race two derivations and leave `_vek` and `_crypto` desynchronised —
@@ -178,6 +187,62 @@ class HealthVault {
     masterKey.fillRange(0, masterKey.length, 0);
     _vek = vek;
     _crypto = FieldCrypto(Uint8List.fromList(vek));
+    _passphraseFp = await _fingerprintPassphrase(passphrase, wrapped);
+  }
+
+  /// Calcule un fingerprint constant-time-friendly de la passphrase :
+  /// HMAC-SHA256(salt = `wrappedVek` (déjà random et unique au coffre),
+  /// data = utf8(passphrase)). Le fingerprint :
+  ///   - dépend de la passphrase ET du coffre courant (pas de rainbow
+  ///     table générique),
+  ///   - reste local à la session (jamais persisté),
+  ///   - est rapide (SHA256, pas Argon2id) — comparable à l'usage typique
+  ///     (UI Settings, juste avant export backup).
+  /// Le test "même passphrase ?" reste néanmoins de la "logique métier"
+  /// d'avertissement UX, pas un contrôle de sécurité.
+  Future<Uint8List> _fingerprintPassphrase(
+    String passphrase,
+    Uint8List wrapped,
+  ) async {
+    final hmac = Hmac.sha256();
+    final pBytes = Uint8List.fromList(utf8.encode(passphrase));
+    try {
+      final mac = await hmac.calculateMac(
+        pBytes,
+        secretKey: SecretKey(wrapped),
+      );
+      return Uint8List.fromList(mac.bytes);
+    } finally {
+      pBytes.fillRange(0, pBytes.length, 0);
+    }
+  }
+
+  /// Compare une passphrase candidate à celle qui a déverrouillé le
+  /// coffre. Renvoie `false` si le coffre est verrouillé (aucune
+  /// fingerprint à comparer). Constant-time XOR sur les octets.
+  ///
+  /// **Usage** : la UI de création de backup peut alerter l'utilisateur
+  /// quand sa passphrase de sauvegarde est identique à celle du coffre
+  /// (audit sécu M5 — réutilisation = un seul Argon2id à casser au lieu
+  /// de deux pour un attaquant qui acquiert le `.htbk`).
+  Future<bool> matchesUnlockedPassphrase(String candidate) async {
+    final fp = _passphraseFp;
+    final wrappedB64 = await _storage.read(key: _kWrappedVek);
+    if (fp == null || wrappedB64 == null) return false;
+    final candidateFp = await _fingerprintPassphrase(
+      candidate,
+      base64Decode(wrappedB64),
+    );
+    try {
+      if (candidateFp.length != fp.length) return false;
+      var diff = 0;
+      for (var i = 0; i < fp.length; i++) {
+        diff |= fp[i] ^ candidateFp[i];
+      }
+      return diff == 0;
+    } finally {
+      candidateFp.fillRange(0, candidateFp.length, 0);
+    }
   }
 
   /// Background task: when the active backend differs from the one we
@@ -216,7 +281,14 @@ class HealthVault {
     stopwatch.stop();
     final perIter = stopwatch.elapsedMilliseconds.clamp(50, 4000);
     final estimated = (targetMs / perIter).round();
-    return estimated.clamp(2, 6);
+    // (audit sécu B7) Plafond porté de 6 à 10 itérations. Sur un device
+    // récent (Pixel 9, S25), un Argon2id 64 MiB / 1 iter peut tomber
+    // sous 100 ms ; le précédent clamp 6 laissait la cible perçue à
+    // ~600 ms alors qu'on peut sans regret consommer le budget de
+    // 750 ms cible. Côté coût attaquant : durcit linéairement le
+    // brute-force GPU/ASIC sans dégrader l'UX (≤ 1 itération sup en
+    // valeur réelle pour la majorité du parc).
+    return estimated.clamp(2, 10);
   }
 
   /// Returns true on success, false if the passphrase was wrong.
@@ -255,9 +327,11 @@ class HealthVault {
       parallelism: parallelism,
     );
     try {
-      final vek = await _unwrapVek(base64Decode(wrappedB64), masterKey);
+      final wrapped = base64Decode(wrappedB64);
+      final vek = await _unwrapVek(wrapped, masterKey);
       _vek = vek;
       _crypto = FieldCrypto(Uint8List.fromList(vek));
+      _passphraseFp = await _fingerprintPassphrase(passphrase, wrapped);
       // Reset des compteurs d'échec sur succès.
       await _storage.delete(key: _kFailCount);
       await _storage.delete(key: _kFailAt);
@@ -368,6 +442,14 @@ class HealthVault {
     if (v != null) {
       v.fillRange(0, v.length, 0);
       _vek = null;
+    }
+    // (audit sécu M5) Wipe la fingerprint passphrase éphémère en même
+    // temps que le VEK : aucune information dérivée de la passphrase
+    // ne doit survivre au lock.
+    final fp = _passphraseFp;
+    if (fp != null) {
+      fp.fillRange(0, fp.length, 0);
+      _passphraseFp = null;
     }
   }
 

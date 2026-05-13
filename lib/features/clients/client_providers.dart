@@ -4,7 +4,9 @@ import '../../core/providers.dart';
 import '../../domain/client.dart';
 import '../../domain/tag.dart';
 
-/// Free-text query bound to the search bar above the clients list.
+/// Free-text query (déjà débouncée par la search bar côté widget — 250 ms
+/// après la dernière frappe, audit perf H4). Tout downstream peut s'y
+/// abonner sans craindre N requêtes SQL par seconde pendant la saisie.
 final clientsQueryProvider = StateProvider<String>((_) => '');
 
 /// Tag IDs that the user wants to filter by (AND across selected tags).

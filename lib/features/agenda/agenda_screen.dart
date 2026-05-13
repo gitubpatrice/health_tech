@@ -6,6 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../domain/appointment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
 import '../sessions/session_l10n.dart';
 import 'appointment_form_screen.dart';
@@ -84,7 +85,10 @@ class _ListView extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorView(error: e),
       data: (list) => list.isEmpty
-          ? Center(child: Text(l10n.agendaEmpty))
+          ? EmptyState(
+              icon: Icons.event_busy_outlined,
+              title: l10n.agendaEmpty,
+            )
           : _GroupedByDay(appointments: list),
     );
   }
@@ -169,6 +173,8 @@ class _MonthViewState extends ConsumerState<_MonthView> {
               ),
               calendarStyle: CalendarStyle(
                 markersMaxCount: 4,
+                // markerDecoration sert de fallback pour les vues qui ne
+                // passent pas par `calendarBuilders.markerBuilder`.
                 markerDecoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primary,
                   shape: BoxShape.circle,
@@ -182,6 +188,36 @@ class _MonthViewState extends ConsumerState<_MonthView> {
                   shape: BoxShape.circle,
                 ),
               ),
+              calendarBuilders: CalendarBuilders<Appointment>(
+                // (audit UI M7) Couleur du marker par AppointmentStatus :
+                // l'utilisateur perçoit d'un coup d'œil l'état de chaque
+                // RDV de la grille mensuelle. Annulé / no_show = teinte
+                // erreur, planned = primary, confirmed = tertiary,
+                // done = outlineVariant atténué.
+                markerBuilder: (ctx, day, events) {
+                  if (events.isEmpty) return const SizedBox.shrink();
+                  final cs = Theme.of(ctx).colorScheme;
+                  final dots = events.take(4).map((a) {
+                    final color = _markerColorFor(a.status, cs);
+                    return Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    );
+                  }).toList();
+                  return Positioned(
+                    bottom: 1,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: dots,
+                    ),
+                  );
+                },
+              ),
               onDaySelected: (selected, focused) {
                 setState(() {
                   _selected = selected;
@@ -193,7 +229,10 @@ class _MonthViewState extends ConsumerState<_MonthView> {
             const Divider(height: 1),
             Expanded(
               child: dayItems.isEmpty
-                  ? Center(child: Text(l10n.agendaSelectedDayEmpty))
+                  ? EmptyState(
+                      icon: Icons.event_note_outlined,
+                      title: l10n.agendaSelectedDayEmpty,
+                    )
                   : ListView.separated(
                       itemCount: dayItems.length,
                       separatorBuilder: (_, _) => const Divider(height: 1),
@@ -205,6 +244,25 @@ class _MonthViewState extends ConsumerState<_MonthView> {
         );
       },
     );
+  }
+}
+
+/// Mapping (status → couleur du marker) — concentré ici pour rester
+/// cohérent avec `sessions_screen._statusColor` (même palette
+/// sémantique cross-app). Si on ajoute un nouveau status dans
+/// `AppointmentStatus.all`, il tombera ici en `primary` par défaut.
+Color _markerColorFor(String status, ColorScheme cs) {
+  switch (status) {
+    case AppointmentStatus.cancelled:
+    case AppointmentStatus.noShow:
+      return cs.error;
+    case AppointmentStatus.confirmed:
+      return cs.tertiary;
+    case AppointmentStatus.done:
+      return cs.outline;
+    case AppointmentStatus.planned:
+    default:
+      return cs.primary;
   }
 }
 

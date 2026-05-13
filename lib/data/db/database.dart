@@ -28,7 +28,7 @@ class HealthDb extends _$HealthDb {
   HealthDb(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -54,6 +54,15 @@ class HealthDb extends _$HealthDb {
       if (from < 4) {
         await m.addColumn(sessions, sessions.externalCalendarId);
         await m.addColumn(sessions, sessions.externalCalendarEventId);
+      }
+      // v4 → v5 : chiffrement au champ du nom de fichier attachment.
+      // La colonne legacy `filename` reste pour ne pas casser les rows
+      // existantes (lecture rétrocompatible) ; toute nouvelle écriture
+      // pose `filenameEncrypted` et vide `filename`. La migration des
+      // anciennes rows se fait paresseusement à la première lecture
+      // (voir AttachmentRepository._fromRow).
+      if (from < 5) {
+        await m.addColumn(attachments, attachments.filenameEncrypted);
       }
     },
     beforeOpen: (details) async {

@@ -55,6 +55,21 @@
   "actionSearch": "Rechercher",
   "actionRetry": "Réessayer",
 
+  "settingsPanicTitle": "Effacement total (panic)",
+  "settingsPanicSubtitle": "Détruit toutes les données Health Tech sur cet appareil. Irréversible.",
+  "settingsPanicWarning": "Toutes les fiches clients, animaux, séances, rendez-vous, pièces jointes, sauvegardes, identifiants biométriques et clés cryptographiques seront effacés immédiatement et de façon irréversible. Cette action ne peut pas être annulée.",
+  "settingsPanicConfirmToken": "EFFACER",
+  "@settingsPanicConfirmInstruction": {
+    "placeholders": { "token": { "type": "String" } }
+  },
+  "settingsPanicConfirmInstruction": "Pour confirmer, tapez : {token}",
+  "settingsPanicConfirmAction": "Tout effacer",
+  "settingsPanicSuccess": "Toutes les données Health Tech ont été effacées.",
+
+  "backupSamePassphraseTitle": "Passphrase identique au coffre",
+  "backupSamePassphraseBody": "Vous avez choisi la même passphrase que celle qui protège votre coffre. Un attaquant qui obtiendrait ce fichier de sauvegarde n'aurait plus qu'un seul secret à deviner au lieu de deux. Il est recommandé d'utiliser une passphrase de sauvegarde DIFFÉRENTE.",
+  "backupSamePassphraseContinue": "Continuer quand même",
+
   "fieldRequired": "Requis",
   "fieldInvalidEmail": "Email invalide",
   "fieldInvalidPhone": "Téléphone invalide",
@@ -255,6 +270,13 @@
   "appointmentFormReminder": "Rappel (minutes avant)",
   "appointmentFormNotes": "Notes (chiffrées)",
   "appointmentFormAddToCalendar": "Ajouter à l’agenda système",
+  "sessionFormCalendarTitle": "Synchroniser avec votre agenda",
+  "sessionFormCalendarHelperOn": "Un événement sera créé dans votre agenda Android à l’enregistrement — vous serez averti automatiquement.",
+  "sessionFormCalendarHelperOff": "Aucun rappel système ne sera créé. Vous pouvez activer cette option à tout moment.",
+  "sessionFormCalendarHelperLinked": "Cette séance est déjà liée à votre agenda. L’événement sera mis à jour.",
+  "sessionFormCalendarHelperWillRemove": "Cette séance est liée à votre agenda. L’événement sera retiré à l’enregistrement.",
+  "sessionDetailAddToCalendar": "Ajouter à l’agenda",
+  "sessionDetailAddToCalendarFailed": "Impossible d’ajouter à l’agenda.",
   "appointmentFormCalendarPermissionDenied": "Permission agenda refusée.",
   "appointmentFormCalendarMissing": "Aucun agenda accessible en écriture.",
   "appointmentFormSyncedToCalendar": "Ajouté à ton agenda système.",

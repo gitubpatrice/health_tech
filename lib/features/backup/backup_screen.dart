@@ -78,6 +78,41 @@ class _ExportTile extends ConsumerWidget {
     );
     if (passphrase == null || !context.mounted) return;
 
+    // (audit sécu M5) Avertissement si la passphrase de backup est la
+    // même que celle du coffre. Réutilisation ⇒ un attaquant qui acquiert
+    // le `.htbk` n'a plus qu'un seul Argon2id à casser au lieu de deux.
+    // L'utilisateur peut choisir de continuer (cas légitime : terrain
+    // pro avec un manager qui les voit comme un seul secret), mais il
+    // est informé.
+    final samePassphrase = await ref
+        .read(vaultProvider)
+        .matchesUnlockedPassphrase(passphrase);
+    if (!context.mounted) return;
+    if (samePassphrase) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
+          return AlertDialog(
+            icon: Icon(Icons.warning_amber_outlined, color: cs.error),
+            title: Text(l10n.backupSamePassphraseTitle),
+            content: Text(l10n.backupSamePassphraseBody),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.actionCancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(l10n.backupSamePassphraseContinue),
+              ),
+            ],
+          );
+        },
+      );
+      if (proceed != true || !context.mounted) return;
+    }
+
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
       SnackBar(

@@ -395,6 +395,16 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                   onPicked: (d) => setState(() => _end = d),
                 ),
               ),
+              const SizedBox(height: 12),
+              // (UX v1.5) Toggle agenda promu en Card juste sous le créneau
+              // horaire — c'est l'endroit naturel : « ce RDV à telle heure,
+              // je le mets dans mon agenda Android pour être averti ? ».
+              _CalendarSyncCard(
+                value: _addToCalendar,
+                onChanged: (v) => setState(() => _addToCalendar = v),
+                alreadyLinked:
+                    widget.initial?.externalCalendarEventId != null,
+              ),
               const Divider(height: 32),
               SectionTitle(l10n.sessionFormSectionType),
               DropdownButtonFormField<String>(
@@ -574,14 +584,6 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _addToCalendar,
-                onChanged: (v) => setState(() => _addToCalendar = v ?? false),
-                title: Text(l10n.appointmentFormAddToCalendar),
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-              const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: _busy ? null : _save,
                 icon: _busy
@@ -610,4 +612,77 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
       decoration: InputDecoration(labelText: label),
     ),
   );
+}
+
+/// Card de promotion claire pour la synchronisation agenda Android.
+/// Visuellement plus présente qu'une `CheckboxListTile` au fond de la
+/// page : l'utilisateur perçoit l'option dès qu'il a fini de choisir
+/// le créneau. Helper text dynamique selon l'état.
+class _CalendarSyncCard extends StatelessWidget {
+  const _CalendarSyncCard({
+    required this.value,
+    required this.onChanged,
+    required this.alreadyLinked,
+  });
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final bool alreadyLinked;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final helper = value
+        ? (alreadyLinked
+            ? l10n.sessionFormCalendarHelperLinked
+            : l10n.sessionFormCalendarHelperOn)
+        : (alreadyLinked
+            ? l10n.sessionFormCalendarHelperWillRemove
+            : l10n.sessionFormCalendarHelperOff);
+    return Card(
+      margin: EdgeInsets.zero,
+      color: value ? cs.tertiaryContainer : cs.surfaceContainerHighest,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              value: value,
+              onChanged: onChanged,
+              secondary: Icon(
+                value ? Icons.event_available : Icons.event_available_outlined,
+                color: value ? cs.onTertiaryContainer : cs.onSurfaceVariant,
+              ),
+              title: Text(
+                l10n.sessionFormCalendarTitle,
+                style: textTheme.titleSmall?.copyWith(
+                  color:
+                      value ? cs.onTertiaryContainer : cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Text(
+                helper,
+                style: textTheme.bodySmall?.copyWith(
+                  color:
+                      value ? cs.onTertiaryContainer : cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
