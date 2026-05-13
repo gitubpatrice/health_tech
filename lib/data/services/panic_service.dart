@@ -73,9 +73,7 @@ class PanicService {
   /// utilisateur qui re-setup son coffre — pas une fuite.
   /// **NE PAS ajouter** : tokens, derniers IDs, état UI, locales, ID
   /// téléphone — toute info qui permettrait de relier l'avant et l'après.
-  static const Set<String> _kPrefsWhitelist = <String>{
-    'auto_lock.minutes',
-  };
+  static const Set<String> _kPrefsWhitelist = <String>{'auto_lock.minutes'};
 
   /// Exécute la séquence complète. [onStep] est notifié à chaque étape
   /// franchie — utile pour brancher un indicateur visuel ou un log. Une

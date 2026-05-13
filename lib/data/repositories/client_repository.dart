@@ -83,12 +83,9 @@ class ClientRepository {
     // Stream-of-stream : on probe FTS5 une seule fois puis on bascule
     // sur le bon path. Le `asyncExpand` retourne directement le stream
     // ciblé, qui demeure live (Drift met à jour à chaque update).
-    return Stream.fromFuture(_isFtsAvailable())
-        .asyncExpand(
-          (hasFts) => hasFts
-              ? _watchFts(trimmed)
-              : _watchLikeOrAll(trimmed),
-        );
+    return Stream.fromFuture(_isFtsAvailable()).asyncExpand(
+      (hasFts) => hasFts ? _watchFts(trimmed) : _watchLikeOrAll(trimmed),
+    );
   }
 
   /// Pure-LIKE path (fallback). Quand `query == null` retourne TOUT
@@ -121,8 +118,9 @@ class ClientRepository {
   Stream<List<Client>> _watchFts(String query) {
     final ftsExpr = _ftsExpression(query);
     final pattern = '%$query%';
-    return _db.customSelect(
-      '''
+    return _db
+        .customSelect(
+          '''
       SELECT c.* FROM clients c
       WHERE c.deleted_at IS NULL
         AND (
@@ -138,20 +136,22 @@ class ClientRepository {
       ORDER BY c.last_name COLLATE NOCASE ASC,
                c.first_name COLLATE NOCASE ASC
       ''',
-      variables: [
-        Variable<String>(ftsExpr),
-        Variable<String>(pattern),
-        Variable<String>(pattern),
-        Variable<String>(pattern),
-        Variable<String>(pattern),
-      ],
-      readsFrom: {_db.clients},
-    ).watch().map(
-      (rows) => rows
-          .map((row) => _db.clients.map(row.data))
-          .map(_fromRowLight)
-          .toList(growable: false),
-    );
+          variables: [
+            Variable<String>(ftsExpr),
+            Variable<String>(pattern),
+            Variable<String>(pattern),
+            Variable<String>(pattern),
+            Variable<String>(pattern),
+          ],
+          readsFrom: {_db.clients},
+        )
+        .watch()
+        .map(
+          (rows) => rows
+              .map((row) => _db.clients.map(row.data))
+              .map(_fromRowLight)
+              .toList(growable: false),
+        );
   }
 
   /// Probe une seule fois la présence de la table virtuelle `clients_fts`.

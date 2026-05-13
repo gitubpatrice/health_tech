@@ -112,7 +112,8 @@ class SystemCalendarBridge {
     await _ensureTimezones();
     final calendarId = await _resolveCalendarId(appointment.externalCalendarId);
     final userTitle = appointment.title?.trim();
-    final title = (includeUserTitleInCalendar &&
+    final title =
+        (includeUserTitleInCalendar &&
             userTitle != null &&
             userTitle.isNotEmpty)
         ? userTitle

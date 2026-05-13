@@ -20,7 +20,10 @@ void showFloatingSnack(
   final scheme = Theme.of(context).colorScheme;
   final (bg, fg) = switch (tone) {
     SnackTone.error => (scheme.errorContainer, scheme.onErrorContainer),
-    SnackTone.success => (scheme.secondaryContainer, scheme.onSecondaryContainer),
+    SnackTone.success => (
+      scheme.secondaryContainer,
+      scheme.onSecondaryContainer,
+    ),
     SnackTone.info => (scheme.inverseSurface, scheme.onInverseSurface),
   };
   ScaffoldMessenger.of(context).showSnackBar(

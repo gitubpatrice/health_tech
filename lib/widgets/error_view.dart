@@ -73,10 +73,7 @@ class ErrorView extends StatelessWidget {
           children: [
             Icon(Icons.error_outline, size: 48, color: scheme.error),
             const SizedBox(height: 12),
-            Text(
-              localiseError(context, error),
-              textAlign: TextAlign.center,
-            ),
+            Text(localiseError(context, error), textAlign: TextAlign.center),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
               TextButton.icon(

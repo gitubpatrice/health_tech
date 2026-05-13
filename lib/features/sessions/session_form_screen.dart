@@ -95,8 +95,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
     // proposer la sync système. En édition, elle reflète l'état réel :
     // décochée si la séance n'a jamais été liée, cochée sinon. Évite de
     // re-pousser silencieusement un event Calendar non désiré.
-    _addToCalendar =
-        s == null ? true : s.externalCalendarEventId != null;
+    _addToCalendar = s == null ? true : s.externalCalendarEventId != null;
   }
 
   @override
@@ -402,8 +401,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
               _CalendarSyncCard(
                 value: _addToCalendar,
                 onChanged: (v) => setState(() => _addToCalendar = v),
-                alreadyLinked:
-                    widget.initial?.externalCalendarEventId != null,
+                alreadyLinked: widget.initial?.externalCalendarEventId != null,
               ),
               const Divider(height: 32),
               SectionTitle(l10n.sessionFormSectionType),
@@ -636,11 +634,11 @@ class _CalendarSyncCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final helper = value
         ? (alreadyLinked
-            ? l10n.sessionFormCalendarHelperLinked
-            : l10n.sessionFormCalendarHelperOn)
+              ? l10n.sessionFormCalendarHelperLinked
+              : l10n.sessionFormCalendarHelperOn)
         : (alreadyLinked
-            ? l10n.sessionFormCalendarHelperWillRemove
-            : l10n.sessionFormCalendarHelperOff);
+              ? l10n.sessionFormCalendarHelperWillRemove
+              : l10n.sessionFormCalendarHelperOff);
     return Card(
       margin: EdgeInsets.zero,
       color: value ? cs.tertiaryContainer : cs.surfaceContainerHighest,
@@ -665,8 +663,7 @@ class _CalendarSyncCard extends StatelessWidget {
               title: Text(
                 l10n.sessionFormCalendarTitle,
                 style: textTheme.titleSmall?.copyWith(
-                  color:
-                      value ? cs.onTertiaryContainer : cs.onSurfaceVariant,
+                  color: value ? cs.onTertiaryContainer : cs.onSurfaceVariant,
                 ),
               ),
             ),
@@ -675,8 +672,7 @@ class _CalendarSyncCard extends StatelessWidget {
               child: Text(
                 helper,
                 style: textTheme.bodySmall?.copyWith(
-                  color:
-                      value ? cs.onTertiaryContainer : cs.onSurfaceVariant,
+                  color: value ? cs.onTertiaryContainer : cs.onSurfaceVariant,
                 ),
               ),
             ),

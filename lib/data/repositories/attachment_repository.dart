@@ -270,11 +270,14 @@ class AttachmentRepository {
       // Migration paresseuse (audit sécu B1) — best-effort.
       try {
         final ciphertext = await _crypto.encryptString(name);
-        await (_db.update(_db.attachments)..where((t) => t.id.equals(r.id)))
-            .write(AttachmentsCompanion(
-          filename: const Value(''),
-          filenameEncrypted: Value(ciphertext),
-        ));
+        await (_db.update(
+          _db.attachments,
+        )..where((t) => t.id.equals(r.id))).write(
+          AttachmentsCompanion(
+            filename: const Value(''),
+            filenameEncrypted: Value(ciphertext),
+          ),
+        );
       } on Object {
         // ignore : on retentera à la prochaine lecture.
       }

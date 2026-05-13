@@ -365,7 +365,8 @@ class _PanicWipeTile extends ConsumerWidget {
     // double-tap accidentel ou enfant qui joue avec le téléphone.
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => _PanicConfirmDialog(token: l10n.settingsPanicConfirmToken),
+      builder: (ctx) =>
+          _PanicConfirmDialog(token: l10n.settingsPanicConfirmToken),
     );
     if (ok != true || !context.mounted) return;
     final service = ref.read(panicServiceProvider);

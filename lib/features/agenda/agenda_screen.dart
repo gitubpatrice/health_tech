@@ -85,10 +85,7 @@ class _ListView extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorView(error: e),
       data: (list) => list.isEmpty
-          ? EmptyState(
-              icon: Icons.event_busy_outlined,
-              title: l10n.agendaEmpty,
-            )
+          ? EmptyState(icon: Icons.event_busy_outlined, title: l10n.agendaEmpty)
           : _GroupedByDay(appointments: list),
     );
   }
@@ -211,10 +208,7 @@ class _MonthViewState extends ConsumerState<_MonthView> {
                   }).toList();
                   return Positioned(
                     bottom: 1,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: dots,
-                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: dots),
                   );
                 },
               ),
