@@ -91,7 +91,12 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
     _paymentMethod = s?.paymentMethod;
     _motives.addAll(s?.motives ?? const []);
     _improvement = s?.improvementLevel;
-    _addToCalendar = true;
+    // (audit code H1) En création, la case est cochée par défaut pour
+    // proposer la sync système. En édition, elle reflète l'état réel :
+    // décochée si la séance n'a jamais été liée, cochée sinon. Évite de
+    // re-pousser silencieusement un event Calendar non désiré.
+    _addToCalendar =
+        s == null ? true : s.externalCalendarEventId != null;
   }
 
   @override

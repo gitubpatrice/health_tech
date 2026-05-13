@@ -52,16 +52,41 @@ String localiseError(BuildContext context, Object error) {
 /// We render a blank space to avoid flashing a red "error" panel during
 /// that handoff.
 class ErrorView extends StatelessWidget {
-  const ErrorView({super.key, required this.error});
+  const ErrorView({super.key, required this.error, this.onRetry});
   final Object error;
+
+  /// Si fourni, affiche un bouton "Réessayer" sous le message. Idéal
+  /// pour les `AsyncValue.when(error:)` reliés à un provider qu'on peut
+  /// `ref.invalidate(...)` (audit UI H5).
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
     if (error is VaultLockedError) return const SizedBox.shrink();
+    final l10n = AppL10n.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Text(localiseError(context, error), textAlign: TextAlign.center),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: scheme.error),
+            const SizedBox(height: 12),
+            Text(
+              localiseError(context, error),
+              textAlign: TextAlign.center,
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: Text(l10n.actionRetry),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

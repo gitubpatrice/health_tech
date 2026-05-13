@@ -1,7 +1,7 @@
 name: health_tech
 description: "Health Tech - Gestion clients, animaux et seances pour praticiens bien-etre."
 publish_to: 'none'
-version: 1.4.5+1
+version: 1.4.6+1
 
 environment:
   sdk: ^3.11.5
@@ -28,8 +28,6 @@ dependencies:
 
   # Crypto & secure storage
   flutter_secure_storage: ^9.2.2
-  pointycastle: ^3.9.1
-  crypto: ^3.0.6
   cryptography: ^2.7.0
   cryptography_flutter: ^2.3.2
 

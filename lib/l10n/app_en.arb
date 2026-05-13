@@ -53,6 +53,7 @@
   "actionBack": "Back",
   "actionEdit": "Edit",
   "actionSearch": "Search",
+  "actionRetry": "Retry",
 
   "fieldRequired": "Required",
   "fieldInvalidEmail": "Invalid email",

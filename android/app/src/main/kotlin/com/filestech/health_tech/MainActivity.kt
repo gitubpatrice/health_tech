@@ -18,6 +18,16 @@ class MainActivity : FlutterFragmentActivity() {
     private val secureChannel  = "com.filestech.health_tech/secure_window"
     private val calendarChannel = "com.filestech.health_tech/calendar_sync"
 
+    private companion object {
+        // Couleur ocre des événements Health Tech dans le Calendar Android.
+        // Argument ARGB de `CalendarContract.Events.EVENT_COLOR`.
+        const val EVENT_COLOR_OCHRE = 0xFFE07B39.toInt()
+        // _SYNC_ID préfixe qui signe les events posés par Health Tech.
+        // Permet de distinguer nos events des autres au moment du
+        // anti-doublon (cf. findExistingEventId).
+        const val SYNC_ID_PREFIX = "healthtech:"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.setFlags(
@@ -103,6 +113,8 @@ class MainActivity : FlutterFragmentActivity() {
         try {
             val args       = call.arguments as? Map<*, *> ?: throw Exception("args required")
             val calendarId = args["calendarId"] as? String ?: throw Exception("calendarId required")
+            val calendarIdLong = calendarId.toLongOrNull()
+                ?: throw Exception("calendarId not a valid long")
             val eventId    = args["eventId"]    as? String
             val title      = args["title"]      as? String ?: "Health Tech"
             val startMs    = (args["startMs"] as? Long) ?: (args["startMs"] as? Int)?.toLong()
@@ -110,34 +122,109 @@ class MainActivity : FlutterFragmentActivity() {
             val endMs      = (args["endMs"]   as? Long) ?: (args["endMs"]   as? Int)?.toLong()
                              ?: throw Exception("endMs required")
             val timeZone   = args["timeZone"]   as? String ?: "UTC"
+            // ownerId : identifiant logique côté Dart (sessionId ou
+            // appointmentId). Sert à signer l'event via _SYNC_ID pour que
+            // findExistingEventId() reconnaisse uniquement nos events
+            // (audit code H3 — anti-collision data-loss inter-événement).
+            val ownerId    = args["ownerId"]    as? String
+            val syncId     = ownerId?.let { SYNC_ID_PREFIX + it }
 
             val values = ContentValues().apply {
-                put(CalendarContract.Events.CALENDAR_ID,    calendarId.toLong())
+                put(CalendarContract.Events.CALENDAR_ID,    calendarIdLong)
                 put(CalendarContract.Events.TITLE,          title)
                 put(CalendarContract.Events.DTSTART,        startMs)
                 put(CalendarContract.Events.DTEND,          endMs)
                 put(CalendarContract.Events.EVENT_TIMEZONE, timeZone)
-                put(CalendarContract.Events.EVENT_COLOR,    0xFFE07B39.toInt())
+                put(CalendarContract.Events.EVENT_COLOR,    EVENT_COLOR_OCHRE)
+                if (syncId != null) {
+                    // SYNC_DATA1 est un slot 'extra' libre que le provider
+                    // ne touche pas. _SYNC_ID est réservé aux adapters de
+                    // sync (Google). On vise SYNC_DATA1 pour rester safe.
+                    put(CalendarContract.Events.SYNC_DATA1, syncId)
+                }
             }
 
-            val resolvedId = eventId ?: findExistingEventId(calendarId, startMs, endMs)
-            if (resolvedId != null) {
+            // 1) Si eventId connu, tente un update direct.
+            if (eventId != null) {
+                val resolvedLong = eventId.toLongOrNull()
+                if (resolvedLong != null) {
+                    val uri = ContentUris.withAppendedId(
+                        CalendarContract.Events.CONTENT_URI, resolvedLong,
+                    )
+                    val rowsUpdated = contentResolver.update(uri, values, null, null)
+                    if (rowsUpdated > 0) {
+                        result.success(eventId)
+                        return
+                    }
+                    // 0 row affected → event supprimé manuellement par
+                    // l'utilisateur dans Google Calendar. On tombe en
+                    // re-create plutôt que de laisser un id mort en DB.
+                }
+            }
+
+            // 2) Pas d'eventId ou update no-op → cherche un event existant
+            //    signé par notre _SYNC_ID (anti-doublon non-destructif).
+            val byMarker = syncId?.let { findEventBySyncId(calendarIdLong, it) }
+            if (byMarker != null) {
                 val uri = ContentUris.withAppendedId(
-                    CalendarContract.Events.CONTENT_URI, resolvedId.toLong(),
+                    CalendarContract.Events.CONTENT_URI, byMarker,
                 )
                 contentResolver.update(uri, values, null, null)
-                result.success(resolvedId)
-            } else {
-                val uri = contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
-                    ?: throw Exception("ContentResolver.insert returned null")
-                result.success(uri.lastPathSegment)
+                result.success(byMarker.toString())
+                return
             }
+
+            // 3) Compat v1.4.5 : un event posé avant que le marqueur
+            //    SYNC_DATA1 existe peut être ré-attrapé par son créneau.
+            //    On le re-signe au passage pour que la prochaine sync
+            //    passe par le chemin (2) au-dessus.
+            val legacy = findExistingEventByTime(calendarIdLong, startMs, endMs)
+            if (legacy != null) {
+                val uri = ContentUris.withAppendedId(
+                    CalendarContract.Events.CONTENT_URI, legacy,
+                )
+                contentResolver.update(uri, values, null, null)
+                result.success(legacy.toString())
+                return
+            }
+
+            // 4) Sinon, insert.
+            val uri = contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+                ?: throw Exception("ContentResolver.insert returned null")
+            result.success(uri.lastPathSegment)
         } catch (e: Exception) {
             result.error("CALENDAR_ERROR", e.message, null)
         }
     }
 
-    private fun findExistingEventId(calendarId: String, startMs: Long, endMs: Long): String? {
+    /// Cherche un event existant signé par notre marqueur dans SYNC_DATA1.
+    /// Évite la collision sur (calendar_id, dtstart, dtend) si l'utilisateur
+    /// a 2 RDV strictement aux mêmes horaires (audit code H3).
+    private fun findEventBySyncId(calendarIdLong: Long, syncId: String): Long? {
+        val projection = arrayOf(CalendarContract.Events._ID)
+        val sel = "${CalendarContract.Events.CALENDAR_ID} = ? AND " +
+                  "${CalendarContract.Events.SYNC_DATA1} = ? AND " +
+                  "${CalendarContract.Events.DELETED} = 0"
+        contentResolver.query(
+            CalendarContract.Events.CONTENT_URI,
+            projection, sel,
+            arrayOf(calendarIdLong.toString(), syncId),
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) return cursor.getLong(0)
+        }
+        return null
+    }
+
+    /// Compat v1.4.5 : retrouve un event posé avant l'introduction du
+    /// marqueur SYNC_DATA1, identifié uniquement par son créneau.
+    /// N'est consulté qu'après l'échec du chemin marqueur, pour ne pas
+    /// dégénérer en overwrite d'event tiers (audit code H3).
+    private fun findExistingEventByTime(
+        calendarIdLong: Long,
+        startMs: Long,
+        endMs: Long,
+    ): Long? {
         val projection = arrayOf(CalendarContract.Events._ID)
         val sel = "${CalendarContract.Events.CALENDAR_ID} = ? AND " +
                   "${CalendarContract.Events.DTSTART} = ? AND " +
@@ -146,10 +233,10 @@ class MainActivity : FlutterFragmentActivity() {
         contentResolver.query(
             CalendarContract.Events.CONTENT_URI,
             projection, sel,
-            arrayOf(calendarId, startMs.toString(), endMs.toString()),
+            arrayOf(calendarIdLong.toString(), startMs.toString(), endMs.toString()),
             null,
         )?.use { cursor ->
-            if (cursor.moveToFirst()) return cursor.getLong(0).toString()
+            if (cursor.moveToFirst()) return cursor.getLong(0)
         }
         return null
     }
@@ -159,11 +246,16 @@ class MainActivity : FlutterFragmentActivity() {
         try {
             val args    = call.arguments as? Map<*, *> ?: throw Exception("args required")
             val eventId = args["eventId"] as? String ?: throw Exception("eventId required")
+            val eventIdLong = eventId.toLongOrNull()
+                ?: throw Exception("eventId not a valid long")
             val uri     = ContentUris.withAppendedId(
-                CalendarContract.Events.CONTENT_URI, eventId.toLong(),
+                CalendarContract.Events.CONTENT_URI, eventIdLong,
             )
-            contentResolver.delete(uri, null, null)
-            result.success(null)
+            // Remontée du nombre de lignes affectées au Dart pour
+            // permettre un fallback explicite si l'event a déjà été
+            // effacé manuellement par l'utilisateur (audit code H4).
+            val rowsDeleted = contentResolver.delete(uri, null, null)
+            result.success(rowsDeleted)
         } catch (e: Exception) {
             result.error("CALENDAR_ERROR", e.message, null)
         }

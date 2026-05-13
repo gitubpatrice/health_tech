@@ -139,7 +139,10 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       ).showSnackBar(SnackBar(content: Text(l10n.sessionFormDurationInvalid)));
       return;
     }
-    setState(() => _busy = true);
+    // (audit code M1) le passage à _busy=true est entièrement délégué
+    // au `runWithBusy` plus bas, qui le met à true puis le restaure en
+    // finally même en cas d'erreur. Le doublon précédent laissait
+    // _busy=true si la validation échouait tard.
 
     final draft = Appointment(
       id: widget.initial?.id ?? '',
@@ -198,7 +201,12 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
           try {
             final pushed = await bridge.push(saved);
             if (pushed != null) {
-              if (saved.externalCalendarEventId == null) {
+              // S'aligne sur le comportement session_form : toujours
+              // resynchroniser les IDs si le bridge a (re)résolu un
+              // calendarId/eventId différent — sinon un event perdu côté
+              // Calendar ne serait jamais ré-épinglé en DB.
+              if (saved.externalCalendarId != pushed.calendarId ||
+                  saved.externalCalendarEventId != pushed.eventId) {
                 await repo.update(
                   saved.copyWith(
                     externalCalendarId: pushed.calendarId,
@@ -220,7 +228,19 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
             messenger.showSnackBar(
               SnackBar(content: Text(l10n.appointmentFormCalendarMissing)),
             );
+          } on Object {
+            // Tout autre échec calendrier ne doit pas bloquer la navigation.
           }
+        } else if (saved.externalCalendarId != null &&
+            saved.externalCalendarEventId != null) {
+          // Case décochée sur un RDV déjà lié : on retire l'event du
+          // Calendar Android et on efface les IDs en base (audit code H2,
+          // asymétrie session ↔ appointment corrigée).
+          await bridge.remove(
+            calendarId: saved.externalCalendarId!,
+            eventId: saved.externalCalendarEventId!,
+          );
+          await repo.clearCalendarIds(saved.id);
         }
         if (!mounted) return;
         Navigator.of(context).pop(true);
@@ -267,7 +287,12 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
         actions: [
           if (isEdit)
             IconButton(
-              icon: const Icon(Icons.delete_outline),
+              // (audit UI H1) Couleur cs.error pour cohérence sémantique
+              // avec les autres écrans détail (action destructive).
+              icon: Icon(
+                Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error,
+              ),
               tooltip: l10n.actionDelete,
               onPressed: _busy ? null : _delete,
             ),

@@ -82,7 +82,13 @@ class _ClientTabbed extends ConsumerWidget {
               onPressed: () => _edit(context, ref),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline),
+              // (audit UI H1) Cohérence cross-écrans : icône destructive
+              // teinte `cs.error` partout (session_detail, animal_detail,
+              // appointment_form).
+              icon: Icon(
+                Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error,
+              ),
               tooltip: l10n.actionDelete,
               onPressed: () => _delete(context, ref),
             ),

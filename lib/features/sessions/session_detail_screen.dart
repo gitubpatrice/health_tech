@@ -120,16 +120,17 @@ class _SessionBody extends ConsumerWidget {
         appBar: AppBar(
           title: Text(formatDate(session.startAt)),
           actions: [
+            // (audit UI H1) L'export PDF n'est pas destructif ; on garde
+            // la couleur d'icône neutre du theme. Le rouge `cs.error`
+            // est réservé aux actions destructives (suppression).
             IconButton(
-              icon: Icon(
-                Icons.picture_as_pdf_outlined,
-                color: Theme.of(context).colorScheme.error,
-              ),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
               tooltip: l10n.exportPdfButton,
               onPressed: () => _exportPdf(context, ref),
             ),
             IconButton(
               icon: const Icon(Icons.edit_outlined),
+              tooltip: l10n.actionEdit,
               onPressed: () => _edit(context, ref),
             ),
             IconButton(
@@ -137,6 +138,7 @@ class _SessionBody extends ConsumerWidget {
                 Icons.delete_outline,
                 color: Theme.of(context).colorScheme.error,
               ),
+              tooltip: l10n.actionDelete,
               onPressed: () => _delete(context, ref),
             ),
           ],
@@ -173,11 +175,26 @@ class _SessionBody extends ConsumerWidget {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
-            child: Chip(
-              avatar: const Icon(Icons.event_available, size: 16),
-              label: Text(l10n.sessionDetailCalendarSynced),
-              visualDensity: VisualDensity.compact,
-              backgroundColor: const Color(0xFFC8F0C0),
+            child: Builder(
+              builder: (ctx) {
+                // (audit UI C1) Couleur dérivée du ColorScheme courant —
+                // contraste WCAG AA garanti light ET dark mode. Le
+                // précédent `0xFFC8F0C0` hardcoded échouait le ratio en
+                // thème sombre (texte clair sur fond vert pâle).
+                final cs = Theme.of(ctx).colorScheme;
+                return Chip(
+                  avatar: Icon(
+                    Icons.event_available,
+                    size: 16,
+                    color: cs.onTertiaryContainer,
+                  ),
+                  label: Text(l10n.sessionDetailCalendarSynced),
+                  labelStyle: TextStyle(color: cs.onTertiaryContainer),
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: cs.tertiaryContainer,
+                  side: BorderSide(color: cs.outlineVariant),
+                );
+              },
             ),
           ),
         ],
@@ -253,15 +270,23 @@ class _SessionBody extends ConsumerWidget {
     );
   }
 
-  Widget _block(String label, String value) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 4),
-        Text(value),
-      ],
-    ),
+  Widget _block(String label, String value) => Builder(
+    builder: (context) {
+      // (audit UI M8) Token `titleSmall` au lieu d'un `fontWeight.w600`
+      // raw : suit le `textScaleFactor` utilisateur et tout override
+      // global du theme.
+      final textTheme = Theme.of(context).textTheme;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text(value),
+          ],
+        ),
+      );
+    },
   );
 }

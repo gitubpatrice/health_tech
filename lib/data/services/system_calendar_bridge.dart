@@ -30,7 +30,12 @@ class SystemCalendarBridge {
 
   final DeviceCalendarPlugin _plugin;
   static const _ch = MethodChannel('com.filestech.health_tech/calendar_sync');
-  bool _tzReady = false;
+  bool _tzDataLoaded = false;
+
+  /// Titre générique poussé dans le Calendar Android quand on ne souhaite
+  /// pas exposer le nom du client. Toute app installée avec READ_CALENDAR
+  /// pourrait sinon lire un libellé contenant des données personnelles.
+  static const String genericAppointmentTitle = 'Rendez-vous – Health Tech';
 
   // ── Permission ─────────────────────────────────────────────────────────────
 
@@ -44,12 +49,16 @@ class SystemCalendarBridge {
 
   // ── Timezone ───────────────────────────────────────────────────────────────
 
+  /// Charge la base tzdata une seule fois (lourd), mais réapplique la
+  /// timezone système à chaque appel — l'utilisateur peut voyager entre
+  /// deux pushs et le bridge doit refléter sa zone courante (audit code B8).
   Future<void> _ensureTimezones() async {
-    if (_tzReady) return;
-    tzdata.initializeTimeZones();
+    if (!_tzDataLoaded) {
+      tzdata.initializeTimeZones();
+      _tzDataLoaded = true;
+    }
     final name = await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(name));
-    _tzReady = true;
   }
 
   // ── Calendar ID resolution (via ContentResolver MethodChannel) ─────────────
@@ -69,6 +78,7 @@ class SystemCalendarBridge {
     required String title,
     required DateTime startAt,
     required DateTime endAt,
+    required String ownerId,
   }) async {
     final newEventId = await _ch.invokeMethod<String>('createOrUpdateEvent', {
       'calendarId': calendarId,
@@ -77,6 +87,7 @@ class SystemCalendarBridge {
       'startMs': startAt.millisecondsSinceEpoch,
       'endMs': endAt.millisecondsSinceEpoch,
       'timeZone': tz.local.name,
+      'ownerId': ownerId,
     });
     return newEventId == null
         ? null
@@ -86,18 +97,33 @@ class SystemCalendarBridge {
   // ── Public API ─────────────────────────────────────────────────────────────
 
   /// Creates or updates a calendar event for [appointment].
+  ///
+  /// **Anti-fuite latérale (audit sécu H1)** : par défaut, le titre poussé
+  /// dans le Calendar Android est générique. Le titre saisi par
+  /// l'utilisateur peut contenir le nom du client ; le Calendar Android
+  /// est lisible par toute app disposant de READ_CALENDAR (Gmail, Maps,
+  /// agrégateurs, malware opportuniste). On rend ce libellé personnel
+  /// opt-in via [includeUserTitleInCalendar] (par défaut `false`).
   Future<({String calendarId, String eventId})?> push(
-    Appointment appointment,
-  ) async {
+    Appointment appointment, {
+    bool includeUserTitleInCalendar = false,
+  }) async {
     await _ensurePermission();
     await _ensureTimezones();
     final calendarId = await _resolveCalendarId(appointment.externalCalendarId);
+    final userTitle = appointment.title?.trim();
+    final title = (includeUserTitleInCalendar &&
+            userTitle != null &&
+            userTitle.isNotEmpty)
+        ? userTitle
+        : genericAppointmentTitle;
     return _createOrUpdate(
       calendarId: calendarId,
       eventId: appointment.externalCalendarEventId,
-      title: appointment.title ?? 'Health Tech',
+      title: title,
       startAt: appointment.startAt,
       endAt: appointment.endAt,
+      ownerId: appointment.id,
     );
   }
 
@@ -115,23 +141,32 @@ class SystemCalendarBridge {
       title: calendarTitle,
       startAt: session.startAt,
       endAt: session.endAt,
+      ownerId: session.id,
     );
   }
 
   /// Removes a previously created calendar event. Best-effort.
-  Future<void> remove({
+  ///
+  /// Renvoie `true` si une ligne a été effacée côté Calendar Android,
+  /// `false` si l'event était déjà absent (ou si la permission n'est
+  /// pas accordée). Permet au caller de différencier un succès d'un
+  /// no-op silencieux (audit code M3).
+  Future<bool> remove({
     required String calendarId,
     required String eventId,
   }) async {
     try {
       await _ensurePermission();
     } on CalendarPermissionDenied {
-      return;
+      return false;
     }
     try {
-      await _ch.invokeMethod<void>('deleteEvent', {'eventId': eventId});
+      final rowsDeleted = await _ch.invokeMethod<int>('deleteEvent', {
+        'eventId': eventId,
+      });
+      return (rowsDeleted ?? 0) > 0;
     } on Object {
-      // best-effort
+      return false;
     }
   }
 }

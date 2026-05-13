@@ -101,13 +101,32 @@ class _MonthViewState extends ConsumerState<_MonthView> {
   DateTime _focused = DateTime.now();
   DateTime _selected = DateTime.now();
 
-  /// Returns the appointments overlapping the given day.
-  List<Appointment> _eventsFor(List<Appointment> all, DateTime day) {
-    final start = DateTime(day.year, day.month, day.day);
-    final end = start.add(const Duration(days: 1));
-    return all
-        .where((a) => a.startAt.isBefore(end) && a.endAt.isAfter(start))
-        .toList();
+  /// Cache des regroupements par jour. Recalculé uniquement quand la
+  /// référence de la liste source change (Drift renvoie une nouvelle
+  /// instance à chaque émission). Évite le O(N×42) lorsque
+  /// `TableCalendar.eventLoader` est appelé une fois par case visible
+  /// (audit perf C1).
+  List<Appointment>? _cacheSource;
+  Map<DateTime, List<Appointment>> _cacheGroups = const {};
+
+  Map<DateTime, List<Appointment>> _groupsFor(List<Appointment> all) {
+    if (identical(_cacheSource, all)) return _cacheGroups;
+    final groups = <DateTime, List<Appointment>>{};
+    for (final a in all) {
+      // Un RDV peut chevaucher plusieurs jours : on l'indexe sur chaque
+      // jour qu'il touche, du jour de début (00:00) jusqu'au jour de
+      // fin exclusif. Sécurise un futur RDV qui couvrirait une nuit.
+      final dayStart = DateTime(a.startAt.year, a.startAt.month, a.startAt.day);
+      final dayEnd = DateTime(a.endAt.year, a.endAt.month, a.endAt.day);
+      var cursor = dayStart;
+      while (!cursor.isAfter(dayEnd)) {
+        groups.putIfAbsent(cursor, () => <Appointment>[]).add(a);
+        cursor = cursor.add(const Duration(days: 1));
+      }
+    }
+    _cacheSource = all;
+    _cacheGroups = groups;
+    return groups;
   }
 
   @override
@@ -122,7 +141,15 @@ class _MonthViewState extends ConsumerState<_MonthView> {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorView(error: e),
       data: (all) {
-        final dayItems = _eventsFor(all, _selected);
+        final groups = _groupsFor(all);
+        final selectedKey = DateTime(
+          _selected.year,
+          _selected.month,
+          _selected.day,
+        );
+        final dayItems = groups[selectedKey] ?? const <Appointment>[];
+        List<Appointment> eventsFor(DateTime d) =>
+            groups[DateTime(d.year, d.month, d.day)] ?? const <Appointment>[];
         return Column(
           children: [
             TableCalendar<Appointment>(
@@ -130,7 +157,7 @@ class _MonthViewState extends ConsumerState<_MonthView> {
               lastDay: DateTime(now.year + 5, 12, 31),
               focusedDay: _focused,
               selectedDayPredicate: (d) => isSameDay(d, _selected),
-              eventLoader: (d) => _eventsFor(all, d),
+              eventLoader: eventsFor,
               startingDayOfWeek: StartingDayOfWeek.monday,
               calendarFormat: CalendarFormat.month,
               availableCalendarFormats: {

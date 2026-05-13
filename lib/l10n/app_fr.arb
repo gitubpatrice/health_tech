@@ -53,6 +53,7 @@
   "actionBack": "Retour",
   "actionEdit": "Modifier",
   "actionSearch": "Rechercher",
+  "actionRetry": "Réessayer",
 
   "fieldRequired": "Requis",
   "fieldInvalidEmail": "Email invalide",

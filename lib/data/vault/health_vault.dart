@@ -511,16 +511,24 @@ class HealthVault {
     // mémoire (immuable Dart), mais on minimise la fenêtre où une
     // copie supplémentaire (la version isolate) vit.
     final pBytes = Uint8List.fromList(utf8.encode(passphrase));
-    return compute<_KdfInput, Uint8List>(
-      _deriveMasterKeyIsolate,
-      _KdfInput(
-        passphraseBytes: pBytes,
-        salt: salt,
-        memoryKb: memoryKb,
-        iterations: iterations,
-        parallelism: parallelism,
-      ),
-    );
+    try {
+      return await compute<_KdfInput, Uint8List>(
+        _deriveMasterKeyIsolate,
+        _KdfInput(
+          passphraseBytes: pBytes,
+          salt: salt,
+          memoryKb: memoryKb,
+          iterations: iterations,
+          parallelism: parallelism,
+        ),
+      );
+    } finally {
+      // (audit code M5) Le worker isolate wipe SA copie ; côté main
+      // isolate on wipe la nôtre, succès ou throw — y compris si
+      // Argon2id casse sur low-memory. Best-effort : Dart String reste
+      // immuable, mais on supprime la fenêtre Uint8List.
+      pBytes.fillRange(0, pBytes.length, 0);
+    }
   }
 
   Future<Uint8List> _wrapVek(Uint8List vek, Uint8List masterKey) async {

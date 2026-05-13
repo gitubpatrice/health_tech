@@ -39,6 +39,21 @@ class AppointmentRepository {
     return (await getById(a.id))!;
   }
 
+  /// Efface les IDs de synchronisation calendrier après que l'événement
+  /// a été retiré du Calendar Android (case "Ajouter à l'agenda" décochée
+  /// sur un RDV déjà lié). Aligne le comportement Appointment sur celui
+  /// déjà en place côté Session (audit code H2).
+  Future<void> clearCalendarIds(String id) async {
+    final epoch = nowEpochSeconds();
+    await (_db.update(_db.appointments)..where((t) => t.id.equals(id))).write(
+      AppointmentsCompanion(
+        externalCalendarId: const Value(null),
+        externalCalendarEventId: const Value(null),
+        updatedAt: Value(epoch),
+      ),
+    );
+  }
+
   Future<Appointment?> getById(String id) async {
     final row = await (_db.select(
       _db.appointments,

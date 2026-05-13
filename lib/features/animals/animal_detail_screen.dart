@@ -73,10 +73,18 @@ class _AnimalTabbed extends ConsumerWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.edit_outlined),
+              tooltip: l10n.actionEdit,
               onPressed: () => _edit(context, ref),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline),
+              // (audit UI H1) cs.error pour cohérence cross-écrans avec
+              // session_detail / appointment_form. Icône destructive →
+              // rouge sémantique Material 3.
+              icon: Icon(
+                Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              tooltip: l10n.actionDelete,
               onPressed: () => _delete(context, ref),
             ),
           ],

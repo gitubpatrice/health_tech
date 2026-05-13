@@ -69,6 +69,7 @@
 
 | Version | Date | Notes principales |
 |---|---|---|
+| **v1.4.6** | 2026-05-13 | Hardening audit 4 axes : (a) anti-fuite latérale Calendar — titre générique par défaut pour `bridge.push(appointment)`, marqueur `SYNC_DATA1=healthtech:<ownerId>` anti-collision data-loss inter-événement, fallback re-create si update touche 0 rows ; (b) cap dur bundle `.htbk` à l'import (256 MiB envelope + 384 MiB cumulé décompressé, anti zip-bomb) ; (c) `pBytes` Argon2id wipé en `finally` même si le worker throw ; (d) plus de dépendances `pointycastle` / `crypto` (non utilisées) ; (e) symétrie session ↔ appointment sur la case « Ajouter à l'agenda » (uncheck = retire l'event Calendar + efface IDs DB). Refresh timezone à chaque push (anti clock-skew voyage). |
 | **v1.4.5** | 2026-05-12 | Synchronisation agenda automatique à la sauvegarde d'une séance (DB v4). |
 | **v1.4.3** | 2026-05-10 | Page « À propos » (version dynamique via PackageInfo). |
 | **v1.4.2** | 2026-05-10 | Biométrie : suppression de la fenêtre 1h (alignement Bitwarden/Aegis). Cold-start et anti-rollback clock conservés. |

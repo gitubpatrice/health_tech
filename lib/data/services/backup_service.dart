@@ -264,10 +264,25 @@ class BackupService {
   /// Verify a bundle and decrypt its inner archive without yet touching
   /// device storage. The caller can preview the manifest, ask the user to
   /// confirm, then call [applyRestore].
+  /// Plafond dur sur la taille du bundle .htbk à l'import. Évite qu'un
+  /// fichier forgé (zip-bomb, archive géante) ne sature la RAM avant
+  /// même que l'envelope ne soit parsée (audit sécu M9/B12).
+  /// 256 MiB couvre un coffre praticien réaliste (DB + pièces jointes)
+  /// avec une large marge.
+  static const int _kMaxBundleBytes = 256 * 1024 * 1024;
+
+  /// Plafond cumulé sur la taille des entrées ZIP décompressées. Bloque
+  /// les zip-bombs où une envelope chiffrée modeste contient un ZIP
+  /// interne qui se déploie en plusieurs GiB.
+  static const int _kMaxArchiveBytes = 384 * 1024 * 1024;
+
   Future<BackupPreview> previewRestore({
     required Uint8List bundle,
     required String backupPassphrase,
   }) async {
+    if (bundle.length > _kMaxBundleBytes) {
+      throw const ValidationError('backup_too_large', 'bundle');
+    }
     final parsed = _parseEnvelope(bundle);
     final key = await _deriveKey(
       backupPassphrase,
@@ -301,6 +316,17 @@ class BackupService {
       key.fillRange(0, key.length, 0);
     }
     final archive = ZipDecoder().decodeBytes(clear);
+    // Plafond cumulé sur la taille décompressée totale du ZIP interne.
+    // Sans ce garde, un attaquant pourrait emballer une charge minuscule
+    // chiffrée qui se déploie en plusieurs GiB une fois lue depuis
+    // `archive.files` (audit sécu M9/B12).
+    var cumulativeBytes = 0;
+    for (final f in archive.files) {
+      cumulativeBytes += f.size;
+      if (cumulativeBytes > _kMaxArchiveBytes) {
+        throw const ValidationError('backup_too_large', 'archive');
+      }
+    }
     final manifestEntry = archive.findFile('manifest.json');
     if (manifestEntry == null) {
       throw const ValidationError('backup_manifest_missing', 'bundle');
