@@ -349,6 +349,7 @@
   "lockBiometricFallback": "Use passphrase",
   "lockBiometricButton": "Unlock with biometrics",
   "lockBiometricFailed": "Biometric authentication refused.",
+  "lockBiometricEnrollmentChanged": "Android fingerprints changed: biometric unlock was disabled for safety. Unlock with your passphrase, then re-enable biometric in Settings.",
   "errorVaultLockedOut": "Too many attempts. Retry in {seconds} s.",
   "@errorVaultLockedOut": {
     "placeholders": {"seconds": {"type": "int"}}

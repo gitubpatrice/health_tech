@@ -349,6 +349,7 @@
   "lockBiometricFallback": "Utiliser la phrase secrète",
   "lockBiometricButton": "Déverrouiller avec la biométrie",
   "lockBiometricFailed": "Authentification biométrique refusée.",
+  "lockBiometricEnrollmentChanged": "Empreinte Android modifiée : biométrie désactivée par sécurité. Déverrouillez avec votre phrase secrète, puis réactivez la biométrie dans Réglages.",
   "errorVaultLockedOut": "Trop d'essais. Réessaie dans {seconds} s.",
   "@errorVaultLockedOut": {
     "placeholders": {"seconds": {"type": "int"}}

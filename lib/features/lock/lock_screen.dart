@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors.dart';
 import '../../core/providers.dart';
 import '../../data/services/backup_service.dart';
+import '../../data/vault/biometric_channel.dart';
 import '../../l10n/generated/app_localizations.dart';
 
 /// One-shot check: was a restore interrupted on a previous launch?
@@ -187,9 +188,17 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
     if (_biometricAttempted || _busy) return;
     _biometricAttempted = true;
     final status = await ref.read(biometricStatusProvider.future);
-    if (!status.readyForUnlock || !mounted) return;
+    if (!mounted) return;
+    if (!status.readyForUnlock) {
+      // Le provider en cache peut mentir : un précédent essai a pu wiper
+      // les IV/CT côté storage sans que le cache UI ait été notifié.
+      // On force un refresh pour que le bouton disparaisse du prochain build.
+      ref.invalidate(biometricStatusProvider);
+      return;
+    }
     final l10n = AppL10n.of(context);
     setState(() => _busy = true);
+    String? errorMessage;
     try {
       final ok = await ref
           .read(vaultSessionProvider.notifier)
@@ -198,13 +207,46 @@ class _UnlockFormState extends ConsumerState<_UnlockForm> {
             subtitle: l10n.lockBiometricSubtitle,
             negativeButton: l10n.lockBiometricFallback,
           );
-      if (mounted && !ok) {
-        setState(() => _error = l10n.lockBiometricFailed);
+      if (!ok && mounted) {
+        errorMessage = l10n.lockBiometricFailed;
       }
+    } on BiometricFailure catch (e) {
+      // Discrimine les causes pour donner un feedback utile :
+      //  - keyInvalidated : empreintes Android modifiées → la clé
+      //    Keystore est morte, le vault a wipe IV/CT, l'utilisateur
+      //    doit ré-activer la biométrie depuis Réglages après unlock
+      //    passphrase.
+      //  - userCancelled : silencieux, fallback passphrase naturel.
+      //  - autre (no_key, decrypt_failed, hardware) : message générique
+      //    sans fuiter de détails techniques.
+      if (e.keyInvalidated) {
+        errorMessage = l10n.lockBiometricEnrollmentChanged;
+      } else if (!e.userCancelled) {
+        errorMessage = l10n.lockBiometricFailed;
+      }
+    } on VaultNotInitialisedError {
+      // Le wrap biométrique n'existe plus côté storage — invariant
+      // cassé entre le cache provider et la réalité. Message clair,
+      // fallback passphrase.
+      errorMessage = l10n.lockBiometricEnrollmentChanged;
     } on Object {
-      // User cancelled or hardware rejected — fall back silently to passphrase.
+      // Toute autre erreur (PlatformException Android, channel error)
+      // tombe ici. Pas de e.toString() pour ne pas fuiter d'info, juste
+      // un message générique au lieu du silence précédent.
+      errorMessage = l10n.lockBiometricFailed;
+    } finally {
+      // Toujours rafraîchir l'état réel : si disableBiometric() a été
+      // déclenché côté vault (keyInvalidated, decrypt_failed avec wipe),
+      // le bouton doit disparaître. Avant, le cache provider mentait et
+      // le bouton restait affiché → user tap → silence.
+      ref.invalidate(biometricStatusProvider);
     }
-    if (mounted) setState(() => _busy = false);
+    if (mounted) {
+      setState(() {
+        _busy = false;
+        if (errorMessage != null) _error = errorMessage;
+      });
+    }
   }
 
   Future<void> _submit() async {
