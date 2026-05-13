@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/painting.dart' show PaintingBinding;
 import 'package:flutter/services.dart';
@@ -242,15 +243,27 @@ final reportTemplateRepositoryProvider = Provider<ReportTemplateRepository>((
 
 /// Stream live de TOUS les templates (tri système d'abord puis nom).
 /// Alimente l'écran Réglages → Modèles de comptes rendus.
-final allReportTemplatesProvider = StreamProvider<List<ReportTemplate>>((ref) {
-  return ref.watch(reportTemplateRepositoryProvider).watchAll();
-});
+///
+/// **`autoDispose`** (audit v1.6.0 P3) : l'écran Réglages n'est ouvert
+/// que rarement, le stream Drift n'a aucune raison de rester abonné en
+/// arrière-plan pendant que l'utilisateur travaille dans Sessions ou
+/// Agenda. Riverpod ferme l'abonnement dès que plus aucun widget ne
+/// `watch()` ce provider.
+final allReportTemplatesProvider =
+    StreamProvider.autoDispose<List<ReportTemplate>>((ref) {
+      return ref.watch(reportTemplateRepositoryProvider).watchAll();
+    });
 
 /// Stream live filtré par `SessionKind` — alimente le `BottomSheet`
 /// "Insérer un modèle" du formulaire de séance. Les templates `other`
 /// et `distance` sont toujours inclus côté repository.
-final reportTemplatesByKindProvider =
-    StreamProvider.family<List<ReportTemplate>, String>(
+///
+/// **`autoDispose`** (audit v1.6.0 P2) : la BottomSheet du formulaire de
+/// séance est éphémère ; sans autoDispose, chaque ouverture (avec un
+/// `kind` potentiellement différent) accumulerait une subscription Drift
+/// orpheline jusqu'au lock.
+final reportTemplatesByKindProvider = StreamProvider.autoDispose
+    .family<List<ReportTemplate>, String>(
       (ref, kind) =>
           ref.watch(reportTemplateRepositoryProvider).watchByKind(kind),
     );
@@ -258,10 +271,15 @@ final reportTemplatesByKindProvider =
 /// One-shot seed des canevas par défaut au 1er unlock après upgrade vers
 /// v1.6.0. Appelé depuis `HomeShell.initState` (post-frame) ; idempotent :
 /// si la table contient déjà ≥ 1 template `is_system = 1`, ne fait rien.
+///
+/// La `Locale` est lue depuis `PlatformDispatcher.instance.locale` au
+/// moment du seed (post-unlock, post-frame) — audit v1.6.0 C8 / G2 :
+/// avant, `Locale('fr')` codé en dur ignorait les utilisateur·ices EN.
 final reportTemplateSeedProvider = FutureProvider<void>((ref) async {
   final repo = ref.watch(reportTemplateRepositoryProvider);
   final seed = ReportTemplateSeed(repo);
-  await seed.seedDefaultsIfEmpty();
+  final systemLocale = PlatformDispatcher.instance.locale;
+  await seed.seedDefaultsIfEmpty(locale: systemLocale);
 });
 
 /// Live list of every tag in the catalogue, sorted by label. Shared by

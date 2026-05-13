@@ -6,26 +6,33 @@ import '../repositories/report_template_repository.dart';
 /// Sème les 6 templates de comptes rendus par défaut au 1er unlock après
 /// l'upgrade vers v1.6.0 (DB v6).
 ///
-/// **Idempotent** : appelé à chaque unlock, ne fait rien si la table
-/// contient déjà ≥ 1 row `is_system = 1`. Si l'utilisateur supprime un
-/// template système (autorisé), il ne revient pas — c'est le contrat avec
-/// l'utilisateur explicité dans la spec v1.6.0.
+/// **Idempotent + transactionnel** (audit v1.6.0 P1 + F4) : la palette est
+/// insérée en bloc dans une seule transaction Drift, avec un re-check de
+/// `hasAnySystemTemplate()` à l'intérieur de la transaction pour
+/// neutraliser une race au double-unlock (deux invocations concurrentes
+/// du `FutureProvider`). Si l'utilisateur supprime un template système
+/// (autorisé), il ne revient pas — c'est le contrat avec l'utilisateur
+/// explicité dans la spec v1.6.0.
 class ReportTemplateSeed {
   ReportTemplateSeed(this._repo);
 
   final ReportTemplateRepository _repo;
 
   /// Sème la palette par défaut si la table ne contient encore aucun
-  /// template système. Locale par défaut : `fr` (Health Tech est destiné
-  /// au marché FR ; les praticien·nes EN peuvent éditer / supprimer).
+  /// template système. La locale détermine la langue des canevas (FR par
+  /// défaut, EN si `locale.languageCode == 'en'`) — passée par le caller
+  /// depuis `PlatformDispatcher.instance.locale` (audit v1.6.0 C8 / G2 —
+  /// avant : `Locale('fr')` codé en dur dans la signature).
   Future<void> seedDefaultsIfEmpty({Locale locale = const Locale('fr')}) async {
+    // Pré-check rapide hors transaction pour éviter le coût d'ouvrir une
+    // transaction si la table est déjà peuplée (cas dominant après le
+    // 1er unlock). Le re-check à l'intérieur de la transaction côté
+    // `seedSystemDefaults` est la garantie réelle d'idempotence.
     if (await _repo.hasAnySystemTemplate()) return;
     final templates = locale.languageCode == 'en'
         ? _defaultsEn()
         : _defaultsFr();
-    for (final t in templates) {
-      await _repo.create(t);
-    }
+    await _repo.seedSystemDefaults(templates);
   }
 
   // ---------------------------------------------------------------------------

@@ -35,6 +35,15 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
+  /// Cache des destinations de navigation, mémoizé par la `Locale`
+  /// courante (audit v1.6.0 P4). Avant : le `List<AdaptiveDestination>`
+  /// était reconstruit à chaque rebuild du shell — chaque changement
+  /// d'onglet provoquait l'allocation de 6 objets `AdaptiveDestination`
+  /// alors que rien n'avait changé. Maintenant : reconstruit seulement
+  /// si la locale change.
+  Locale? _destinationsLocale;
+  List<AdaptiveDestination>? _destinationsCache;
+
   @override
   void initState() {
     super.initState();
@@ -116,40 +125,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       AgendaScreen(),
       SettingsScreen(),
     ];
-    final destinations = [
-      AdaptiveDestination(
-        icon: Icons.dashboard_outlined,
-        selectedIcon: Icons.dashboard,
-        label: l10n.navHome,
-      ),
-      AdaptiveDestination(
-        icon: Icons.person_outline,
-        selectedIcon: Icons.person,
-        label: l10n.navClients,
-      ),
-      AdaptiveDestination(
-        icon: Icons.pets_outlined,
-        selectedIcon: Icons.pets,
-        label: l10n.navAnimals,
-      ),
-      AdaptiveDestination(
-        icon: Icons.event_note_outlined,
-        selectedIcon: Icons.event_note,
-        label: l10n.navSessions,
-      ),
-      AdaptiveDestination(
-        icon: Icons.calendar_today_outlined,
-        selectedIcon: Icons.calendar_today,
-        label: l10n.navAgenda,
-      ),
-      // Settings: gear icon only, no label — keeps the bottom bar
-      // legible with 6 destinations on a phone.
-      const AdaptiveDestination(
-        icon: Icons.settings_outlined,
-        selectedIcon: Icons.settings,
-        label: '',
-      ),
-    ];
+    final destinations = _resolveDestinations(context, l10n);
 
     return PopScope(
       canPop: index == HomeTab.home,
@@ -189,5 +165,57 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         body: IndexedStack(index: index.index, children: pages),
       ),
     );
+  }
+
+  /// Reconstruit la liste des destinations seulement si la `Locale`
+  /// effective a changé depuis le dernier build. Sinon retourne le cache
+  /// — évite l'allocation de 6 `AdaptiveDestination` à chaque changement
+  /// d'onglet (audit v1.6.0 P4).
+  List<AdaptiveDestination> _resolveDestinations(
+    BuildContext context,
+    AppL10n l10n,
+  ) {
+    final locale = Localizations.localeOf(context);
+    final cached = _destinationsCache;
+    if (cached != null && _destinationsLocale == locale) {
+      return cached;
+    }
+    final fresh = [
+      AdaptiveDestination(
+        icon: Icons.dashboard_outlined,
+        selectedIcon: Icons.dashboard,
+        label: l10n.navHome,
+      ),
+      AdaptiveDestination(
+        icon: Icons.person_outline,
+        selectedIcon: Icons.person,
+        label: l10n.navClients,
+      ),
+      AdaptiveDestination(
+        icon: Icons.pets_outlined,
+        selectedIcon: Icons.pets,
+        label: l10n.navAnimals,
+      ),
+      AdaptiveDestination(
+        icon: Icons.event_note_outlined,
+        selectedIcon: Icons.event_note,
+        label: l10n.navSessions,
+      ),
+      AdaptiveDestination(
+        icon: Icons.calendar_today_outlined,
+        selectedIcon: Icons.calendar_today,
+        label: l10n.navAgenda,
+      ),
+      // Settings: gear icon only, no label — keeps the bottom bar
+      // legible with 6 destinations on a phone.
+      const AdaptiveDestination(
+        icon: Icons.settings_outlined,
+        selectedIcon: Icons.settings,
+        label: '',
+      ),
+    ];
+    _destinationsLocale = locale;
+    _destinationsCache = fresh;
+    return fresh;
   }
 }

@@ -10,6 +10,7 @@ import '../../domain/animal.dart';
 import '../../domain/appointment.dart';
 import '../../domain/attachment.dart';
 import '../../domain/client.dart';
+import '../../domain/lifestyle.dart';
 import '../../domain/session.dart';
 import '../repositories/animal_repository.dart';
 import '../repositories/appointment_repository.dart';
@@ -101,6 +102,19 @@ class RgpdExportService {
     _addJson(archive, 'manifest.json', manifest);
 
     _addJson(archive, 'client.json', _clientToJson(client));
+
+    // (audit v1.6.0 F2) Isolation des PII tierces : le contact d'urgence
+    // (nom + téléphone d'un proche) n'est PAS la donnée du client
+    // signataire, c'est celle d'une personne qui n'a pas consenti à
+    // l'inclusion dans cet export Article 15. On la sort dans un fichier
+    // dédié `third_party_contacts.json` avec une note explicite — le DPO
+    // / régulateur reçoit ainsi un signal clair qu'un traitement séparé
+    // s'impose (suppression / consent dédié / minimisation).
+    final thirdParty = _thirdPartyContactsToJson(client);
+    if (thirdParty != null) {
+      _addJson(archive, 'third_party_contacts.json', thirdParty);
+    }
+
     if (fullAnimals.isNotEmpty) {
       _addJson(
         archive,
@@ -153,29 +167,60 @@ class RgpdExportService {
 
   // -- domain → JSON --------------------------------------------------------
 
-  Map<String, dynamic> _clientToJson(Client c) => {
-    'id': c.id,
-    'civility': c.civility,
-    'last_name': c.lastName,
-    'first_name': c.firstName,
-    'birth_date': c.birthDate?.toIso8601String(),
-    'phone': c.phone,
-    'email': c.email,
-    'profession': c.profession,
-    'address': c.address.toJson(),
-    'business': c.business,
-    'profile': c.profile,
-    'health_notes': c.healthNotes,
-    'notes': c.notes,
-    'consents': {
-      'rgpd_at': c.consents.rgpdAt?.toIso8601String(),
-      'disclaimer_at': c.consents.disclaimerAt?.toIso8601String(),
-      'reminder_at': c.consents.reminderAt?.toIso8601String(),
-      'newsletter_at': c.consents.newsletterAt?.toIso8601String(),
-    },
-    'created_at': c.createdAt?.toIso8601String(),
-    'updated_at': c.updatedAt?.toIso8601String(),
-  };
+  Map<String, dynamic> _clientToJson(Client c) {
+    // (audit v1.6.0 F2) On retire `emergency_contact` du `profile` avant
+    // export : il est sorti dans `third_party_contacts.json` séparé pour
+    // signaler au destinataire qu'il s'agit d'une PII tierce (proche du
+    // client, non signataire RGPD). Reste dans `profile` : `contact_source`,
+    // `lifestyle`, geobiology/em_waves — qui sont des données du client
+    // lui-même.
+    final filteredProfile = <String, dynamic>{
+      for (final e in c.profile.entries)
+        if (e.key != 'emergency_contact') e.key: e.value,
+    };
+    return {
+      'id': c.id,
+      'civility': c.civility,
+      'last_name': c.lastName,
+      'first_name': c.firstName,
+      'birth_date': c.birthDate?.toIso8601String(),
+      'phone': c.phone,
+      'email': c.email,
+      'profession': c.profession,
+      'address': c.address.toJson(),
+      'business': c.business,
+      'profile': filteredProfile,
+      'health_notes': c.healthNotes,
+      'notes': c.notes,
+      'consents': {
+        'rgpd_at': c.consents.rgpdAt?.toIso8601String(),
+        'disclaimer_at': c.consents.disclaimerAt?.toIso8601String(),
+        'reminder_at': c.consents.reminderAt?.toIso8601String(),
+        'newsletter_at': c.consents.newsletterAt?.toIso8601String(),
+      },
+      'created_at': c.createdAt?.toIso8601String(),
+      'updated_at': c.updatedAt?.toIso8601String(),
+    };
+  }
+
+  /// Construit l'export `third_party_contacts.json` ou retourne `null` si
+  /// aucun contact tiers n'est renseigné (auquel cas on n'ajoute pas le
+  /// fichier au ZIP — pas de bruit pour un client sans PII tierce).
+  Map<String, dynamic>? _thirdPartyContactsToJson(Client c) {
+    final name = ClientProfileExt.emergencyContactName(c.profile);
+    final phone = ClientProfileExt.emergencyContactPhone(c.profile);
+    if (name == null && phone == null) return null;
+    return {
+      'note':
+          'This file lists THIRD-PARTY personal data (e.g. emergency '
+          'contact: a relative or close person of the client). These '
+          'individuals are NOT signatories of the GDPR consent attached '
+          'to the client record. Handle separately: minimisation, '
+          'specific consent if required, or removal before further '
+          'processing.',
+      'emergency_contact': {'name': ?name, 'phone': ?phone},
+    };
+  }
 
   Map<String, dynamic> _animalToJson(Animal a) => {
     'id': a.id,

@@ -79,6 +79,12 @@ class HealthDb extends _$HealthDb {
       }
     },
     beforeOpen: (details) async {
+      // **CONTRAT (audit v1.6.0 F5)** : ne JAMAIS écrire dans la DB ici.
+      // `beforeOpen` tourne après que Drift ait flushé `user_version`
+      // (donc la migration `onUpgrade` a commit), mais d'autres caches
+      // dépendent de l'ouverture finie — un `INSERT` ici crée des
+      // sous-transactions imbriquées qui peuvent corrompre WAL si le
+      // process est tué pendant. Garde stricte : que des `PRAGMA`.
       await customStatement('PRAGMA foreign_keys = ON;');
       await customStatement('PRAGMA journal_mode = WAL;');
       // FULL plutôt que NORMAL : pour des données santé, on accepte ~10%

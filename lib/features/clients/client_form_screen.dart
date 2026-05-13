@@ -7,9 +7,11 @@ import '../../domain/client.dart';
 import '../../domain/consent.dart';
 import '../../domain/lifestyle.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/validators.dart';
 import '../../widgets/busy_helpers.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/sensitive_text_field.dart';
+import '../../widgets/snack_utils.dart';
 import '../templates/templates_l10n.dart';
 
 /// Create / edit form for a client. Uses one [Form] with a [GlobalKey] for
@@ -156,9 +158,14 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
     final l10n = AppL10n.of(context);
     if (!_formKey.currentState!.validate()) return;
     if (!_consentRgpd || !_consentDisclaimer) {
-      ScaffoldMessenger.of(
+      // (audit v1.6.0 U2) Pattern `showFloatingSnack` standardisé Files
+      // Tech au lieu de `ScaffoldMessenger.showSnackBar` brut — couleurs
+      // et behavior alignés avec le reste de l'app.
+      showFloatingSnack(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.clientFormConsentRequired)));
+        l10n.clientFormConsentRequired,
+        tone: SnackTone.error,
+      );
       return;
     }
     // (audit M7) `runWithBusy` plus bas gère seul _busy=true/finally.
@@ -413,11 +420,10 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(labelText: l10n.clientFormEmail),
-                validator: (v) {
-                  final s = (v ?? '').trim();
-                  if (s.isEmpty) return null;
-                  return _emailRe.hasMatch(s) ? null : l10n.fieldInvalidEmail;
-                },
+                validator: (v) => HealthValidators.optionalEmail(
+                  v,
+                  errorMessage: l10n.fieldInvalidEmail,
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -501,96 +507,137 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
                 ),
               ),
               if (_kind == ClientKind.individual) ...[
-                const Divider(height: 32),
-                SectionTitle(l10n.clientFormSectionSource),
-                DropdownButtonFormField<String?>(
-                  initialValue: _contactSource,
-                  decoration: InputDecoration(
-                    labelText: l10n.clientFormContactSourceLabel,
-                  ),
-                  items: [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text(l10n.contactSourceUnspecified),
+                const SizedBox(height: 16),
+                // Les 3 sections cosmétiques v1.6.0 sont passées en
+                // `ExpansionTile` repliables : sur téléphone, le
+                // formulaire client compte 16+ sections empilées et la
+                // scroll-fatigue était réelle (audit v1.6.0 U5). Par
+                // défaut, on déplie la section si au moins un champ y est
+                // renseigné — ainsi un client existant ouvert en édition
+                // a ses données visibles d'emblée.
+                _OptionalSection(
+                  title: l10n.clientFormSectionSource,
+                  initiallyExpanded: _contactSource != null,
+                  child: DropdownButtonFormField<String?>(
+                    initialValue: _contactSource,
+                    decoration: InputDecoration(
+                      labelText: l10n.clientFormContactSourceLabel,
                     ),
-                    for (final s in ContactSource.all)
-                      DropdownMenuItem<String?>(
-                        value: s,
-                        child: Text(contactSourceLabel(l10n, s)),
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(l10n.contactSourceUnspecified),
                       ),
-                  ],
-                  onChanged: (v) => setState(() => _contactSource = v),
-                ),
-                const Divider(height: 32),
-                SectionTitle(l10n.clientFormSectionEmergency),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    l10n.clientFormEmergencyHint,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                      for (final s in ContactSource.all)
+                        DropdownMenuItem<String?>(
+                          value: s,
+                          child: Text(contactSourceLabel(l10n, s)),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => _contactSource = v),
                   ),
                 ),
-                TextFormField(
-                  controller: _emergencyName,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    labelText: l10n.clientFormEmergencyName,
+                _OptionalSection(
+                  title: l10n.clientFormSectionEmergency,
+                  initiallyExpanded:
+                      _emergencyName.text.isNotEmpty ||
+                      _emergencyPhone.text.isNotEmpty,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          l10n.clientFormEmergencyHint,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                      // Contact d'urgence = PII tierce (nom + tél d'un
+                      // proche non signataire RGPD). On bloque
+                      // l'autocomplete cloud des claviers tiers via
+                      // `SensitiveTextField` (audit v1.6.0 F7).
+                      SensitiveTextField(
+                        controller: _emergencyName,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          labelText: l10n.clientFormEmergencyName,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SensitiveTextField(
+                        controller: _emergencyPhone,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: l10n.clientFormEmergencyPhone,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _emergencyPhone,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: l10n.clientFormEmergencyPhone,
+                _OptionalSection(
+                  title: l10n.clientFormSectionLifestyle,
+                  initiallyExpanded:
+                      _lifestyleSmoker != null ||
+                      _lifestyleSport != null ||
+                      _lifestyleSleep != null ||
+                      _lifestyleStress != null ||
+                      _lifestyleDiet != null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          l10n.clientFormLifestyleHint,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                      _LifestyleDropdown(
+                        label: l10n.clientFormSmoker,
+                        value: _lifestyleSmoker,
+                        values: Lifestyle.smokerValues,
+                        onChanged: (v) => setState(() => _lifestyleSmoker = v),
+                      ),
+                      const SizedBox(height: 12),
+                      _LifestyleDropdown(
+                        label: l10n.clientFormSport,
+                        value: _lifestyleSport,
+                        values: Lifestyle.sportValues,
+                        onChanged: (v) => setState(() => _lifestyleSport = v),
+                      ),
+                      const SizedBox(height: 12),
+                      _LifestyleDropdown(
+                        label: l10n.clientFormSleep,
+                        value: _lifestyleSleep,
+                        values: Lifestyle.sleepValues,
+                        onChanged: (v) => setState(() => _lifestyleSleep = v),
+                      ),
+                      const SizedBox(height: 12),
+                      _LifestyleDropdown(
+                        label: l10n.clientFormStress,
+                        value: _lifestyleStress,
+                        values: Lifestyle.stressValues,
+                        onChanged: (v) => setState(() => _lifestyleStress = v),
+                      ),
+                      const SizedBox(height: 12),
+                      _LifestyleDropdown(
+                        label: l10n.clientFormDiet,
+                        value: _lifestyleDiet,
+                        values: Lifestyle.dietValues,
+                        onChanged: (v) => setState(() => _lifestyleDiet = v),
+                      ),
+                    ],
                   ),
-                ),
-                const Divider(height: 32),
-                SectionTitle(l10n.clientFormSectionLifestyle),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    l10n.clientFormLifestyleHint,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                _LifestyleDropdown(
-                  label: l10n.clientFormSmoker,
-                  value: _lifestyleSmoker,
-                  values: Lifestyle.smokerValues,
-                  onChanged: (v) => setState(() => _lifestyleSmoker = v),
-                ),
-                const SizedBox(height: 12),
-                _LifestyleDropdown(
-                  label: l10n.clientFormSport,
-                  value: _lifestyleSport,
-                  values: Lifestyle.sportValues,
-                  onChanged: (v) => setState(() => _lifestyleSport = v),
-                ),
-                const SizedBox(height: 12),
-                _LifestyleDropdown(
-                  label: l10n.clientFormSleep,
-                  value: _lifestyleSleep,
-                  values: Lifestyle.sleepValues,
-                  onChanged: (v) => setState(() => _lifestyleSleep = v),
-                ),
-                const SizedBox(height: 12),
-                _LifestyleDropdown(
-                  label: l10n.clientFormStress,
-                  value: _lifestyleStress,
-                  values: Lifestyle.stressValues,
-                  onChanged: (v) => setState(() => _lifestyleStress = v),
-                ),
-                const SizedBox(height: 12),
-                _LifestyleDropdown(
-                  label: l10n.clientFormDiet,
-                  value: _lifestyleDiet,
-                  values: Lifestyle.dietValues,
-                  onChanged: (v) => setState(() => _lifestyleDiet = v),
                 ),
               ],
               const Divider(height: 32),
@@ -641,8 +688,6 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
   }
 }
 
-final RegExp _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
 /// Dropdown réutilisable pour les 5 axes d'hygiène de vie. La 1re option
 /// (`null`) est toujours « Non renseigné » — pas d'imposition d'une
 /// réponse, conformément à la philosophie RGPD du soft consent.
@@ -674,6 +719,40 @@ class _LifestyleDropdown extends StatelessWidget {
           ),
       ],
       onChanged: onChanged,
+    );
+  }
+}
+
+/// Section repliable (`ExpansionTile`) pour les blocs optionnels du
+/// formulaire client (audit v1.6.0 U5). Pas de Material `Card` autour :
+/// on hérite simplement de la divider-séparation pour rester cohérent
+/// avec les `SectionTitle` non-collapsibles plus haut dans le form.
+class _OptionalSection extends StatelessWidget {
+  const _OptionalSection({
+    required this.title,
+    required this.child,
+    required this.initiallyExpanded,
+  });
+
+  final String title;
+  final Widget child;
+  final bool initiallyExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      // Retire la couleur de fond et les ridges du `ExpansionTile` Material
+      // par défaut pour qu'il se fonde dans le ListView de form sans
+      // créer de "carte dans la carte" visuellement bruyante.
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        title: Text(title),
+        initiallyExpanded: initiallyExpanded,
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(bottom: 16),
+        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [child],
+      ),
     );
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers.dart';
 import '../../domain/animal.dart';
@@ -11,7 +11,6 @@ import '../../utils/date_format.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
 import '../../widgets/error_view.dart';
-import '../../widgets/snack_utils.dart';
 import '../attachments/attachments_section.dart';
 import '../sessions/session_form_screen.dart';
 import '../sessions/session_l10n.dart';
@@ -273,17 +272,41 @@ class _SessionsTab extends ConsumerWidget {
 }
 
 /// Card vétérinaire (animal_detail). Affichée seulement si au moins un
-/// champ vétérinaire structuré est renseigné. Tap sur téléphone / email
-/// copie dans le presse-papiers (pattern aligné `about_screen` — pas de
-/// dépendance `url_launcher` ajoutée pour cette release).
+/// champ vétérinaire structuré est renseigné. Tap téléphone → `tel:` /
+/// tap email → `mailto:` via `url_launcher`. Plus de `Clipboard.setData`
+/// (qui exposait les coordonnées du véto aux listeners clavier et à la
+/// notif système Android 12+ — audit v1.6.0 F1).
 class _VetCard extends StatelessWidget {
   const _VetCard({required this.identifiers});
   final AnimalIdentifiers identifiers;
 
-  Future<void> _copy(BuildContext context, String value, String label) async {
-    await Clipboard.setData(ClipboardData(text: value));
-    if (context.mounted) {
-      showSuccessSnack(context, '$label : $value');
+  /// Lance une URI externe (`tel:` ou `mailto:`). Messenger capturé AVANT
+  /// l'await pour éviter le pattern fragile « accès context après gap »
+  /// (audit v1.6.0 P5).
+  Future<void> _launch(
+    BuildContext context,
+    Uri uri,
+    String fallbackErrorLabel,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final cs = Theme.of(context).colorScheme;
+    bool ok;
+    try {
+      ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } on Object {
+      ok = false;
+    }
+    if (!ok) {
+      messenger.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: cs.errorContainer,
+          content: Text(
+            fallbackErrorLabel,
+            style: TextStyle(color: cs.onErrorContainer),
+          ),
+        ),
+      );
     }
   }
 
@@ -304,10 +327,10 @@ class _VetCard extends StatelessWidget {
               context,
               Icons.phone_outlined,
               identifiers.vetPhone,
-              onTap: () => _copy(
+              onTap: () => _launch(
                 context,
-                identifiers.vetPhone,
-                l10n.animalDetailVetCallTooltip,
+                Uri(scheme: 'tel', path: identifiers.vetPhone),
+                l10n.animalDetailVetLaunchFailed,
               ),
               tooltip: l10n.animalDetailVetCallTooltip,
             ),
@@ -316,10 +339,10 @@ class _VetCard extends StatelessWidget {
               context,
               Icons.email_outlined,
               identifiers.vetEmail,
-              onTap: () => _copy(
+              onTap: () => _launch(
                 context,
-                identifiers.vetEmail,
-                l10n.animalDetailVetEmailTooltip,
+                Uri(scheme: 'mailto', path: identifiers.vetEmail),
+                l10n.animalDetailVetLaunchFailed,
               ),
               tooltip: l10n.animalDetailVetEmailTooltip,
             ),
@@ -386,18 +409,37 @@ class _VaccinationCard extends StatelessWidget {
           if (identifiers.nextVaccinationAt != null)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(
-                overdue
-                    ? l10n.animalDetailVaccinationOverdue(
-                        _fmt(identifiers.nextVaccinationAt!),
-                      )
-                    : '${l10n.animalDetailVaccinationNextLabel} : '
-                          '${_fmt(identifiers.nextVaccinationAt!)}',
-                style: TextStyle(
-                  color: overdue ? cs.error : null,
-                  fontWeight: overdue ? FontWeight.w600 : null,
-                ),
-              ),
+              child: overdue
+                  // Mention "À renouveler" : associe une icône
+                  // `warning_amber_outlined` au texte pour ne pas faire
+                  // reposer le signal d'alerte uniquement sur la couleur
+                  // (audit v1.6.0 U10 — a11y daltonien).
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_outlined,
+                          size: 18,
+                          color: cs.error,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            l10n.animalDetailVaccinationOverdue(
+                              _fmt(identifiers.nextVaccinationAt!),
+                            ),
+                            style: TextStyle(
+                              color: cs.error,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      '${l10n.animalDetailVaccinationNextLabel} : '
+                      '${_fmt(identifiers.nextVaccinationAt!)}',
+                    ),
             ),
           if (identifiers.vaccinationNotes.isNotEmpty) ...[
             const SizedBox(height: 8),

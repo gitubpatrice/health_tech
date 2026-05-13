@@ -710,6 +710,10 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
 /// `kind` (les templates `other` / `distance` sont toujours inclus côté
 /// repository pour rester polyvalents). Affiche un état vide explicite
 /// si aucun modèle ne matche.
+///
+/// Utilise `DraggableScrollableSheet` pour qu'avec 20+ templates la liste
+/// soit scrollable proprement sur petit téléphone (audit v1.6.0 U4 — avant :
+/// `Flexible + ListView shrinkWrap` ne montait pas plein écran).
 class _TemplatePickerSheet extends ConsumerWidget {
   const _TemplatePickerSheet({required this.kind});
 
@@ -719,63 +723,74 @@ class _TemplatePickerSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
     final templates = ref.watch(reportTemplatesByKindProvider(kind));
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                l10n.templatesInsertSheetTitle,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            Flexible(
-              child: templates.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.5,
+      minChildSize: 0.25,
+      maxChildSize: 0.9,
+      builder: (context, scrollController) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    l10n.templatesInsertSheetTitle,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
-                error: (e, _) => Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(localiseError(context, e)),
-                ),
-                data: (list) {
-                  if (list.isEmpty) {
-                    return EmptyState(
-                      icon: Icons.description_outlined,
-                      title: l10n.templatesInsertSheetEmpty,
-                    );
-                  }
-                  return ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: list.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (_, i) {
-                      final t = list[i];
-                      return ListTile(
-                        leading: const Icon(Icons.description_outlined),
-                        title: Text(t.name),
-                        subtitle: Text(reportTemplateKindLabel(l10n, t.kind)),
-                        trailing: t.isSystem
-                            ? Icon(
-                                Icons.verified_outlined,
-                                color: Theme.of(context).colorScheme.secondary,
-                              )
-                            : null,
-                        onTap: () => Navigator.of(context).pop(t),
+                Expanded(
+                  child: templates.when(
+                    loading: () => const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                    error: (e, _) => Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(localiseError(context, e)),
+                    ),
+                    data: (list) {
+                      if (list.isEmpty) {
+                        return EmptyState(
+                          icon: Icons.description_outlined,
+                          title: l10n.templatesInsertSheetEmpty,
+                        );
+                      }
+                      return ListView.separated(
+                        controller: scrollController,
+                        itemCount: list.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (_, i) {
+                          final t = list[i];
+                          return ListTile(
+                            leading: const Icon(Icons.description_outlined),
+                            title: Text(t.name),
+                            subtitle: Text(
+                              reportTemplateKindLabel(l10n, t.kind),
+                            ),
+                            trailing: t.isSystem
+                                ? Icon(
+                                    Icons.verified_outlined,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary,
+                                  )
+                                : null,
+                            onTap: () => Navigator.of(context).pop(t),
+                          );
+                        },
                       );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

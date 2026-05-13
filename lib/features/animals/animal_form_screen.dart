@@ -5,6 +5,7 @@ import '../../core/providers.dart';
 import '../../domain/animal.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../utils/validators.dart';
 import '../../widgets/busy_helpers.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/section_title.dart';
@@ -141,17 +142,31 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
     // (audit M7) `runWithBusy` plus bas gère seul la transition
     // _busy=true/finally. Doublon retiré pour éviter un état zombie
     // si une exception échappait entre cet appel et le runWithBusy.
+    //
+    // (audit v1.6.0 F9 / F10) Strip-RTL au save sur les libellés vet :
+    // un `.htbk` forgé pourrait injecter des caractères de contrôle
+    // bidirectionnel pour inverser le rendu visuel. On les retire à la
+    // source, pas seulement à l'affichage. Le cap longueur côté UI
+    // (`maxLength`) tronque déjà la saisie utilisateur ; ici on couvre
+    // aussi le cas où la saisie viendrait d'un import.
+    String cleanShort(String raw, int max) {
+      final cleaned = HealthValidators.cleanShortLabel(raw, max: max);
+      return cleaned ?? '';
+    }
+
     final identifiers = AnimalIdentifiers(
-      chipNumber: _chip.text.trim(),
-      tattooNumber: _tattoo.text.trim(),
-      pedigreeNumber: _pedigree.text.trim(),
+      chipNumber: cleanShort(_chip.text, 64),
+      tattooNumber: cleanShort(_tattoo.text, 64),
+      pedigreeNumber: cleanShort(_pedigree.text, 64),
       lastVaccinationAt: _lastVaccin,
       nextVaccinationAt: _nextVaccin,
-      vaccinationNotes: _vaccinationNotes.text.trim(),
-      vetName: _vetName.text.trim(),
-      vetClinic: _vetClinic.text.trim(),
-      vetPhone: _vetPhone.text.trim(),
-      vetEmail: _vetEmail.text.trim(),
+      vaccinationNotes: HealthValidators.stripBidiOverrides(
+        _vaccinationNotes.text.trim(),
+      ),
+      vetName: cleanShort(_vetName.text, 120),
+      vetClinic: cleanShort(_vetClinic.text, 120),
+      vetPhone: cleanShort(_vetPhone.text, 32),
+      vetEmail: cleanShort(_vetEmail.text, 254),
     );
     final draft = Animal(
       id: widget.initial?.id ?? '',
@@ -335,29 +350,53 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
               ),
               const Divider(height: 32),
               SectionTitle(l10n.animalFormSectionVet),
+              // Tous les champs vétérinaires sont cappés à 120 chars et
+              // strip-RTL au save (cf. `_save()` plus haut) — pas de
+              // gonflement possible via un `.htbk` forgé. L'email est
+              // validé via `HealthValidators.optionalEmail`
+              // (audit v1.6.0 F9).
               TextFormField(
                 controller: _vetName,
-                decoration: InputDecoration(labelText: l10n.animalFormVetName),
+                textCapitalization: TextCapitalization.words,
+                maxLength: 120,
+                decoration: InputDecoration(
+                  labelText: l10n.animalFormVetName,
+                  counterText: '',
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _vetClinic,
                 textCapitalization: TextCapitalization.words,
+                maxLength: 120,
                 decoration: InputDecoration(
                   labelText: l10n.animalFormVetClinic,
+                  counterText: '',
                 ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _vetPhone,
                 keyboardType: TextInputType.phone,
-                decoration: InputDecoration(labelText: l10n.animalFormVetPhone),
+                maxLength: 32,
+                decoration: InputDecoration(
+                  labelText: l10n.animalFormVetPhone,
+                  counterText: '',
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _vetEmail,
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(labelText: l10n.animalFormVetEmail),
+                maxLength: 254,
+                decoration: InputDecoration(
+                  labelText: l10n.animalFormVetEmail,
+                  counterText: '',
+                ),
+                validator: (v) => HealthValidators.optionalEmail(
+                  v,
+                  errorMessage: l10n.fieldInvalidEmail,
+                ),
               ),
               const Divider(height: 32),
               SectionTitle(l10n.animalFormSectionVaccination),

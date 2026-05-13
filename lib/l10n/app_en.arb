@@ -53,6 +53,7 @@
   "actionEdit": "Edit",
   "actionSearch": "Search",
   "actionRetry": "Retry",
+  "actionMore": "More actions",
 
   "settingsPanicTitle": "Erase everything (panic)",
   "settingsPanicSubtitle": "Destroys all Health Tech data on this device. Irreversible.",
@@ -451,12 +452,14 @@
   "templatesScreenTitle": "Report templates",
   "templatesEmpty": "No template yet. Create your first canvas with the + button.",
   "templatesSystemBadge": "System",
+  "templatesSystemBadgeA11yLabel": "System template, shipped with the app",
   "templatesFormTitleNew": "New template",
   "templatesFormTitleEdit": "Edit template",
   "templatesFormName": "Template name",
   "templatesFormKind": "Session type",
   "templatesFormSectionInfo": "Information",
   "templatesFormSectionContent": "Canvas content",
+  "templatesFormContentHint": "Only pre-fill the sections relevant to this session type. You can always complete or amend each session's report.",
   "templatesActionDuplicate": "Duplicate",
   "templatesActionDelete": "Delete",
   "templatesDeleteTitle": "Delete this template?",
@@ -539,5 +542,6 @@
     "placeholders": {"date": {"type": "String"}}
   },
   "animalDetailVetCallTooltip": "Call",
-  "animalDetailVetEmailTooltip": "Send email"
+  "animalDetailVetEmailTooltip": "Send email",
+  "animalDetailVetLaunchFailed": "No app available to open this link."
 }

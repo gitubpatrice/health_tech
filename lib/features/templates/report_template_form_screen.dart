@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../domain/report_template.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../utils/validators.dart';
 import '../../widgets/busy_helpers.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/snack_utils.dart';
@@ -100,13 +101,24 @@ class _ReportTemplateFormScreenState
     final l10n = AppL10n.of(context);
     if (!_formKey.currentState!.validate()) return;
     final repo = ref.read(reportTemplateRepositoryProvider);
+    // (audit v1.6.0 F10) Le nom du template est cappé à 80 caractères et
+    // strip-RTL au save — défense en profondeur contre un `.htbk` forgé
+    // ou un copier-coller depuis une source piégée. Les sections sont
+    // strip-RTL également (un canevas exporté en PDF doit avoir un rendu
+    // visuel non manipulable).
+    final cleanedName = HealthValidators.cleanShortLabel(_name.text, max: 80);
+    if (cleanedName == null) {
+      // En théorie attrapé par le validator du form, mais belt + braces.
+      return;
+    }
     final sections = <String, String>{
       for (final entry in _sectionControllers.entries)
-        if (entry.value.text.trim().isNotEmpty) entry.key: entry.value.text,
+        if (entry.value.text.trim().isNotEmpty)
+          entry.key: HealthValidators.stripBidiOverrides(entry.value.text),
     };
     final draft = ReportTemplate(
       id: widget.initial?.id ?? '',
-      name: _name.text.trim(),
+      name: cleanedName,
       kind: _kind,
       sections: sections,
       isSystem: widget.initial?.isSystem ?? false,
@@ -153,7 +165,15 @@ class _ReportTemplateFormScreenState
               TextFormField(
                 controller: _name,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(labelText: l10n.templatesFormName),
+                // Cap à 80 caractères : au-delà, le rendu liste + bottom-
+                // sheet devient illisible. `HealthValidators.cleanShortLabel`
+                // tronque côté save par sécurité même si la saisie remplit
+                // exactement 80 chars sans `maxLength` (audit v1.6.0 F10).
+                maxLength: 80,
+                decoration: InputDecoration(
+                  labelText: l10n.templatesFormName,
+                  counterText: '',
+                ),
                 validator: (v) => (v ?? '').trim().isEmpty
                     ? l10n.templatesNameRequired
                     : null,
@@ -173,12 +193,21 @@ class _ReportTemplateFormScreenState
               ),
               const Divider(height: 32),
               SectionTitle(l10n.templatesFormSectionContent),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  l10n.templatesFormContentHint,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
               for (final key in _sectionKeys)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: TextFormField(
                     controller: _sectionControllers[key],
-                    maxLines: 4,
+                    maxLines: 6,
                     minLines: 2,
                     keyboardType: TextInputType.multiline,
                     decoration: InputDecoration(

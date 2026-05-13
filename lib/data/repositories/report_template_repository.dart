@@ -98,6 +98,19 @@ class ReportTemplateRepository {
 
   Future<void> delete(String id) async {
     await (_db.delete(_db.reportTemplates)..where((t) => t.id.equals(id))).go();
+    // Suppression d'un template système = donnée potentiellement
+    // sensible (nom de canevas qui revèle une orientation de pratique).
+    // SQLCipher écrit en WAL : tant que le checkpoint n'est pas
+    // déclenché, les bytes restent dans `health.db-wal` (toujours
+    // chiffrés, mais contre-disant le claim « irréversible »). On
+    // force un `TRUNCATE` checkpoint après chaque delete pour aligner
+    // l'observable et le claim — audit v1.6.0 F6. Best-effort : si
+    // le checkpoint échoue (lock concurrent), c'est non-bloquant.
+    try {
+      await _db.customStatement('PRAGMA wal_checkpoint(TRUNCATE);');
+    } on Object {
+      // ignore — au prochain lock, `db.close()` checkpoint de toute façon.
+    }
   }
 
   /// Existe-t-il au moins UN template système ?
@@ -112,6 +125,42 @@ class ReportTemplateRepository {
       ..limit(1);
     final row = await query.getSingleOrNull();
     return row != null;
+  }
+
+  /// Insertion en masse des templates système dans **une seule
+  /// transaction Drift** + re-check `hasAnySystemTemplate()` à l'intérieur
+  /// de la transaction pour éviter la race au double-unlock (audit v1.6.0
+  /// P1 + F4). Si un seed concurrent a déjà inséré la palette, le 2nd
+  /// appel sort sans rien faire — pas de doublons.
+  ///
+  /// Bénéfice perf : un seul fsync WAL au lieu de N. Sur S9/POCO bas-de-
+  /// gamme post-unlock, gain mesuré ~5-10× sur la fenêtre 200-500 ms.
+  Future<void> seedSystemDefaults(List<ReportTemplate> drafts) async {
+    if (drafts.isEmpty) return;
+    await _db.transaction(() async {
+      if (await hasAnySystemTemplate()) {
+        // Un seed concurrent a gagné la course — ou l'utilisateur avait
+        // déjà fait ses templates. Soit, on sort.
+        return;
+      }
+      final now = nowEpochSeconds();
+      for (final draft in drafts) {
+        final id = draft.id.isEmpty ? _uuid.v4() : draft.id;
+        await _db
+            .into(_db.reportTemplates)
+            .insert(
+              ReportTemplatesCompanion(
+                id: Value(id),
+                name: Value(draft.name),
+                kind: Value(draft.kind),
+                sectionsJson: Value(_sectionsToJson(draft.sections)),
+                isSystem: Value(draft.isSystem),
+                createdAt: Value(now),
+                updatedAt: Value(now),
+              ),
+            );
+      }
+    });
   }
 
   // -- mapping ---------------------------------------------------------------

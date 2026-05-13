@@ -6,6 +6,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:health_tech/core/errors.dart';
+import 'package:health_tech/data/db/database.dart';
 import 'package:health_tech/data/services/backup_service.dart';
 import 'package:health_tech/data/services/notification_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -313,6 +314,25 @@ void main() {
             'backup_schema_unsupported',
           ),
         ),
+      );
+    });
+
+    test('CONTRAT — maxSupportedDbUserVersion suit HealthDb.schemaVersion', () {
+      // Garde-fou structurel (audit v1.6.0 G1 / F13). Si quelqu'un
+      // bumpe `HealthDb.schemaVersion` sans bumper aussi
+      // `BackupService._maxSupportedDbUserVersion`, ce test casse
+      // AVANT que la nouvelle release sorte — et un user ne perd pas
+      // sa capacité à restaurer son `.htbk` (régression historique
+      // v1.5.0 → v1.5.4).
+      final db = HealthDb.forTesting();
+      addTearDown(db.close);
+      expect(
+        BackupService.maxSupportedDbUserVersionForTesting,
+        equals(db.schemaVersion),
+        reason:
+            'BackupService._maxSupportedDbUserVersion DOIT être bumpé '
+            'en parallèle de HealthDb.schemaVersion — sinon les .htbk '
+            'produits par cette release ne sont pas restaurables.',
       );
     });
 

@@ -130,8 +130,15 @@ class ClientProfileExt {
   }
 
   // -- Contact source -------------------------------------------------------
-  static String? contactSource(Map<String, dynamic> profile) =>
-      readString(profile, ContactSource.key);
+  /// Lit la source de contact en validant qu'elle appartient à
+  /// [ContactSource.all]. Valeur inconnue → `null` (UI affichera « Non
+  /// renseigné »). Défense contre injection via `.htbk` forgé
+  /// (audit v1.6.0 F8).
+  static String? contactSource(Map<String, dynamic> profile) {
+    final raw = readString(profile, ContactSource.key);
+    if (raw == null) return null;
+    return ContactSource.all.contains(raw) ? raw : null;
+  }
 
   // -- Contact d'urgence ---------------------------------------------------
   /// Bloc imbriqué `{name, phone}` dans `profile.emergency_contact`.
@@ -169,9 +176,27 @@ class ClientProfileExt {
   // -- Hygiène de vie ------------------------------------------------------
   static const String _lifestyleKey = 'lifestyle';
 
+  /// Valeurs autorisées pour chaque axe d'hygiène de vie. Sert de
+  /// whitelist au read pour neutraliser une valeur arbitraire injectée
+  /// dans `profile_json` via un `.htbk` forgé ou un import futur (audit
+  /// v1.6.0 F8). On retourne `null` si la valeur lue n'appartient pas à
+  /// la liste connue — le UI affichera alors « Non renseigné ».
+  static const Map<String, List<String>> _lifestyleAllowed = {
+    Lifestyle.keySmoker: Lifestyle.smokerValues,
+    Lifestyle.keySport: Lifestyle.sportValues,
+    Lifestyle.keySleep: Lifestyle.sleepValues,
+    Lifestyle.keyStress: Lifestyle.stressValues,
+    Lifestyle.keyDiet: Lifestyle.dietValues,
+  };
+
   static String? lifestyle(Map<String, dynamic> profile, String key) {
     final v = profile[_lifestyleKey];
-    return v is Map ? (v[key] as String?) : null;
+    if (v is! Map) return null;
+    final raw = v[key];
+    if (raw is! String || raw.isEmpty) return null;
+    final allowed = _lifestyleAllowed[key];
+    if (allowed == null) return null; // clé inconnue → strip
+    return allowed.contains(raw) ? raw : null;
   }
 
   /// Au moins un dropdown lifestyle est renseigné.

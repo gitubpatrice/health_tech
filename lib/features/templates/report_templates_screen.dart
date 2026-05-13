@@ -170,7 +170,9 @@ class _TemplateTile extends StatelessWidget {
       ),
       subtitle: Text(reportTemplateKindLabel(l10n, template.kind)),
       trailing: PopupMenuButton<_TemplateAction>(
-        tooltip: l10n.actionEdit,
+        // Tooltip aligné sur la sémantique du kebab (3 actions au lieu
+        // d'« Éditer » seul — audit v1.6.0 U3).
+        tooltip: l10n.actionMore,
         icon: const Icon(Icons.more_vert),
         onSelected: (action) {
           switch (action) {
@@ -231,17 +233,27 @@ class _SystemBadge extends StatelessWidget {
   final ColorScheme scheme;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-    decoration: BoxDecoration(
-      color: scheme.secondaryContainer,
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Text(
-      label,
-      style: Theme.of(
-        context,
-      ).textTheme.labelSmall?.copyWith(color: scheme.onSecondaryContainer),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    // Sémantique enrichie pour les lecteurs d'écran : le badge visuel
+    // dit « Système » mais sans contexte ; on annonce explicitement « Modèle
+    // système, fourni par l'application » (audit v1.6.0 U7).
+    return Semantics(
+      label: l10n.templatesSystemBadgeA11yLabel,
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: scheme.secondaryContainer,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: scheme.onSecondaryContainer),
+        ),
+      ),
+    );
+  }
 }

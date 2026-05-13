@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
@@ -370,6 +371,17 @@ class BackupService {
   /// est maintenu en phase. Un test de garde vit dans
   /// `test/services/backup_envelope_test.dart` pour rappeler ce contrat.
   static const int _maxSupportedDbUserVersion = 6;
+
+  /// Exposition test-only de `_maxSupportedDbUserVersion`. Permet à un
+  /// test de garde (`test/services/backup_envelope_test.dart`) de
+  /// comparer **strictement** cette constante à `HealthDb.schemaVersion`
+  /// au build — sans avoir à parser le source (audit v1.6.0 G1 / F13 :
+  /// avant, seul un test « rejette `db_user_version: 99` » existait,
+  /// ce qui ne détecte PAS l'oubli du bump symétrique entre les deux
+  /// fichiers).
+  @visibleForTesting
+  static int get maxSupportedDbUserVersionForTesting =>
+      _maxSupportedDbUserVersion;
 
   /// Replace the device's current vault state with the contents of a
   /// previously-validated [BackupPreview]. The vault MUST be locked: we are

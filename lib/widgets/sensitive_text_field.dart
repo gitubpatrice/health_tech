@@ -32,6 +32,8 @@ class SensitiveTextField extends StatelessWidget {
     this.textInputAction,
     this.onFieldSubmitted,
     this.validator,
+    this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   final TextEditingController controller;
@@ -43,8 +45,24 @@ class SensitiveTextField extends StatelessWidget {
   final ValueChanged<String>? onFieldSubmitted;
   final FormFieldValidator<String>? validator;
 
+  /// Override optionnel du type de clavier. Par défaut : `visiblePassword`
+  /// en mono-ligne (verrouille les claviers tiers en mode passe-texte qui
+  /// désactivent le cloud par convention), `multiline` en multi-ligne.
+  /// Override utile pour les champs téléphone (`TextInputType.phone`) qui
+  /// doivent rester sensibles côté cloud-completion **tout en proposant
+  /// le pavé numérique** — les flags `enableSuggestions` /
+  /// `autocorrect` / `enableIMEPersonalizedLearning` sont toujours posés.
+  final TextInputType? keyboardType;
+
+  /// Capitalisation initiale (utile pour les noms de personne). N'affecte
+  /// pas la sensibilité.
+  final TextCapitalization textCapitalization;
+
   @override
   Widget build(BuildContext context) {
+    final defaultKeyboard = maxLines == null || maxLines! > 1
+        ? TextInputType.multiline
+        : TextInputType.visiblePassword;
     return TextFormField(
       controller: controller,
       decoration: decoration,
@@ -57,9 +75,8 @@ class SensitiveTextField extends StatelessWidget {
       enableSuggestions: false,
       autocorrect: false,
       enableIMEPersonalizedLearning: false,
-      keyboardType: maxLines == null || maxLines! > 1
-          ? TextInputType.multiline
-          : TextInputType.visiblePassword,
+      keyboardType: keyboardType ?? defaultKeyboard,
+      textCapitalization: textCapitalization,
     );
   }
 }

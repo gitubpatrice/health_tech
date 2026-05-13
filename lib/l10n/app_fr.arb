@@ -53,6 +53,7 @@
   "actionEdit": "Modifier",
   "actionSearch": "Rechercher",
   "actionRetry": "Réessayer",
+  "actionMore": "Plus d'actions",
 
   "settingsPanicTitle": "Effacement total (panic)",
   "settingsPanicSubtitle": "Détruit toutes les données Health Tech sur cet appareil. Irréversible.",
@@ -451,12 +452,14 @@
   "templatesScreenTitle": "Modèles de comptes rendus",
   "templatesEmpty": "Aucun modèle. Crée ton premier canevas avec le bouton +.",
   "templatesSystemBadge": "Système",
+  "templatesSystemBadgeA11yLabel": "Modèle système, fourni par l'application",
   "templatesFormTitleNew": "Nouveau modèle",
   "templatesFormTitleEdit": "Modifier le modèle",
   "templatesFormName": "Nom du modèle",
   "templatesFormKind": "Type de séance",
   "templatesFormSectionInfo": "Informations",
   "templatesFormSectionContent": "Contenu du canevas",
+  "templatesFormContentHint": "Pré-remplis seulement les sections utiles à ce type de séance. Tu pourras toujours compléter ou corriger le compte rendu de chaque séance.",
   "templatesActionDuplicate": "Dupliquer",
   "templatesActionDelete": "Supprimer",
   "templatesDeleteTitle": "Supprimer ce modèle ?",
@@ -539,5 +542,6 @@
     "placeholders": {"date": {"type": "String"}}
   },
   "animalDetailVetCallTooltip": "Appeler",
-  "animalDetailVetEmailTooltip": "Envoyer un email"
+  "animalDetailVetEmailTooltip": "Envoyer un email",
+  "animalDetailVetLaunchFailed": "Aucune application disponible pour ouvrir ce lien."
 }
