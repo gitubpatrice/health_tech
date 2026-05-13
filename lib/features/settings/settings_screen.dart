@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/auto_lock.dart';
 import '../../core/providers.dart';
 import '../../data/services/panic_service.dart';
+import '../../data/vault/biometric_channel.dart' show BiometricFailure;
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/ephemeral_cache.dart';
 import '../../widgets/error_view.dart' show localiseError;
@@ -128,6 +129,8 @@ class _BiometricTile extends ConsumerWidget {
     final l10n = AppL10n.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final vault = ref.read(vaultProvider);
+    String? successMessage;
+    String? errorMessage;
     try {
       if (turnOn) {
         await vault.enableBiometric(
@@ -135,24 +138,45 @@ class _BiometricTile extends ConsumerWidget {
           subtitle: l10n.settingsBiometricEnrollSubtitle,
           negativeButton: l10n.actionCancel,
         );
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.settingsBiometricEnabled)),
-        );
+        successMessage = l10n.settingsBiometricEnabled;
       } else {
         await vault.disableBiometric();
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.settingsBiometricDisabled)),
-        );
+        successMessage = l10n.settingsBiometricDisabled;
+      }
+    } on BiometricFailure catch (e) {
+      // (v1.5.6) Discrimine annulation utilisateur (geste back / cancel)
+      // d'un vrai échec hardware/crypto pour donner un feedback explicite.
+      // Avant : tout passait dans le catch générique → message « erreur »
+      // sans nuance, alors qu'une annulation volontaire n'en est pas une.
+      if (e.userCancelled) {
+        errorMessage = l10n.settingsBiometricEnableCanceled;
+      } else if (e.keyInvalidated) {
+        errorMessage = l10n.lockBiometricEnrollmentChanged;
+      } else {
+        errorMessage = l10n.settingsBiometricEnableFailed;
       }
     } on Object catch (e) {
       // Pas de e.toString() : on ne fuite pas les détails (Keystore status,
       // file paths, noms d'erreur crypto) à l'utilisateur. localiseError
       // tombe sur errorGeneric pour les types non-mappés.
       if (context.mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(localiseError(context, e))),
-        );
+        errorMessage = localiseError(context, e);
       }
+    }
+    if (context.mounted) {
+      final cs = Theme.of(context).colorScheme;
+      messenger.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: errorMessage != null ? cs.errorContainer : null,
+          content: Text(
+            successMessage ?? errorMessage ?? '',
+            style: TextStyle(
+              color: errorMessage != null ? cs.onErrorContainer : null,
+            ),
+          ),
+        ),
+      );
     }
     ref.invalidate(biometricStatusProvider);
   }
