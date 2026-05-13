@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../domain/appointment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
 import '../../widgets/breakpoints.dart';
@@ -179,9 +178,9 @@ class _TodayAppointments extends ConsumerWidget {
     final l10n = AppL10n.of(context);
     final stats = ref.watch(homeStatsProvider);
     return stats.maybeWhen(
-      data: (s) => s.appointmentsToday.isEmpty
+      data: (s) => s.entriesToday.isEmpty
           ? _EmptyCard(text: l10n.homeNoAppointmentsToday)
-          : _AppointmentList(items: s.appointmentsToday, showDate: false),
+          : _UpcomingList(items: s.entriesToday, showDate: false),
       orElse: () => _EmptyCard(text: l10n.homeNoAppointmentsToday),
     );
   }
@@ -194,17 +193,20 @@ class _UpcomingAppointments extends ConsumerWidget {
     final l10n = AppL10n.of(context);
     final stats = ref.watch(homeStatsProvider);
     return stats.maybeWhen(
-      data: (s) => s.upcomingAppointments.isEmpty
+      data: (s) => s.upcomingEntries.isEmpty
           ? _EmptyCard(text: l10n.homeNoUpcoming)
-          : _AppointmentList(items: s.upcomingAppointments, showDate: true),
+          : _UpcomingList(items: s.upcomingEntries, showDate: true),
       orElse: () => _EmptyCard(text: l10n.homeNoUpcoming),
     );
   }
 }
 
-class _AppointmentList extends StatelessWidget {
-  const _AppointmentList({required this.items, required this.showDate});
-  final List<Appointment> items;
+/// Rendu unifié RDV + séances pour les panneaux « Aujourd'hui » et
+/// « Prochains ». Icône `event_note` pour les séances (cohérent avec
+/// le shortcut « Nouvelle séance »), `event` pour les RDV.
+class _UpcomingList extends StatelessWidget {
+  const _UpcomingList({required this.items, required this.showDate});
+  final List<UpcomingEntry> items;
   final bool showDate;
   @override
   Widget build(BuildContext context) {
@@ -215,8 +217,12 @@ class _AppointmentList extends StatelessWidget {
           for (var i = 0; i < items.length; i++) ...[
             if (i > 0) const Divider(height: 1),
             ListTile(
-              leading: const Icon(Icons.event),
-              title: Text(items[i].title ?? '—'),
+              leading: Icon(
+                items[i].kind == UpcomingEntry.kindSession
+                    ? Icons.event_note
+                    : Icons.event,
+              ),
+              title: Text(items[i].title),
               subtitle: Text(
                 showDate
                     ? '${formatDate(items[i].startAt)} · '

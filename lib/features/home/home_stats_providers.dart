@@ -8,13 +8,44 @@ import '../../domain/session.dart';
 /// Aggregated metrics shown on the Home dashboard. Streams live off the
 /// existing repositories' Drift queries, so any insert / update / delete
 /// triggers an automatic refresh — no manual invalidation needed.
+/// Entrée unifiée pour les listes « Aujourd'hui » et « Prochains » sur
+/// le dashboard : indistingue le RDV pur (table `appointments`) de la
+/// séance planifiée future (table `sessions`). Les deux ont un créneau
+/// horaire et un statut — c'est tout ce dont la home a besoin pour
+/// rendre une ligne. Le tap pourra par la suite ouvrir l'écran détail
+/// approprié selon [kind].
+class UpcomingEntry {
+  const UpcomingEntry({
+    required this.id,
+    required this.startAt,
+    required this.title,
+    required this.kind,
+  });
+
+  /// Le UUID — sessionId ou appointmentId. Utilisé comme clé stable et
+  /// pour la future navigation au tap.
+  final String id;
+  final DateTime startAt;
+
+  /// Libellé court (titre du RDV ou kind de la séance).
+  final String title;
+
+  /// Source d'origine : `'appointment'` (RDV pur) ou `'session'` (séance
+  /// planifiée future). Permet d'afficher une icône différente et de
+  /// router le tap vers le bon écran de détail.
+  final String kind;
+
+  static const String kindAppointment = 'appointment';
+  static const String kindSession = 'session';
+}
+
 class HomeStats {
   const HomeStats({
     required this.totalClients,
     required this.sessionsThisMonth,
     required this.distinctClientsThisMonth,
-    required this.appointmentsToday,
-    required this.upcomingAppointments,
+    required this.entriesToday,
+    required this.upcomingEntries,
   });
 
   final int totalClients;
@@ -23,12 +54,14 @@ class HomeStats {
   /// Unique client IDs seen this month — useful for "clients vus ce mois-ci".
   final int distinctClientsThisMonth;
 
-  /// Appointments whose start time falls inside today's local-day window,
-  /// already sorted by start time ascending.
-  final List<Appointment> appointmentsToday;
+  /// RDV + séances planifiées dont le créneau tombe dans la journée
+  /// locale courante, fusionnés et triés par heure de début.
+  final List<UpcomingEntry> entriesToday;
 
-  /// Future appointments (>= now), sorted ascending, capped at 5.
-  final List<Appointment> upcomingAppointments;
+  /// RDV + séances planifiées futures (> aujourd'hui), fusionnés, triés
+  /// ascendant, plafonnés à 5. Les séances « done / cancelled / no_show »
+  /// sont exclues par construction côté repo.
+  final List<UpcomingEntry> upcomingEntries;
 }
 
 /// `now` "réactif" — re-fire chaque jour à minuit local pour que les
@@ -74,6 +107,24 @@ final upcomingAppointmentsProvider = StreamProvider<List<Appointment>>((ref) {
   return repo.watchUpcoming(limit: 5);
 });
 
+/// Séances futures planifiées (status planned / confirmed) — utilisé pour
+/// que la home affiche aussi les séances créées via le quick-shortcut
+/// « Nouvelle séance » et planifiées pour le futur.
+final upcomingSessionsProvider = StreamProvider<List<Session>>((ref) {
+  final repo = ref.watch(sessionRepositoryProvider);
+  return repo.watchUpcoming(limit: 10);
+});
+
+/// Séances d'aujourd'hui (toutes statuts, pour pouvoir aussi cocher les
+/// séances `done` du jour côté UI dashboard).
+final sessionsTodayProvider = StreamProvider<List<Session>>((ref) {
+  final repo = ref.watch(sessionRepositoryProvider);
+  final today = ref.watch(_todayBoundaryProvider).valueOrNull;
+  if (today == null) return const Stream.empty();
+  final end = today.add(const Duration(days: 1));
+  return repo.watchInRange(today, end);
+});
+
 /// Live client list (for the total count). Decoupled from search-filtered
 /// `clientsStreamProvider` so the count is unaffected by the user typing
 /// in the clients tab search field.
@@ -85,24 +136,77 @@ final allClientsProvider = StreamProvider<List<Client>>((ref) {
 /// dashboard. Each source is observed as an `AsyncValue`; the combined
 /// state is loading until all four have produced their first value.
 final homeStatsProvider = Provider<AsyncValue<HomeStats>>((ref) {
-  final today = ref.watch(appointmentsTodayProvider);
-  final upcoming = ref.watch(upcomingAppointmentsProvider);
-  final sessions = ref.watch(sessionsThisMonthProvider);
+  final appsToday = ref.watch(appointmentsTodayProvider);
+  final appsUpcoming = ref.watch(upcomingAppointmentsProvider);
+  final sessionsToday = ref.watch(sessionsTodayProvider);
+  final sessionsUpcoming = ref.watch(upcomingSessionsProvider);
+  final monthSessionsAv = ref.watch(sessionsThisMonthProvider);
   final clients = ref.watch(allClientsProvider);
 
-  if (today.isLoading ||
-      upcoming.isLoading ||
-      sessions.isLoading ||
-      clients.isLoading) {
-    return const AsyncValue.loading();
-  }
-  final error =
-      today.error ?? upcoming.error ?? sessions.error ?? clients.error;
-  if (error != null) {
-    return AsyncValue.error(error, StackTrace.current);
+  final all = <AsyncValue<Object>>[
+    appsToday,
+    appsUpcoming,
+    sessionsToday,
+    sessionsUpcoming,
+    monthSessionsAv,
+    clients,
+  ];
+  if (all.any((a) => a.isLoading)) return const AsyncValue.loading();
+  for (final a in all) {
+    final err = a.error;
+    if (err != null) return AsyncValue.error(err, StackTrace.current);
   }
 
-  final monthSessions = sessions.requireValue;
+  final monthSessions = monthSessionsAv.requireValue;
+  final now = DateTime.now();
+
+  // Fusion appointment + session pour les listes home. Les séances `done`
+  // de la journée restent visibles côté « Aujourd'hui » (la praticienne
+  // veut voir ce qu'elle a fait dans la journée même si c'est cloturé),
+  // mais pas côté « Prochains » (filtre status au repo).
+  final entriesTodayBuilder = <UpcomingEntry>[
+    for (final a in appsToday.requireValue)
+      UpcomingEntry(
+        id: a.id,
+        startAt: a.startAt,
+        title: (a.title?.trim().isNotEmpty ?? false)
+            ? a.title!.trim()
+            : a.kind ?? '—',
+        kind: UpcomingEntry.kindAppointment,
+      ),
+    for (final s in sessionsToday.requireValue)
+      UpcomingEntry(
+        id: s.id,
+        startAt: s.startAt,
+        title: s.kind,
+        kind: UpcomingEntry.kindSession,
+      ),
+  ]..sort((a, b) => a.startAt.compareTo(b.startAt));
+
+  final upcomingBuilder = <UpcomingEntry>[
+    for (final a in appsUpcoming.requireValue)
+      UpcomingEntry(
+        id: a.id,
+        startAt: a.startAt,
+        title: (a.title?.trim().isNotEmpty ?? false)
+            ? a.title!.trim()
+            : a.kind ?? '—',
+        kind: UpcomingEntry.kindAppointment,
+      ),
+    for (final s in sessionsUpcoming.requireValue)
+      // Une séance peut tomber aujourd'hui ET être future (créée à
+      // l'instant pour ce soir). On dédupe côté « Prochains » en gardant
+      // strictement les créneaux postérieurs à minuit demain — sinon le
+      // même item apparaîtrait dans « Aujourd'hui » ET dans « Prochains ».
+      if (s.startAt.isAfter(DateTime(now.year, now.month, now.day, 23, 59, 59)))
+        UpcomingEntry(
+          id: s.id,
+          startAt: s.startAt,
+          title: s.kind,
+          kind: UpcomingEntry.kindSession,
+        ),
+  ]..sort((a, b) => a.startAt.compareTo(b.startAt));
+
   return AsyncValue.data(
     HomeStats(
       totalClients: clients.requireValue.length,
@@ -111,8 +215,8 @@ final homeStatsProvider = Provider<AsyncValue<HomeStats>>((ref) {
           .map((s) => s.clientId)
           .toSet()
           .length,
-      appointmentsToday: today.requireValue,
-      upcomingAppointments: upcoming.requireValue,
+      entriesToday: entriesTodayBuilder,
+      upcomingEntries: upcomingBuilder.take(5).toList(growable: false),
     ),
   );
 });

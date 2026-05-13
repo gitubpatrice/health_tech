@@ -76,6 +76,27 @@ class SessionRepository {
     );
   }
 
+  /// Séances futures non-clôturées (statut `planned` ou `confirmed`) à
+  /// partir de `now`. Utilisé par le dashboard pour fusionner avec les
+  /// rendez-vous classiques dans la liste « Prochains rendez-vous » —
+  /// une séance créée pour la semaine prochaine doit y apparaître au
+  /// même titre qu'un appointment.
+  Stream<List<Session>> watchUpcoming({int limit = 10}) {
+    final nowS = nowEpochSeconds();
+    final select = _db.select(_db.sessions)
+      ..where(
+        (t) =>
+            t.deletedAt.isNull() &
+            t.startAt.isBiggerOrEqualValue(nowS) &
+            t.status.isIn([SessionStatus.planned, SessionStatus.confirmed]),
+      )
+      ..orderBy([(t) => OrderingTerm.asc(t.startAt)])
+      ..limit(limit);
+    return select.watch().map(
+      (rows) => rows.map(_fromRowLight).toList(growable: false),
+    );
+  }
+
   Stream<List<Session>> watchInRange(DateTime from, DateTime to) {
     final fromS = dateToSeconds(from);
     final toS = dateToSeconds(to);
