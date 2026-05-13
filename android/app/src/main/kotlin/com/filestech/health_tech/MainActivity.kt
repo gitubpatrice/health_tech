@@ -123,9 +123,13 @@ class MainActivity : FlutterFragmentActivity() {
                              ?: throw Exception("endMs required")
             val timeZone   = args["timeZone"]   as? String ?: "UTC"
             // ownerId : identifiant logique côté Dart (sessionId ou
-            // appointmentId). Sert à signer l'event via _SYNC_ID pour que
-            // findExistingEventId() reconnaisse uniquement nos events
-            // (audit code H3 — anti-collision data-loss inter-événement).
+            // appointmentId). Sert à signer l'event via CUSTOM_APP_URI
+            // pour que findEventBySyncId() reconnaisse uniquement nos
+            // events (audit code H3 — anti-collision data-loss
+            // inter-événement). On utilise CUSTOM_APP_PACKAGE + CUSTOM_APP_URI
+            // car les colonnes SYNC_DATA1-10 sont RESERVÉES aux sync adapters
+            // par Android — un app standard se prend une IllegalArgumentException
+            // au insert. CUSTOM_APP_* est explicitement prévu pour les apps tierces.
             val ownerId    = args["ownerId"]    as? String
             val syncId     = ownerId?.let { SYNC_ID_PREFIX + it }
 
@@ -137,10 +141,8 @@ class MainActivity : FlutterFragmentActivity() {
                 put(CalendarContract.Events.EVENT_TIMEZONE, timeZone)
                 put(CalendarContract.Events.EVENT_COLOR,    EVENT_COLOR_OCHRE)
                 if (syncId != null) {
-                    // SYNC_DATA1 est un slot 'extra' libre que le provider
-                    // ne touche pas. _SYNC_ID est réservé aux adapters de
-                    // sync (Google). On vise SYNC_DATA1 pour rester safe.
-                    put(CalendarContract.Events.SYNC_DATA1, syncId)
+                    put(CalendarContract.Events.CUSTOM_APP_PACKAGE, packageName)
+                    put(CalendarContract.Events.CUSTOM_APP_URI,     syncId)
                 }
             }
 
@@ -174,10 +176,10 @@ class MainActivity : FlutterFragmentActivity() {
                 return
             }
 
-            // 3) Compat v1.4.5 : un event posé avant que le marqueur
-            //    SYNC_DATA1 existe peut être ré-attrapé par son créneau.
-            //    On le re-signe au passage pour que la prochaine sync
-            //    passe par le chemin (2) au-dessus.
+            // 3) Compat v1.4.5 / v1.5.0 : un event posé avant que le
+            //    marqueur CUSTOM_APP_URI existe peut être ré-attrapé par
+            //    son créneau. On le re-signe au passage pour que la
+            //    prochaine sync passe par le chemin (2) au-dessus.
             val legacy = findExistingEventByTime(calendarIdLong, startMs, endMs)
             if (legacy != null) {
                 val uri = ContentUris.withAppendedId(
@@ -197,18 +199,20 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    /// Cherche un event existant signé par notre marqueur dans SYNC_DATA1.
-    /// Évite la collision sur (calendar_id, dtstart, dtend) si l'utilisateur
-    /// a 2 RDV strictement aux mêmes horaires (audit code H3).
+    /// Cherche un event existant signé par notre marqueur dans
+    /// CUSTOM_APP_URI + CUSTOM_APP_PACKAGE. Évite la collision sur
+    /// (calendar_id, dtstart, dtend) si l'utilisateur a 2 RDV strictement
+    /// aux mêmes horaires (audit code H3).
     private fun findEventBySyncId(calendarIdLong: Long, syncId: String): Long? {
         val projection = arrayOf(CalendarContract.Events._ID)
         val sel = "${CalendarContract.Events.CALENDAR_ID} = ? AND " +
-                  "${CalendarContract.Events.SYNC_DATA1} = ? AND " +
+                  "${CalendarContract.Events.CUSTOM_APP_PACKAGE} = ? AND " +
+                  "${CalendarContract.Events.CUSTOM_APP_URI} = ? AND " +
                   "${CalendarContract.Events.DELETED} = 0"
         contentResolver.query(
             CalendarContract.Events.CONTENT_URI,
             projection, sel,
-            arrayOf(calendarIdLong.toString(), syncId),
+            arrayOf(calendarIdLong.toString(), packageName, syncId),
             null,
         )?.use { cursor ->
             if (cursor.moveToFirst()) return cursor.getLong(0)

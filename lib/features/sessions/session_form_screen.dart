@@ -243,7 +243,14 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
               SnackBar(content: Text(l10n.appointmentFormCalendarMissing)),
             );
           } on Object {
-            // Tout autre échec calendrier ne bloque pas la navigation.
+            // Tout autre échec calendrier (PlatformException du
+            // ContentProvider, OEM quirks Samsung, etc.) ne bloque pas
+            // la navigation mais on prévient l'utilisateur — sinon il
+            // croit que la sync a réussi alors que rien n'est dans
+            // l'agenda Android.
+            messenger.showSnackBar(
+              SnackBar(content: Text(l10n.sessionDetailAddToCalendarFailed)),
+            );
           }
         } else if (saved.externalCalendarId != null &&
             saved.externalCalendarEventId != null) {
