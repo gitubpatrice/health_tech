@@ -130,6 +130,27 @@ class _SessionBody extends ConsumerWidget {
     }
   }
 
+  /// Retire l'événement du Calendar Android **sans supprimer la séance**.
+  /// Action « décocher la sync » disponible quand la séance est déjà
+  /// liée — pendant Pareto opposite d'_addToCalendar.
+  Future<void> _removeFromCalendar(BuildContext context, WidgetRef ref) async {
+    final l10n = AppL10n.of(context);
+    final calendarId = session.externalCalendarId;
+    final eventId = session.externalCalendarEventId;
+    if (calendarId == null || eventId == null) return;
+    final bridge = ref.read(systemCalendarBridgeProvider);
+    final repo = ref.read(sessionRepositoryProvider);
+    await bridge.remove(calendarId: calendarId, eventId: eventId);
+    await repo.clearCalendarIds(session.id);
+    if (!context.mounted) return;
+    ref.invalidate(selectedSessionProvider);
+    showFloatingSnack(
+      context,
+      l10n.sessionDetailRemovedFromCalendar,
+      tone: SnackTone.success,
+    );
+  }
+
   Future<void> _exportPdf(BuildContext context, WidgetRef ref) async {
     final l10n = AppL10n.of(context);
     final repo = ref.read(clientRepositoryProvider);
@@ -231,29 +252,72 @@ class _SessionBody extends ConsumerWidget {
       children: [
         TagEditor(ownerType: TagOwner.session, ownerId: session.id),
         const SizedBox(height: 8),
-        // (UX v1.5) Affichage stateful agenda : si lié → badge ; sinon →
-        // bouton one-tap qui pousse l'event Calendar Android sans
-        // rouvrir le formulaire.
+        // (UX v1.5.2) Affichage stateful agenda : si lié → badge ✓ + menu
+        // kebab (modifier / retirer de l'agenda) ; sinon → bouton one-tap
+        // « Ajouter à l'agenda ». Les actions liées au calendrier sont
+        // accessibles directement depuis cet emplacement sans passer
+        // par les icônes de l'AppBar.
         Align(
           alignment: Alignment.centerLeft,
           child: session.externalCalendarEventId != null
-              ? Builder(
-                  builder: (ctx) {
-                    // (audit UI C1) Couleur dérivée du ColorScheme
-                    // courant — contraste WCAG AA garanti light ET dark
-                    // mode (le précédent 0xFFC8F0C0 échouait en dark).
+              ? Consumer(
+                  builder: (ctx, refInner, _) {
                     final cs = Theme.of(ctx).colorScheme;
-                    return Chip(
-                      avatar: Icon(
-                        Icons.event_available,
-                        size: 16,
-                        color: cs.onTertiaryContainer,
-                      ),
-                      label: Text(l10n.sessionDetailCalendarSynced),
-                      labelStyle: TextStyle(color: cs.onTertiaryContainer),
-                      visualDensity: VisualDensity.compact,
-                      backgroundColor: cs.tertiaryContainer,
-                      side: BorderSide(color: cs.outlineVariant),
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Chip(
+                          avatar: Icon(
+                            Icons.event_available,
+                            size: 16,
+                            color: cs.onTertiaryContainer,
+                          ),
+                          label: Text(l10n.sessionDetailCalendarSynced),
+                          labelStyle: TextStyle(color: cs.onTertiaryContainer),
+                          visualDensity: VisualDensity.compact,
+                          backgroundColor: cs.tertiaryContainer,
+                          side: BorderSide(color: cs.outlineVariant),
+                        ),
+                        const SizedBox(width: 4),
+                        PopupMenuButton<_CalendarAction>(
+                          tooltip: l10n.sessionDetailCalendarMenuTooltip,
+                          icon: const Icon(Icons.more_vert, size: 20),
+                          onSelected: (action) async {
+                            switch (action) {
+                              case _CalendarAction.edit:
+                                await _edit(ctx, refInner);
+                              case _CalendarAction.remove:
+                                await _removeFromCalendar(ctx, refInner);
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            PopupMenuItem<_CalendarAction>(
+                              value: _CalendarAction.edit,
+                              child: ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(Icons.edit_outlined),
+                                title: Text(
+                                  l10n.sessionDetailEditFromCalendarMenu,
+                                ),
+                              ),
+                            ),
+                            PopupMenuItem<_CalendarAction>(
+                              value: _CalendarAction.remove,
+                              child: ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: Icon(
+                                  Icons.event_busy_outlined,
+                                  color: cs.error,
+                                ),
+                                title: Text(
+                                  l10n.sessionDetailRemoveFromCalendar,
+                                  style: TextStyle(color: cs.error),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     );
                   },
                 )
@@ -357,3 +421,6 @@ class _SessionBody extends ConsumerWidget {
     },
   );
 }
+
+/// Actions disponibles dans le kebab menu à côté du badge agenda.
+enum _CalendarAction { edit, remove }
