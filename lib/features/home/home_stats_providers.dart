@@ -152,9 +152,14 @@ final homeStatsProvider = Provider<AsyncValue<HomeStats>>((ref) {
     clients,
   ];
   if (all.any((a) => a.isLoading)) return const AsyncValue.loading();
+  // (audit M10) Propage la VRAIE stackTrace d'origine du throw plutôt
+  // qu'un `StackTrace.current` capturé à l'endroit du test — un crash
+  // report ne pointait sinon que vers cette ligne, perdant le contexte
+  // de la requête Drift fautive.
   for (final a in all) {
-    final err = a.error;
-    if (err != null) return AsyncValue.error(err, StackTrace.current);
+    if (a.hasError) {
+      return AsyncValue.error(a.error!, a.stackTrace ?? StackTrace.current);
+    }
   }
 
   final monthSessions = monthSessionsAv.requireValue;

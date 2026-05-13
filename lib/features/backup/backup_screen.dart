@@ -290,101 +290,126 @@ Future<String?> _askPassphrase(
   required String title,
   required String hint,
   required bool confirm,
-}) async {
-  final l10n = AppL10n.of(context);
-  final ctrl = TextEditingController();
-  final ctrlConfirm = TextEditingController();
-  String? error;
-  // Per-field visibility toggles, mirroring the lock screen UX so users
-  // can verify what they typed before committing — critical with a
-  // 12-character passphrase typed on a phone keyboard.
-  var obscured = true;
-  var obscuredConfirm = true;
-
+}) {
+  // (audit H1) StatefulWidget plutôt que `StatefulBuilder + closures`,
+  // pour disposer proprement les deux TextEditingController quand le
+  // dialog se ferme — sinon export/restore répétés fuitent un controller
+  // à chaque ouverture.
   return showDialog<String>(
     context: context,
-    builder: (ctx) {
-      return StatefulBuilder(
-        builder: (ctx, setState) {
-          void submit() {
-            final v = ctrl.text;
-            if (v.length < 14) {
-              setState(() => error = l10n.backupPassphraseTooShort);
-              return;
-            }
-            if (confirm && v != ctrlConfirm.text) {
-              setState(() => error = l10n.backupPassphraseMismatch);
-              return;
-            }
-            Navigator.of(ctx).pop(v);
-          }
-
-          Widget visibility({
-            required bool current,
-            required VoidCallback onPressed,
-          }) {
-            return IconButton(
-              icon: Icon(
-                current
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-              ),
-              tooltip: current
-                  ? l10n.lockShowPassphrase
-                  : l10n.lockHidePassphrase,
-              onPressed: onPressed,
-            );
-          }
-
-          return AlertDialog(
-            title: Text(title),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(hint),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: ctrl,
-                  obscureText: obscured,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: l10n.backupPassphraseLabel,
-                    errorText: error,
-                    suffixIcon: visibility(
-                      current: obscured,
-                      onPressed: () => setState(() => obscured = !obscured),
-                    ),
-                  ),
-                ),
-                if (confirm) ...[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: ctrlConfirm,
-                    obscureText: obscuredConfirm,
-                    decoration: InputDecoration(
-                      labelText: l10n.backupPassphraseConfirmLabel,
-                      suffixIcon: visibility(
-                        current: obscuredConfirm,
-                        onPressed: () =>
-                            setState(() => obscuredConfirm = !obscuredConfirm),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: Text(l10n.actionCancel),
-              ),
-              FilledButton(onPressed: submit, child: Text(l10n.actionContinue)),
-            ],
-          );
-        },
-      );
-    },
+    builder: (ctx) =>
+        _PassphraseDialog(title: title, hint: hint, confirm: confirm),
   );
+}
+
+class _PassphraseDialog extends StatefulWidget {
+  const _PassphraseDialog({
+    required this.title,
+    required this.hint,
+    required this.confirm,
+  });
+  final String title;
+  final String hint;
+  final bool confirm;
+
+  @override
+  State<_PassphraseDialog> createState() => _PassphraseDialogState();
+}
+
+class _PassphraseDialogState extends State<_PassphraseDialog> {
+  final TextEditingController _ctrl = TextEditingController();
+  final TextEditingController _ctrlConfirm = TextEditingController();
+  String? _error;
+  // Per-field visibility toggles, mirroring the lock screen UX so users
+  // can verify what they typed before committing — critical with a
+  // 14-character passphrase typed on a phone keyboard.
+  bool _obscured = true;
+  bool _obscuredConfirm = true;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _ctrlConfirm.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final l10n = AppL10n.of(context);
+    final v = _ctrl.text;
+    if (v.length < 14) {
+      setState(() => _error = l10n.backupPassphraseTooShort);
+      return;
+    }
+    if (widget.confirm && v != _ctrlConfirm.text) {
+      setState(() => _error = l10n.backupPassphraseMismatch);
+      return;
+    }
+    Navigator.of(context).pop(v);
+  }
+
+  Widget _visibilityIcon({
+    required bool current,
+    required VoidCallback onPressed,
+  }) {
+    final l10n = AppL10n.of(context);
+    return IconButton(
+      icon: Icon(
+        current ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+      ),
+      tooltip: current ? l10n.lockShowPassphrase : l10n.lockHidePassphrase,
+      onPressed: onPressed,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(widget.hint),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _ctrl,
+            obscureText: _obscured,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: l10n.backupPassphraseLabel,
+              errorText: _error,
+              suffixIcon: _visibilityIcon(
+                current: _obscured,
+                onPressed: () => setState(() => _obscured = !_obscured),
+              ),
+            ),
+          ),
+          if (widget.confirm) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _ctrlConfirm,
+              obscureText: _obscuredConfirm,
+              decoration: InputDecoration(
+                labelText: l10n.backupPassphraseConfirmLabel,
+                suffixIcon: _visibilityIcon(
+                  current: _obscuredConfirm,
+                  onPressed: () =>
+                      setState(() => _obscuredConfirm = !_obscuredConfirm),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.actionCancel),
+        ),
+        FilledButton(onPressed: _submit, child: Text(l10n.actionContinue)),
+      ],
+    );
+  }
 }
 
 String _localiseError(AppL10n l10n, ValidationError e) {

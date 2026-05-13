@@ -6,6 +6,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
 import '../../widgets/adaptive_scaffold.dart';
 import '../../widgets/breakpoints.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
 import 'session_detail_screen.dart';
 import 'session_form_screen.dart';
@@ -63,9 +64,9 @@ class _SessionsList extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorView(error: e),
       data: (sessions) => sessions.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.all(32),
-              child: Center(child: Text(l10n.sessionsListEmpty)),
+          ? EmptyState(
+              icon: Icons.event_note_outlined,
+              title: l10n.sessionsListEmpty,
             )
           : ListView.separated(
               padding: const EdgeInsets.only(bottom: 96),

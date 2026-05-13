@@ -32,7 +32,6 @@ class AdaptiveScaffold extends StatelessWidget {
     required this.body,
     this.title,
     this.actions,
-    this.floatingActionButton,
   });
 
   final List<AdaptiveDestination> destinations;
@@ -41,7 +40,10 @@ class AdaptiveScaffold extends StatelessWidget {
   final Widget body;
   final Widget? title;
   final List<Widget>? actions;
-  final Widget? floatingActionButton;
+  // (audit M2) Le paramètre `floatingActionButton` a été retiré : chaque
+  // écran qui veut un FAB le superpose lui-même via Stack/Positioned
+  // (cf. clients/animals/agenda/sessions). Garder le paramètre orphelin
+  // n'apportait rien et invitait à de la duplication.
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +52,6 @@ class AdaptiveScaffold extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(title: title, actions: actions),
         body: SafeArea(child: body),
-        floatingActionButton: floatingActionButton,
         bottomNavigationBar: NavigationBar(
           selectedIndex: selectedIndex,
           onDestinationSelected: onDestinationSelected,
@@ -69,7 +70,6 @@ class AdaptiveScaffold extends StatelessWidget {
     final extended = size == WindowSize.expanded;
     return Scaffold(
       appBar: AppBar(title: title, actions: actions),
-      floatingActionButton: floatingActionButton,
       body: SafeArea(
         child: Row(
           children: [

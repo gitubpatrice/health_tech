@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/errors.dart';
 import '../../domain/attachment.dart';
 import '../../utils/atomic_write.dart';
 import '../../utils/clock.dart';
@@ -20,19 +21,10 @@ import '_helpers.dart';
 /// but we read in one shot for encryption). Adjust if needed.
 const int kMaxAttachmentBytes = 25 * 1024 * 1024; // 25 MiB
 
-class AttachmentTooLargeError implements Exception {
-  const AttachmentTooLargeError(this.size);
-  final int size;
-  @override
-  String toString() => 'Attachment too large ($size bytes)';
-}
-
-class AttachmentRejectedError implements Exception {
-  const AttachmentRejectedError(this.reason);
-  final String reason;
-  @override
-  String toString() => 'Attachment rejected: $reason';
-}
+// (audit H6) Les anciennes `AttachmentTooLargeError`/`AttachmentRejectedError`
+// définies localement sont déplacées dans `lib/core/errors.dart` et héritent
+// désormais de `HealthError`, de sorte que `localiseError` les transforme en
+// message stable plutôt que de tomber sur `errorGeneric`.
 
 class AttachmentRepository {
   AttachmentRepository(this._db, this._crypto);

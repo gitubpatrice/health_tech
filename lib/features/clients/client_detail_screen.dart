@@ -9,6 +9,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
 import '../animals/animal_form_screen.dart';
 import '../animals/animal_l10n.dart';
@@ -237,7 +238,10 @@ class _AnimalsTab extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => ErrorView(error: e),
             data: (animals) => animals.isEmpty
-                ? Center(child: Text(l10n.animalsListEmpty))
+                ? EmptyState(
+                    icon: Icons.pets_outlined,
+                    title: l10n.animalsListEmpty,
+                  )
                 : ListView.separated(
                     itemCount: animals.length,
                     separatorBuilder: (_, _) => const Divider(height: 1),
@@ -296,7 +300,10 @@ class _SessionsTab extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => ErrorView(error: e),
             data: (sessions) => sessions.isEmpty
-                ? Center(child: Text(l10n.sessionsListEmpty))
+                ? EmptyState(
+                    icon: Icons.event_note_outlined,
+                    title: l10n.sessionsListEmpty,
+                  )
                 : ListView.separated(
                     itemCount: sessions.length,
                     separatorBuilder: (_, _) => const Divider(height: 1),

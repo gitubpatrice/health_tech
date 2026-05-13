@@ -4,8 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/errors.dart';
 import '../../core/providers.dart';
-import '../../data/repositories/attachment_repository.dart';
 import '../../domain/attachment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
@@ -154,12 +154,17 @@ class AttachmentsSection extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.attachmentsTooLarge)));
-    } on AttachmentRejectedError {
+    } on AttachmentRejectedError catch (e) {
       if (!context.mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.attachmentsRejectedImage)));
+      // (audit H6) Discrimine la raison du rejet pour un feedback
+      // utilisateur plus précis. `image_too_large` = ImageBoundsProbe
+      // a détecté des dimensions déraisonnables (potentielle bombe) ;
+      // `image_format_unrecognised` = magic bytes inconnus.
+      final msg = e.reason == 'image_too_large'
+          ? l10n.attachmentsImageTooLarge
+          : l10n.attachmentsRejectedImage;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
       // Le file_picker plugin a copié le fichier source dans
       // cache/file_picker/ avant de retourner les bytes. Maintenant que

@@ -5,6 +5,8 @@ import '../../domain/animal.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/adaptive_scaffold.dart';
 import '../../widgets/breakpoints.dart';
+import '../../widgets/debounced_search_field.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
 import '../tags/tag_filter_row.dart';
 import 'animal_detail_screen.dart';
@@ -62,12 +64,12 @@ class _AnimalsList extends ConsumerWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: TextField(
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: l10n.actionSearch,
-            ),
-            onChanged: (v) => ref.read(animalsQueryProvider.notifier).state = v,
+          // (audit perf H5) Debounce 250 ms aligné sur le pattern clients.
+          // Avant : chaque keystroke relançait la requête Drift LIKE sur
+          // toutes les colonnes texte → coûteux sur grand jeu.
+          child: DebouncedSearchField(
+            stateProvider: animalsQueryProvider,
+            hintText: l10n.actionSearch,
           ),
         ),
         SizedBox(
@@ -104,9 +106,9 @@ class _AnimalsList extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => ErrorView(error: e),
             data: (animals) => animals.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Center(child: Text(l10n.animalsListEmpty)),
+                ? EmptyState(
+                    icon: Icons.pets_outlined,
+                    title: l10n.animalsListEmpty,
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.only(bottom: 96),

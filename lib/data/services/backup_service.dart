@@ -363,7 +363,12 @@ class BackupService {
   /// Doit être maintenu en phase avec `HealthDb.schemaVersion` — c'est la
   /// version max d'une base que cette release de l'app sait ouvrir. Au
   /// prochain bump de `HealthDb.schemaVersion`, mettre à jour ici aussi.
-  static const int _maxSupportedDbUserVersion = 4;
+  /// (audit critique C1) v1.5.0 a bumpé schemaVersion → 5 (filenameEncrypted)
+  /// mais ce plafond était resté à 4, rendant les `.htbk` v1.5.x
+  /// **impossibles à restaurer** par l'utilisateur qui les avait pourtant
+  /// créés. Aligné à 5 ici. Un test de garde vit dans
+  /// `test/services/backup_envelope_test.dart` pour rappeler ce contrat.
+  static const int _maxSupportedDbUserVersion = 5;
 
   /// Replace the device's current vault state with the contents of a
   /// previously-validated [BackupPreview]. The vault MUST be locked: we are

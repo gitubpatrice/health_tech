@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +5,7 @@ import '../../domain/client.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/adaptive_scaffold.dart';
 import '../../widgets/breakpoints.dart';
+import '../../widgets/debounced_search_field.dart';
 import '../../widgets/disclaimer_dialog.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
@@ -62,12 +61,16 @@ class _ClientsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final list = ref.watch(clientsStreamProvider);
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: _DebouncedSearchField(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+          child: DebouncedSearchField(
+            stateProvider: clientsQueryProvider,
+            hintText: l10n.clientsListSearchHint,
+          ),
         ),
         TagFilterRow(selectionProvider: clientsTagFilterProvider),
         Expanded(
@@ -92,63 +95,10 @@ class _ClientsList extends ConsumerWidget {
   }
 }
 
-/// Barre de recherche débouncée — propage la valeur saisie au
-/// `clientsQueryProvider` 250 ms après la dernière frappe. Évite de
-/// relancer la requête SQL (FTS5 / LIKE) à chaque caractère pendant
-/// la saisie (audit perf H4).
-class _DebouncedSearchField extends ConsumerStatefulWidget {
-  const _DebouncedSearchField();
-  @override
-  ConsumerState<_DebouncedSearchField> createState() =>
-      _DebouncedSearchFieldState();
-}
-
-class _DebouncedSearchFieldState extends ConsumerState<_DebouncedSearchField> {
-  final TextEditingController _ctrl = TextEditingController();
-  Timer? _debounce;
-
-  static const Duration _kDebounceDelay = Duration(milliseconds: 250);
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl.text = ref.read(clientsQueryProvider);
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _onChanged(String value) {
-    _debounce?.cancel();
-    // Si l'utilisateur a tout effacé, on propage instantanément (clear
-    // visuel attendu, et la requête sans WHERE LIKE est gratuite).
-    if (value.isEmpty) {
-      ref.read(clientsQueryProvider.notifier).state = '';
-      return;
-    }
-    _debounce = Timer(_kDebounceDelay, () {
-      if (!mounted) return;
-      ref.read(clientsQueryProvider.notifier).state = value;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppL10n.of(context);
-    return TextField(
-      controller: _ctrl,
-      decoration: InputDecoration(
-        prefixIcon: const Icon(Icons.search),
-        hintText: l10n.clientsListSearchHint,
-      ),
-      onChanged: _onChanged,
-    );
-  }
-}
+// (audit H5) Le widget de recherche débouncée a été extrait vers
+// `lib/widgets/debounced_search_field.dart` pour être réutilisé par
+// l'écran animaux. L'ancienne classe locale `_DebouncedSearchField`
+// a été supprimée.
 
 class _ClientTile extends ConsumerWidget {
   const _ClientTile({required this.client});

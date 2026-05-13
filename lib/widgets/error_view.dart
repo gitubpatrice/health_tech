@@ -20,8 +20,9 @@ String localiseError(BuildContext context, Object error) {
         return l10n.errorVaultNotInitialised;
       case 'vault_already_initialised':
         return l10n.errorVaultAlreadyInitialised;
-      case 'vault_wrong_passphrase':
-        return l10n.errorVaultWrongPassphrase;
+      // (audit M17) `vault_wrong_passphrase` n'est jamais émis : la
+      // passphrase incorrecte fait `unlockWithPassphrase` retourner
+      // `false`, consommé par le LockScreen via `lockWrongPassphrase`.
       case 'vault_locked_out':
         if (error is VaultLockedOutError) {
           return l10n.errorVaultLockedOut(error.remainingSeconds);
@@ -37,6 +38,12 @@ String localiseError(BuildContext context, Object error) {
         return l10n.errorValidationTagEmpty;
       case 'client_not_found':
         return l10n.errorValidationClientNotFound;
+      case 'attachment_too_large':
+        return l10n.attachmentsTooLarge;
+      case 'attachment_rejected_image_too_large':
+        return l10n.attachmentsImageTooLarge;
+      case 'attachment_rejected_image_format_unrecognised':
+        return l10n.attachmentsRejectedImage;
       default:
         return l10n.errorGeneric;
     }

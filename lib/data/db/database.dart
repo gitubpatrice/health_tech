@@ -27,6 +27,9 @@ part 'database.g.dart';
 class HealthDb extends _$HealthDb {
   HealthDb(super.executor);
 
+  /// **À ne JAMAIS bumper sans bumper aussi
+  /// `BackupService._maxSupportedDbUserVersion`** — sinon les utilisateurs
+  /// ne peuvent plus restaurer leur propre `.htbk` (audit C1 v1.5.2).
   @override
   int get schemaVersion => 5;
 

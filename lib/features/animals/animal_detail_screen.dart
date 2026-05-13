@@ -242,6 +242,14 @@ class _SessionsTab extends ConsumerWidget {
                           '${kindLabel(l10n, s.kind)} · '
                           '${statusLabel(l10n, s.status)}',
                         ),
+                        // (audit M6) Onglet sessions de l'animal :
+                        // tap → sélection + navigation cohérente avec
+                        // l'onglet sessions du client (qui le faisait
+                        // déjà). Avant : tile inerte.
+                        onTap: () {
+                          ref.read(selectedSessionIdProvider.notifier).state =
+                              s.id;
+                        },
                       );
                     },
                   ),

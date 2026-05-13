@@ -135,7 +135,8 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
       ).showSnackBar(SnackBar(content: Text(l10n.clientFormConsentRequired)));
       return;
     }
-    setState(() => _busy = true);
+    // (audit M7) `runWithBusy` plus bas gère seul _busy=true/finally.
+    // Doublon retiré.
 
     final now = DateTime.now();
     final isBusiness = _kind == ClientKind.business;

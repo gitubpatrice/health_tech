@@ -123,7 +123,6 @@ class GlobalSearchService {
         SearchHit(
           kind: SearchHitKind.animal,
           id: r.id,
-          ownerId: r.clientId,
           title: r.name,
           subtitle: [
             r.species,
@@ -153,7 +152,6 @@ class GlobalSearchService {
         SearchHit(
           kind: SearchHitKind.session,
           id: r.id,
-          ownerId: r.clientId,
           title: r.kind,
           subtitle: [
             DateTime.fromMillisecondsSinceEpoch(r.startAt * 1000).toString(),
@@ -182,7 +180,6 @@ class GlobalSearchService {
         SearchHit(
           kind: SearchHitKind.appointment,
           id: r.id,
-          ownerId: r.clientId,
           title: r.title ?? defaultTitle,
           subtitle: [
             DateTime.fromMillisecondsSinceEpoch(r.startAt * 1000).toString(),
@@ -201,17 +198,10 @@ class SearchHit {
     required this.id,
     required this.title,
     required this.subtitle,
-    this.ownerId,
   });
 
   final SearchHitKind kind;
   final String id;
-
-  /// For nested entities (animal / session / appointment owned by a client),
-  /// the parent client id — lets the UI navigate straight to the client
-  /// detail and pre-select the matching child.
-  final String? ownerId;
-
   final String title;
   final String subtitle;
 }

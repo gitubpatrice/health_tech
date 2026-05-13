@@ -128,7 +128,9 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
       if (kg != null && kg >= 0) grams = (kg * 1000).round();
     }
 
-    setState(() => _busy = true);
+    // (audit M7) `runWithBusy` plus bas gère seul la transition
+    // _busy=true/finally. Doublon retiré pour éviter un état zombie
+    // si une exception échappait entre cet appel et le runWithBusy.
     final identifiers = AnimalIdentifiers(
       chipNumber: _chip.text.trim(),
       tattooNumber: _tattoo.text.trim(),

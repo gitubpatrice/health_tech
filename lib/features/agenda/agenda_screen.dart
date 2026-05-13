@@ -80,7 +80,7 @@ class _ListView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppL10n.of(context);
-    final upcoming = ref.watch(upcomingAppointmentsProvider);
+    final upcoming = ref.watch(agendaUpcomingProvider);
     return upcoming.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorView(error: e),
