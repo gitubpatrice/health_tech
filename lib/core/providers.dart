@@ -333,9 +333,7 @@ final ownerAvatarProvider = StreamProvider.autoDispose
 /// `VaultSessionController.lock`).
 final attachmentBytesProvider = FutureProvider.autoDispose
     .family<Uint8List, String>((ref, attachmentId) {
-      return ref
-          .watch(attachmentRepositoryProvider)
-          .readBytes(attachmentId);
+      return ref.watch(attachmentRepositoryProvider).readBytes(attachmentId);
     });
 
 final purgeServiceProvider = Provider((ref) {

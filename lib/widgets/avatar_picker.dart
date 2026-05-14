@@ -115,11 +115,7 @@ class _AvatarPickerState extends ConsumerState<AvatarPicker> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            SizedBox(
-              width: size,
-              height: size,
-              child: _buildPreview(scheme),
-            ),
+            SizedBox(width: size, height: size, child: _buildPreview(scheme)),
             // Pictogramme camera en bas-droite : signal visuel "ce cercle
             // est éditable" sans avoir besoin d'expliquer "tap n'importe
             // où sur la photo".
@@ -410,10 +406,7 @@ class _AvatarPickerState extends ConsumerState<AvatarPicker> {
       } else if (widget.ownerId.isNotEmpty) {
         await ref
             .read(attachmentRepositoryProvider)
-            .clearAvatar(
-              ownerType: widget.ownerType,
-              ownerId: widget.ownerId,
-            );
+            .clearAvatar(ownerType: widget.ownerType, ownerId: widget.ownerId);
       }
       if (mounted) {
         showFloatingSnack(context, l10n.avatarRemovedSnack);

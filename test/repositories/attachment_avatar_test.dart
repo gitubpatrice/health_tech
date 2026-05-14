@@ -25,7 +25,8 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 /// au tearDown — c'est l'API officielle des plugins federated v2.x
 /// (le mock par `MethodChannel` brut ne marche plus depuis le passage
 /// au `PlatformInterface` v2).
-class _TmpPathProvider extends PathProviderPlatform with MockPlatformInterfaceMixin {
+class _TmpPathProvider extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
   _TmpPathProvider(this.support);
   final String support;
   @override
@@ -105,40 +106,42 @@ void main() {
       expect(File(encPath).existsSync(), true);
     });
 
-    test('remplace l\'avatar existant (invariant : 1 seul par owner)',
-        () async {
-      final first = await repo.setAvatar(
-        ownerType: AttachmentOwner.client,
-        ownerId: 'c-1',
-        bytes: minimalPng(),
-        mimeType: 'image/png',
-        filename: 'old.png',
-      );
-      final firstFile = File(
-        p.join(tmpRoot.path, 'attachments', first.storagePath),
-      );
-      expect(firstFile.existsSync(), true);
+    test(
+      'remplace l\'avatar existant (invariant : 1 seul par owner)',
+      () async {
+        final first = await repo.setAvatar(
+          ownerType: AttachmentOwner.client,
+          ownerId: 'c-1',
+          bytes: minimalPng(),
+          mimeType: 'image/png',
+          filename: 'old.png',
+        );
+        final firstFile = File(
+          p.join(tmpRoot.path, 'attachments', first.storagePath),
+        );
+        expect(firstFile.existsSync(), true);
 
-      final second = await repo.setAvatar(
-        ownerType: AttachmentOwner.client,
-        ownerId: 'c-1',
-        bytes: minimalPng(),
-        mimeType: 'image/png',
-        filename: 'new.png',
-      );
-      expect(second.id, isNot(first.id));
+        final second = await repo.setAvatar(
+          ownerType: AttachmentOwner.client,
+          ownerId: 'c-1',
+          bytes: minimalPng(),
+          mimeType: 'image/png',
+          filename: 'new.png',
+        );
+        expect(second.id, isNot(first.id));
 
-      // L'ancien fichier `.enc` doit avoir été purgé physiquement,
-      // pas seulement la row DB.
-      expect(firstFile.existsSync(), false);
-      // Et il ne doit rester qu'UN avatar `deletedAt IS NULL` pour l'owner.
-      final remaining = await repo.getAvatar(
-        ownerType: AttachmentOwner.client,
-        ownerId: 'c-1',
-      );
-      expect(remaining, isNotNull);
-      expect(remaining!.id, second.id);
-    });
+        // L'ancien fichier `.enc` doit avoir été purgé physiquement,
+        // pas seulement la row DB.
+        expect(firstFile.existsSync(), false);
+        // Et il ne doit rester qu'UN avatar `deletedAt IS NULL` pour l'owner.
+        final remaining = await repo.getAvatar(
+          ownerType: AttachmentOwner.client,
+          ownerId: 'c-1',
+        );
+        expect(remaining, isNotNull);
+        expect(remaining!.id, second.id);
+      },
+    );
 
     test('isole les avatars par owner', () async {
       await repo.setAvatar(
@@ -226,10 +229,7 @@ void main() {
       );
       // Et l'invariant : aucune row avatar n'a été écrite.
       expect(
-        await repo.getAvatar(
-          ownerType: AttachmentOwner.client,
-          ownerId: 'c-1',
-        ),
+        await repo.getAvatar(ownerType: AttachmentOwner.client, ownerId: 'c-1'),
         isNull,
       );
     });
@@ -255,10 +255,7 @@ void main() {
       );
       await Future<void>.delayed(const Duration(milliseconds: 20));
       // 3) après clear
-      await repo.clearAvatar(
-        ownerType: AttachmentOwner.client,
-        ownerId: 'c-1',
-      );
+      await repo.clearAvatar(ownerType: AttachmentOwner.client, ownerId: 'c-1');
       await Future<void>.delayed(const Duration(milliseconds: 20));
       await sub.cancel();
       // On a au moins observé : null → Attachment → null.
@@ -271,15 +268,9 @@ void main() {
   group('AttachmentRepository.clearAvatar', () {
     test('no-op s\'il n\'y a pas d\'avatar', () async {
       // Doit simplement ne rien faire (pas throw).
-      await repo.clearAvatar(
-        ownerType: AttachmentOwner.client,
-        ownerId: 'c-1',
-      );
+      await repo.clearAvatar(ownerType: AttachmentOwner.client, ownerId: 'c-1');
       expect(
-        await repo.getAvatar(
-          ownerType: AttachmentOwner.client,
-          ownerId: 'c-1',
-        ),
+        await repo.getAvatar(ownerType: AttachmentOwner.client, ownerId: 'c-1'),
         isNull,
       );
     });
@@ -294,15 +285,9 @@ void main() {
       );
       final f = File(p.join(tmpRoot.path, 'attachments', att.storagePath));
       expect(f.existsSync(), true);
-      await repo.clearAvatar(
-        ownerType: AttachmentOwner.client,
-        ownerId: 'c-1',
-      );
+      await repo.clearAvatar(ownerType: AttachmentOwner.client, ownerId: 'c-1');
       expect(
-        await repo.getAvatar(
-          ownerType: AttachmentOwner.client,
-          ownerId: 'c-1',
-        ),
+        await repo.getAvatar(ownerType: AttachmentOwner.client, ownerId: 'c-1'),
         isNull,
       );
       expect(f.existsSync(), false);
@@ -332,10 +317,7 @@ void main() {
 
         // Default exclude = {avatar} → seul le document apparaît.
         final visible = await repo
-            .watchByOwner(
-              ownerType: AttachmentOwner.client,
-              ownerId: 'c-1',
-            )
+            .watchByOwner(ownerType: AttachmentOwner.client, ownerId: 'c-1')
             .first;
         expect(visible, hasLength(1));
         expect(visible.single.kind, AttachmentKind.document);
@@ -351,52 +333,57 @@ void main() {
             .first;
         expect(all, hasLength(2));
         final kinds = all.map((a) => a.kind).toSet();
-        expect(kinds, containsAll([AttachmentKind.avatar, AttachmentKind.document]));
+        expect(
+          kinds,
+          containsAll([AttachmentKind.avatar, AttachmentKind.document]),
+        );
       },
     );
   });
 
   group('AttachmentRepository.purgeAllForOwner', () {
-    test('cascade aussi l\'avatar (suppression compte client / animal)',
-        () async {
-      final av = await repo.setAvatar(
-        ownerType: AttachmentOwner.client,
-        ownerId: 'c-1',
-        bytes: minimalPng(),
-        mimeType: 'image/png',
-        filename: 'avatar.png',
-      );
-      final doc = await repo.importBytes(
-        ownerType: AttachmentOwner.client,
-        ownerId: 'c-1',
-        kind: AttachmentKind.document,
-        bytes: Uint8List.fromList([1, 2, 3]),
-        mimeType: 'application/octet-stream',
-        filename: 'doc.bin',
-      );
-      final avFile = File(
-        p.join(tmpRoot.path, 'attachments', av.storagePath),
-      );
-      final docFile = File(
-        p.join(tmpRoot.path, 'attachments', doc.storagePath),
-      );
-      expect(avFile.existsSync(), true);
-      expect(docFile.existsSync(), true);
-
-      final removed = await repo.purgeAllForOwner(
-        ownerType: AttachmentOwner.client,
-        ownerId: 'c-1',
-      );
-      expect(removed, 2);
-      expect(avFile.existsSync(), false);
-      expect(docFile.existsSync(), false);
-      expect(
-        await repo.getAvatar(
+    test(
+      'cascade aussi l\'avatar (suppression compte client / animal)',
+      () async {
+        final av = await repo.setAvatar(
           ownerType: AttachmentOwner.client,
           ownerId: 'c-1',
-        ),
-        isNull,
-      );
-    });
+          bytes: minimalPng(),
+          mimeType: 'image/png',
+          filename: 'avatar.png',
+        );
+        final doc = await repo.importBytes(
+          ownerType: AttachmentOwner.client,
+          ownerId: 'c-1',
+          kind: AttachmentKind.document,
+          bytes: Uint8List.fromList([1, 2, 3]),
+          mimeType: 'application/octet-stream',
+          filename: 'doc.bin',
+        );
+        final avFile = File(
+          p.join(tmpRoot.path, 'attachments', av.storagePath),
+        );
+        final docFile = File(
+          p.join(tmpRoot.path, 'attachments', doc.storagePath),
+        );
+        expect(avFile.existsSync(), true);
+        expect(docFile.existsSync(), true);
+
+        final removed = await repo.purgeAllForOwner(
+          ownerType: AttachmentOwner.client,
+          ownerId: 'c-1',
+        );
+        expect(removed, 2);
+        expect(avFile.existsSync(), false);
+        expect(docFile.existsSync(), false);
+        expect(
+          await repo.getAvatar(
+            ownerType: AttachmentOwner.client,
+            ownerId: 'c-1',
+          ),
+          isNull,
+        );
+      },
+    );
   });
 }
