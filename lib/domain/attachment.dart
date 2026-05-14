@@ -16,6 +16,14 @@ class AttachmentKind {
   static const String consent = 'consent';
   static const String other = 'other';
 
+  /// Photo-avatar attachée à un client ou un animal (au plus une à la fois
+  /// par couple `(ownerType, ownerId)` — invariant tenu par
+  /// `AttachmentRepository.setAvatar`). Volontairement HORS de [all] : ce
+  /// `kind` est piloté par un flow dédié (`AvatarPicker`) et ne doit pas
+  /// apparaître dans la liste générique des pièces jointes — voir
+  /// `AttachmentRepository.watchByOwner(excludeKinds:)`.
+  static const String avatar = 'avatar';
+
   static const List<String> all = [
     photo,
     document,

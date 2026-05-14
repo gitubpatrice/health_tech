@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../domain/animal.dart';
+import '../../domain/attachment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
 import '../../utils/validators.dart';
+import '../../widgets/avatar_picker.dart';
 import '../../widgets/busy_helpers.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/section_title.dart';
@@ -51,10 +53,16 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
   String? _clientId;
   bool _busy = false;
 
+  /// Controller `AvatarPicker` — utilisé uniquement en création (l'ID DB
+  /// n'existe pas encore). En édition, le picker écrit directement via
+  /// `setAvatar(ownerType, ownerId)` et le controller reste inerte.
+  late final AvatarPickerController _avatarController;
+
   @override
   void initState() {
     super.initState();
     final a = widget.initial;
+    _avatarController = AvatarPickerController();
     _name = TextEditingController(text: a?.name ?? '');
     _breed = TextEditingController(text: a?.breed ?? '');
     _color = TextEditingController(text: a?.color ?? '');
@@ -103,6 +111,7 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
     ]) {
       c.dispose();
     }
+    _avatarController.dispose();
     super.dispose();
   }
 
@@ -189,7 +198,16 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
       setBusy: (bool v) => setState(() => _busy = v),
       action: () async {
         if (widget.initial == null) {
-          await repo.create(draft);
+          final created = await repo.create(draft);
+          // En création : commit l'avatar pris AVANT que l'ID DB n'existe.
+          // No-op si rien en attente. L'éventuelle erreur d'attachement
+          // est capturée par `runWithBusy` (l'animal lui-même est déjà
+          // persisté).
+          await _avatarController.commit(
+            ref: ref,
+            ownerType: AttachmentOwner.animal,
+            ownerId: created.id,
+          );
         } else {
           await repo.update(draft);
         }
@@ -223,6 +241,15 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // Photo-avatar (point 7 v1.6.x). Mode draft via controller en
+              // création, mode immédiat en édition.
+              AvatarPicker(
+                ownerType: AttachmentOwner.animal,
+                ownerId: widget.initial?.id ?? '',
+                placeholder: const Icon(Icons.pets_outlined),
+                controller: widget.initial == null ? _avatarController : null,
+              ),
+              const SizedBox(height: 16),
               SectionTitle(l10n.animalFormSectionIdentity),
               clients.when(
                 loading: () => const LinearProgressIndicator(),

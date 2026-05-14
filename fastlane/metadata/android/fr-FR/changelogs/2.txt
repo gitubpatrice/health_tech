@@ -1,0 +1,13 @@
+v1.7.0 — Photo de fiche client / animal.
+
+• Capture caméra ou choix dans la galerie.
+• Suppression possible à tout moment.
+• Vignette dans la liste, viewer plein écran au tap.
+• Photo chiffrée AES-GCM comme toute pièce jointe.
+• Métadonnées EXIF / GPS strippées dès la lecture.
+• Compression auto en isolate (jamais de freeze UI).
+• Anti-bombe image avant decode.
+• Inclus dans l'export RGPD Article 15.
+• Effacée par le panic-wipe et la suppression de fiche.
+
+11 nouveaux tests, 120/120 verts. flutter analyze 0 issue.

@@ -12,6 +12,7 @@ import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/owner_avatar.dart';
 import '../animals/animal_form_screen.dart';
 import '../animals/animal_l10n.dart';
 import '../animals/animal_providers.dart';
@@ -135,6 +136,25 @@ class _InfoTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Photo-avatar lecture seule au sommet de la fiche : tap → viewer
+        // plein écran. L'édition se fait via le bouton « Modifier » qui
+        // ouvre `ClientFormScreen` (lui-même intègre `AvatarPicker`).
+        Center(
+          child: OwnerAvatar(
+            ownerType: AttachmentOwner.client,
+            ownerId: client.id,
+            radius: 48,
+            tappableForView: true,
+            fallbackChild: Icon(
+              client.isBusiness
+                  ? Icons.business_outlined
+                  : Icons.person_outline,
+              size: 48,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         TagEditor(ownerType: TagOwner.client, ownerId: client.id),
         const SizedBox(height: 12),
         if (client.isBusiness) ...[
@@ -332,7 +352,11 @@ class _AnimalsTab extends ConsumerWidget {
                     itemBuilder: (_, i) {
                       final a = animals[i];
                       return ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.pets)),
+                        leading: OwnerAvatar(
+                          ownerType: AttachmentOwner.animal,
+                          ownerId: a.id,
+                          fallbackChild: const Icon(Icons.pets),
+                        ),
                         title: Text(a.name),
                         subtitle: Text(speciesLabel(l10n, a.species)),
                         onTap: () {

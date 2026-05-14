@@ -12,6 +12,18 @@
          every restart wipes future reminders set via AlarmManager. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Photo-avatar capture (fiches client / animal). La galerie passe par
+         le Photo Picker système (Android 13+) sans permission supplémentaire ;
+         seule la prise de photo via image_picker exige CAMERA. Pas de
+         REQUEST_INSTALL_PACKAGES, pas de WRITE_EXTERNAL_STORAGE : les bytes
+         restent en mémoire jusqu'au chiffrement AES-GCM dans l'attachments
+         vault — aucun fichier intermédiaire n'est exposé en clair. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Déclare la fonctionnalité comme optionnelle pour ne pas filtrer les
+         tablettes sans capteur photo sur Google Play. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

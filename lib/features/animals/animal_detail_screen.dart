@@ -11,6 +11,7 @@ import '../../utils/date_format.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/owner_avatar.dart';
 import '../attachments/attachments_section.dart';
 import '../sessions/session_form_screen.dart';
 import '../sessions/session_l10n.dart';
@@ -125,6 +126,23 @@ class _InfoTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Photo-avatar lecture seule au sommet de la fiche : tap → viewer
+        // plein écran. L'édition se fait via le bouton « Modifier » qui
+        // ouvre `AnimalFormScreen` (lui-même intègre `AvatarPicker`).
+        Center(
+          child: OwnerAvatar(
+            ownerType: AttachmentOwner.animal,
+            ownerId: animal.id,
+            radius: 48,
+            tappableForView: true,
+            fallbackChild: Icon(
+              Icons.pets_outlined,
+              size: 48,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         TagEditor(ownerType: TagOwner.animal, ownerId: animal.id),
         const SizedBox(height: 12),
         DetailRow(

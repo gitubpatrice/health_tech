@@ -63,19 +63,36 @@ class RgpdExportService {
       if (full != null) fullAnimals.add(full);
     }
 
+    // RGPD article 15 = portabilité **complète** : on désactive le filtre
+    // par défaut sur `kind='avatar'` qui sert uniquement à la séparation
+    // d'écrans — la photo-avatar reste une donnée personnelle du sujet
+    // qui doit figurer dans l'archive remise au client / DPO / régulateur.
+    const includeAll = <String>{};
     final clientAttachments = await attachments
-        .watchByOwner(ownerType: AttachmentOwner.client, ownerId: clientId)
+        .watchByOwner(
+          ownerType: AttachmentOwner.client,
+          ownerId: clientId,
+          excludeKinds: includeAll,
+        )
         .first;
     final allAttachments = <Attachment>[...clientAttachments];
     for (final a in fullAnimals) {
       final list = await attachments
-          .watchByOwner(ownerType: AttachmentOwner.animal, ownerId: a.id)
+          .watchByOwner(
+            ownerType: AttachmentOwner.animal,
+            ownerId: a.id,
+            excludeKinds: includeAll,
+          )
           .first;
       allAttachments.addAll(list);
     }
     for (final s in fullSessions) {
       final list = await attachments
-          .watchByOwner(ownerType: AttachmentOwner.session, ownerId: s.id)
+          .watchByOwner(
+            ownerType: AttachmentOwner.session,
+            ownerId: s.id,
+            excludeKinds: includeAll,
+          )
           .first;
       allAttachments.addAll(list);
     }

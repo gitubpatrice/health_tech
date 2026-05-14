@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/animal.dart';
+import '../../domain/attachment.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/adaptive_scaffold.dart';
 import '../../widgets/breakpoints.dart';
 import '../../widgets/debounced_search_field.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/owner_avatar.dart';
 import '../tags/tag_filter_row.dart';
 import 'animal_detail_screen.dart';
 import 'animal_form_screen.dart';
@@ -150,7 +152,14 @@ class _AnimalTile extends ConsumerWidget {
     final selectedId = ref.watch(selectedAnimalIdProvider);
     return ListTile(
       selected: selectedId == animal.id,
-      leading: CircleAvatar(child: Icon(_icon)),
+      // Photo-avatar si définie, sinon icône de l'espèce. Lazy-decrypt
+      // par le `ListView.separated` — seules les lignes visibles à
+      // l'écran déchiffrent leurs bytes.
+      leading: OwnerAvatar(
+        ownerType: AttachmentOwner.animal,
+        ownerId: animal.id,
+        fallbackChild: Icon(_icon),
+      ),
       title: Text(animal.name),
       subtitle: Text(
         [

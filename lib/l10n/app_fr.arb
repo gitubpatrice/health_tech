@@ -543,5 +543,14 @@
   },
   "animalDetailVetCallTooltip": "Appeler",
   "animalDetailVetEmailTooltip": "Envoyer un email",
-  "animalDetailVetLaunchFailed": "Aucune application disponible pour ouvrir ce lien."
+  "animalDetailVetLaunchFailed": "Aucune application disponible pour ouvrir ce lien.",
+
+  "avatarSemanticLabel": "Photo de la fiche : appuyer pour modifier",
+  "avatarTakePhoto": "Prendre une photo",
+  "avatarChooseFromGallery": "Choisir dans la galerie",
+  "avatarRemove": "Supprimer la photo",
+  "avatarRemoveConfirm": "Supprimer définitivement la photo de cette fiche ?",
+  "avatarRemovedSnack": "Photo supprimée.",
+  "avatarUpdatedSnack": "Photo mise à jour.",
+  "avatarErrorImport": "Impossible d'importer cette image."
 }

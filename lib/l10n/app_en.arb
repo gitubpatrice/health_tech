@@ -543,5 +543,14 @@
   },
   "animalDetailVetCallTooltip": "Call",
   "animalDetailVetEmailTooltip": "Send email",
-  "animalDetailVetLaunchFailed": "No app available to open this link."
+  "animalDetailVetLaunchFailed": "No app available to open this link.",
+
+  "avatarSemanticLabel": "Profile photo: tap to edit",
+  "avatarTakePhoto": "Take a photo",
+  "avatarChooseFromGallery": "Choose from gallery",
+  "avatarRemove": "Remove photo",
+  "avatarRemoveConfirm": "Remove this photo?",
+  "avatarRemovedSnack": "Photo removed.",
+  "avatarUpdatedSnack": "Photo updated.",
+  "avatarErrorImport": "Could not import this image."
 }

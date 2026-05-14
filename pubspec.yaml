@@ -1,7 +1,7 @@
 name: health_tech
 description: "Health Tech - Gestion clients, animaux et seances pour praticiens bien-etre."
 publish_to: 'none'
-version: 1.6.1+1
+version: 1.7.0+2
 
 environment:
   sdk: ^3.11.5
@@ -46,6 +46,12 @@ dependencies:
   # Images
   image: ^4.5.4
 
+  # Image picker (camera + gallery) — pour les photos-avatars de fiches
+  # client / animal. La caméra exige `android.permission.CAMERA` (déclarée
+  # dans le manifest) ; la galerie passe par le Photo Picker système Android
+  # 13+ et ne demande aucune permission supplémentaire.
+  image_picker: ^1.1.2
+
   # PDF export
   pdf: ^3.11.3
   printing: ^5.13.4
@@ -84,6 +90,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+
+  # Transitives utilisées explicitement par `test/repositories/
+  # attachment_avatar_test.dart` pour substituer
+  # `PathProviderPlatform.instance` par un fake test (le repo écrit des
+  # fichiers `.enc` sous `<appSupport>/attachments/`). On déclare les
+  # deps explicitement pour satisfaire `depend_on_referenced_packages`.
+  path_provider_platform_interface: ^2.1.0
+  plugin_platform_interface: ^2.1.0
 
   # Drift codegen
   drift_dev: ^2.21.0

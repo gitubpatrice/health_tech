@@ -23,6 +23,7 @@ import '../data/services/report_template_seed.dart';
 import '../data/services/rgpd_export_service.dart';
 import '../data/services/system_calendar_bridge.dart';
 import '../data/vault/health_vault.dart';
+import '../domain/attachment.dart';
 import '../domain/report_template.dart';
 import '../domain/tag.dart';
 
@@ -306,6 +307,36 @@ final attachmentRepositoryProvider = Provider<AttachmentRepository>((ref) {
   ref.onDispose(timer.cancel);
   return repo;
 });
+
+/// Clé d'identification d'un propriétaire d'avatar — alias récord pour ne
+/// pas refabriquer un type partout. `(ownerType, ownerId)` est l'identifiant
+/// polymorphe utilisé partout dans `AttachmentRepository`.
+typedef AvatarOwnerKey = ({String ownerType, String ownerId});
+
+/// Stream live de l'avatar (au plus un par owner). Émet `null` quand aucune
+/// photo n'est définie. Riverpod cache la subscription tant qu'au moins un
+/// widget la `watch()`. `autoDispose` : la photo n'a aucune raison de
+/// rester abonnée en mémoire quand l'écran qui l'affiche se ferme.
+final ownerAvatarProvider = StreamProvider.autoDispose
+    .family<Attachment?, AvatarOwnerKey>((ref, key) {
+      return ref
+          .watch(attachmentRepositoryProvider)
+          .watchAvatar(ownerType: key.ownerType, ownerId: key.ownerId);
+    });
+
+/// Bytes déchiffrés d'un attachment donné (avatar ou autre). Family-keyed
+/// par `attachmentId` : si la même photo est rendue dans plusieurs widgets
+/// (liste + détail), on ne paie qu'un seul `decryptBytes`. `autoDispose`
+/// pour libérer les bytes en RAM quand plus aucun widget ne les utilise —
+/// la `PaintingBinding.imageCache` Flutter prend ensuite le relais pour
+/// les bitmaps décodés (et est déjà clear au lock dans
+/// `VaultSessionController.lock`).
+final attachmentBytesProvider = FutureProvider.autoDispose
+    .family<Uint8List, String>((ref, attachmentId) {
+      return ref
+          .watch(attachmentRepositoryProvider)
+          .readBytes(attachmentId);
+    });
 
 final purgeServiceProvider = Provider((ref) {
   return PurgeService(

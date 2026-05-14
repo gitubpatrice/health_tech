@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/attachment.dart';
 import '../../domain/client.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/adaptive_scaffold.dart';
@@ -9,6 +10,7 @@ import '../../widgets/debounced_search_field.dart';
 import '../../widgets/disclaimer_dialog.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/owner_avatar.dart';
 import '../tags/tag_filter_row.dart';
 import 'client_detail_screen.dart';
 import 'client_form_screen.dart';
@@ -124,7 +126,14 @@ class _ClientTile extends ConsumerWidget {
     final selectedId = ref.watch(selectedClientIdProvider);
     return ListTile(
       selected: selectedId == client.id,
-      leading: CircleAvatar(child: Text(_initials)),
+      // Photo-avatar si définie, sinon fallback initiales (pattern
+      // pré-v1.6.x conservé). `OwnerAvatar` lazy-décrypte uniquement
+      // les lignes visibles via le `ListView.separated` lazy-build.
+      leading: OwnerAvatar(
+        ownerType: AttachmentOwner.client,
+        ownerId: client.id,
+        fallbackChild: Text(_initials),
+      ),
       title: Text(client.fullName),
       subtitle: Text(
         [

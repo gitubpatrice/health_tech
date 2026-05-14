@@ -1,0 +1,13 @@
+v1.7.0 — Profile photo on client / animal records.
+
+• Capture from camera or pick from gallery.
+• Removable at any time.
+• Thumbnail in list, full-screen viewer on tap.
+• Encrypted AES-GCM like every other attachment.
+• EXIF / GPS metadata stripped at read time.
+• Auto-compressed in isolate (no UI freeze).
+• Image-bomb guard before decode.
+• Included in GDPR Article 15 export.
+• Wiped by panic-wipe and record deletion.
+
+11 new tests, 120/120 green. flutter analyze 0 issue.

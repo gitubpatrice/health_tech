@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../domain/address.dart';
+import '../../domain/attachment.dart';
 import '../../domain/client.dart';
 import '../../domain/consent.dart';
 import '../../domain/lifestyle.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/validators.dart';
+import '../../widgets/avatar_picker.dart';
 import '../../widgets/busy_helpers.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/sensitive_text_field.dart';
@@ -51,6 +53,13 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
   String _civility = Civility.unspecified;
   DateTime? _birthDate;
 
+  /// Controller du `AvatarPicker` — utilisé uniquement en mode création
+  /// (l'ID DB n'existe pas encore). En édition, le picker écrit
+  /// directement via `setAvatar(ownerType, ownerId)` et le controller
+  /// reste inerte. Voir `_save()` qui appelle `commit()` après le
+  /// `repo.create()` du nouveau client.
+  late final AvatarPickerController _avatarController;
+
   bool _geobiology = false;
   bool _emWaves = false;
   bool _consentRgpd = false;
@@ -70,6 +79,7 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
   void initState() {
     super.initState();
     final c = widget.initial;
+    _avatarController = AvatarPickerController();
     _lastName = TextEditingController(text: c?.lastName ?? '');
     _firstName = TextEditingController(text: c?.firstName ?? '');
     _phone = TextEditingController(text: c?.phone ?? '');
@@ -140,6 +150,7 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
     ]) {
       ctrl.dispose();
     }
+    _avatarController.dispose();
     super.dispose();
   }
 
@@ -259,7 +270,17 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
       setBusy: (v) => setState(() => _busy = v),
       action: () async {
         if (widget.initial == null) {
-          await repo.create(draft);
+          final created = await repo.create(draft);
+          // En création : l'utilisateur a éventuellement choisi une
+          // photo-avatar AVANT que l'ID DB n'existe — on l'attache
+          // maintenant via le controller. No-op si rien en attente.
+          // L'erreur ne fait pas échouer le save (le client est déjà
+          // persisté) — `runWithBusy` capturera et affichera le snack.
+          await _avatarController.commit(
+            ref: ref,
+            ownerType: AttachmentOwner.client,
+            ownerId: created.id,
+          );
         } else {
           await repo.update(draft);
         }
@@ -291,6 +312,21 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // Photo-avatar (point 7 v1.6.x). En création, le widget
+              // s'appuie sur `_avatarController` (RAM) ; en édition, il
+              // écrit directement via `setAvatar`. Type `business` :
+              // `business_outlined` est plus pertinent que `person_outline`.
+              AvatarPicker(
+                ownerType: AttachmentOwner.client,
+                ownerId: widget.initial?.id ?? '',
+                placeholder: Icon(
+                  _kind == ClientKind.business
+                      ? Icons.business_outlined
+                      : Icons.person_outline,
+                ),
+                controller: widget.initial == null ? _avatarController : null,
+              ),
+              const SizedBox(height: 16),
               // Kind selector — drives which sections render below.
               // Switching to "business" replaces civility/birthdate with
               // company name + SIRET + SIREN + geobiology / EM checkboxes.

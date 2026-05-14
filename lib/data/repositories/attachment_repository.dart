@@ -162,7 +162,15 @@ class AttachmentRepository {
     required String ownerType,
     required String ownerId,
     String? kindFilter,
+    Set<String> excludeKinds = const {AttachmentKind.avatar},
   }) {
+    // `excludeKinds` par défaut = `{avatar}` : la liste générique des
+    // pièces jointes (`AttachmentsSection`) n'a pas vocation à montrer
+    // l'avatar — il a son propre widget (`AvatarPicker`) au sommet du
+    // formulaire / de la fiche. Les anciens consumers continuent de
+    // fonctionner sans changement (l'avatar est simplement filtré).
+    // Pour récupérer absolument tout (export RGPD, panic-wipe), passer
+    // `excludeKinds: const {}`.
     final select = _db.select(_db.attachments)
       ..where(
         (t) =>
@@ -174,6 +182,9 @@ class AttachmentRepository {
     if (kindFilter != null) {
       select.where((t) => t.kind.equals(kindFilter));
     }
+    if (excludeKinds.isNotEmpty) {
+      select.where((t) => t.kind.isNotIn(excludeKinds));
+    }
     return select.watch().asyncMap((rows) async {
       final out = <Attachment>[];
       for (final r in rows) {
@@ -181,6 +192,115 @@ class AttachmentRepository {
       }
       return out;
     });
+  }
+
+  /// Définit (ou remplace) la photo-avatar du couple `(ownerType, ownerId)`.
+  ///
+  /// Invariant maintenu : **au plus un avatar `deletedAt IS NULL` par owner**.
+  /// L'éventuel avatar courant est purgé (row + fichier `.enc`) avant
+  /// l'import du nouveau, dans cet ordre — mieux vaut une fenêtre transitoire
+  /// "pas d'avatar" que deux avatars concurrents pour le même owner.
+  ///
+  /// Le pipeline reste celui de [importBytes] : `ImageBoundsProbe` rejette
+  /// les image-bombes avant decode, `ImageCompress.maybeCompress` downscale
+  /// les photos 12 MP en isolate, AES-GCM via `FieldCrypto` puis
+  /// écriture atomique sur disque + filename chiffré au champ. Aucune
+  /// nouvelle surface crypto n'est introduite.
+  ///
+  /// Le `mimeType` doit commencer par `image/` ; sinon l'import échoue
+  /// avec [AttachmentRejectedError]`('image_format_unrecognised')` côté
+  /// [importBytes] (les bytes sans magic image connu sont refusés).
+  Future<Attachment> setAvatar({
+    required String ownerType,
+    required String ownerId,
+    required Uint8List bytes,
+    required String mimeType,
+    required String filename,
+  }) async {
+    // Refus précoce : un avatar DOIT être annoncé comme image. Sans ce garde,
+    // un appelant qui passerait par erreur un mime `application/pdf` se
+    // verrait stocker l'avatar côté DB sans déclencher `ImageBoundsProbe`
+    // (qui n'agit que si `mimeType.startsWith('image/')` dans
+    // [importBytes]). On protège donc l'invariant "avatar ⇒ image" ici,
+    // et on laisse `importBytes` faire le check magic-bytes ensuite.
+    if (!mimeType.startsWith('image/')) {
+      throw const AttachmentRejectedError('image_format_unrecognised');
+    }
+    final current = await getAvatar(ownerType: ownerType, ownerId: ownerId);
+    if (current != null) {
+      await purge(current.id);
+    }
+    return importBytes(
+      ownerType: ownerType,
+      ownerId: ownerId,
+      kind: AttachmentKind.avatar,
+      filename: filename,
+      mimeType: mimeType,
+      bytes: bytes,
+    );
+  }
+
+  /// Renvoie l'avatar courant du couple `(ownerType, ownerId)` ou `null`
+  /// s'il n'y en a pas. Décrypte le filename (`_fromRow`) ; ne lit PAS le
+  /// fichier `.enc` — voir [readBytes] pour ça.
+  Future<Attachment?> getAvatar({
+    required String ownerType,
+    required String ownerId,
+  }) async {
+    final row =
+        await (_db.select(_db.attachments)
+              ..where(
+                (t) =>
+                    t.ownerType.equals(ownerType) &
+                    t.ownerId.equals(ownerId) &
+                    t.kind.equals(AttachmentKind.avatar) &
+                    t.deletedAt.isNull(),
+              )
+              // Si plusieurs avatars existent (ne devrait jamais arriver,
+              // `setAvatar` purge l'ancien), on prend le plus récent.
+              ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+              ..limit(1))
+            .getSingleOrNull();
+    if (row == null) return null;
+    return _fromRow(row);
+  }
+
+  /// Stream live de l'avatar du couple — émet `null` quand il n'y en a
+  /// pas / vient d'être supprimé, l'`Attachment` mis à jour sinon. Utilisé
+  /// par `OwnerAvatar` (UI tile) et `AvatarPicker` (formulaire / fiche)
+  /// pour reconstruire dès que l'utilisateur change la photo, sans avoir
+  /// à invalider manuellement le provider.
+  Stream<Attachment?> watchAvatar({
+    required String ownerType,
+    required String ownerId,
+  }) {
+    final select = _db.select(_db.attachments)
+      ..where(
+        (t) =>
+            t.ownerType.equals(ownerType) &
+            t.ownerId.equals(ownerId) &
+            t.kind.equals(AttachmentKind.avatar) &
+            t.deletedAt.isNull(),
+      )
+      ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+      ..limit(1);
+    return select.watch().asyncMap((rows) async {
+      if (rows.isEmpty) return null;
+      return _fromRow(rows.first);
+    });
+  }
+
+  /// Supprime l'avatar courant si présent (purge row + fichier `.enc`).
+  /// No-op s'il n'y a pas d'avatar — utile pour le bouton « Supprimer la
+  /// photo » du `AvatarPicker`.
+  Future<void> clearAvatar({
+    required String ownerType,
+    required String ownerId,
+  }) async {
+    final current = await getAvatar(ownerType: ownerType, ownerId: ownerId);
+    if (current != null) {
+      await purge(current.id);
+    }
   }
 
   /// Removes the row AND the encrypted file. Best-effort: row deletion is
