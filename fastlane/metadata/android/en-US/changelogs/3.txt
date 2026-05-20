@@ -1,0 +1,11 @@
+v1.7.1 — Security audit (9 fixes)
+
+Security: Panic mode now erases Android system calendar
+appointments too (before: GDPR leak). Lockout protected
+by monotonic clock (anti OS clock-rollback). GIF
+rejected as avatar (anti-OOM).
+
+UI: isUniversalApk=false (-30 MB), delete dialog
+autofocus Cancel, haptic on panic + delete.
+
+Tests: audit_v1_7_1 (7 guards). 127/127 pass.

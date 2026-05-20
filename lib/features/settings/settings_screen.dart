@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -405,6 +406,10 @@ class _PanicWipeTile extends ConsumerWidget {
           _PanicConfirmDialog(token: l10n.settingsPanicConfirmToken),
     );
     if (ok != true || !context.mounted) return;
+    // v1.7.1 (M4 audit) — feedback haptique fort sur action irréversible.
+    // `heavyImpact` est le pattern Files Tech pour panic / destruction
+    // (aligné Pass Tech v2.4.4 U9, Notes Tech v1.1.0).
+    unawaited(HapticFeedback.heavyImpact());
     final service = ref.read(panicServiceProvider);
     await service.wipe();
     // Le coffre est détruit → vault.lock() a déjà été invoqué par

@@ -78,7 +78,16 @@ android {
             isEnable = true
             reset()
             include("armeabi-v7a", "arm64-v8a", "x86_64")
-            isUniversalApk = true
+            // v1.7.1 (H3 audit) — passé à `false` pour aligner Health Tech sur
+            // la doctrine portfolio Files Tech (Pass / Notes / PDF / RFT / SMS
+            // Tech sont tous à `false`). Un APK universel embarque les 3 .so
+            // SQLCipher (~30 Mo cumulés inutiles) et gonfle la release. Les
+            // 3 splits ABI restent générés via `flutter build apk --release
+            // --split-per-abi`. Sur F-Droid (cible future), le build from
+            // source compilera son universel à part — ne pas confondre le
+            // canal F-Droid (universel via build infra) avec le canal GH
+            // Releases (3 splits per-arch).
+            isUniversalApk = false
         }
     }
 

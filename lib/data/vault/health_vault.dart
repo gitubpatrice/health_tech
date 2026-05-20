@@ -65,6 +65,24 @@ class HealthVault {
   static const _kFailCount = 'health_vault.fail_count_v1';
   static const _kFailAt = 'health_vault.fail_at_ms_v1';
 
+  /// v1.7.1 (C2 audit cohérence) — Stopwatch monotone qui démarre au dernier
+  /// échec et **n'avance que pendant que le process vit**. Combiné à `_kFailAt`
+  /// (wall-clock), il borne la durée minimale du lockout : un attaquant root
+  /// qui **avance** le clock OS pour court-circuiter `unlockAt - now` est
+  /// neutralisé car le Stopwatch reflète le vrai temps écoulé en session.
+  ///
+  /// Comportement après kill process : Stopwatch volatile → seul le wall-clock
+  /// reste (avec son anti-rollback `max(stored,now)` côté write). C'est une
+  /// dégradation acceptable : pour bypasser le lockout, l'attaquant devrait
+  /// alors **survivre à un cold-start ET avancer le clock**, ce qui laisse
+  /// au moins la fenêtre wall-clock comme garde-fou (le `at` persisté ne peut
+  /// être que dans le passé après un cold-start, donc `unlockAt - now` reste
+  /// significatif si le user n'a pas avancé le clock juste après le reboot).
+  ///
+  /// Le Stopwatch est `late final` pour éviter une allocation à chaque
+  /// unlock — il vit avec l'instance `HealthVault` (singleton Provider).
+  final Stopwatch _lockoutStopwatch = Stopwatch();
+
   /// Timestamp du dernier verrouillage. Utilisé par le Lock screen pour
   /// décider si la biométrie est autorisée comme raccourci (re-unlock à
   /// chaud rapide) ou si la passphrase est forcée (cold-start, ou délai
@@ -335,6 +353,12 @@ class HealthVault {
       // Reset des compteurs d'échec sur succès.
       await _storage.delete(key: _kFailCount);
       await _storage.delete(key: _kFailAt);
+      // v1.7.1 (C2) — arrêter le Stopwatch monotone : plus de lockout actif.
+      // `stop()` est idempotent (no-op si déjà arrêté), `reset()` ramène
+      // `elapsedMilliseconds` à 0 pour la prochaine session d'échecs.
+      _lockoutStopwatch
+        ..stop()
+        ..reset();
       unawaited(_maybeRecalibrate(salt: base64Decode(saltB64)));
       return true;
     } on SecretBoxAuthenticationError {
@@ -369,11 +393,34 @@ class HealthVault {
     final at = int.tryParse(atStr) ?? 0;
     final delaySec = _backoffSecondsFor(count);
     if (delaySec == 0) return 0;
+
+    // Calcul wall-clock (anti-rollback côté write, vulnérable à un
+    // attaquant qui AVANCE l'horloge OS pour annuler le délai).
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final unlockAtMs = at + delaySec * 1000;
-    final remainingMs = unlockAtMs - nowMs;
-    if (remainingMs <= 0) return 0;
-    return (remainingMs / 1000).ceil();
+    final wallRemainingMs = unlockAtMs - nowMs;
+
+    // v1.7.1 (C2) — Calcul monotone : le Stopwatch n'avance que pendant que
+    // le process vit, immune à toute manipulation du clock OS. Si le
+    // Stopwatch est actif (échec récent enregistré dans cette session du
+    // process), `delaySec*1000 - elapsedMs` donne le résiduel réel. Sinon
+    // (cold-start après kill), on retombe sur le wall-clock seul.
+    final int effectiveRemainingMs;
+    if (_lockoutStopwatch.isRunning) {
+      final monoRemainingMs =
+          delaySec * 1000 - _lockoutStopwatch.elapsedMilliseconds;
+      // Le `max` retient le plus restrictif des deux : un attaquant qui
+      // avance le clock OS ramène `wallRemainingMs` à 0 ou négatif, mais
+      // le monotone reste fiable → l'unlock est refusé tant que le vrai
+      // temps écoulé en session n'a pas atteint `delaySec`.
+      effectiveRemainingMs = wallRemainingMs > monoRemainingMs
+          ? wallRemainingMs
+          : monoRemainingMs;
+    } else {
+      effectiveRemainingMs = wallRemainingMs;
+    }
+    if (effectiveRemainingMs <= 0) return 0;
+    return (effectiveRemainingMs / 1000).ceil();
   }
 
   /// Backoff exponentiel pas trop agressif : aucun délai pour les 2
@@ -401,6 +448,13 @@ class HealthVault {
     final at = nowMs > prevAt ? nowMs : prevAt;
     await _storage.write(key: _kFailCount, value: '$next');
     await _storage.write(key: _kFailAt, value: '$at');
+
+    // v1.7.1 (C2) — reset+start du Stopwatch monotone à chaque nouvel échec.
+    // Le délai backoff associé au nouveau `count` se mesure désormais aussi
+    // côté monotone (immune au clock skew), pas seulement côté wall-clock.
+    _lockoutStopwatch
+      ..reset()
+      ..start();
   }
 
   /// Returns a defensive copy of the raw 32-byte VEK. Used to key the

@@ -1,0 +1,11 @@
+v1.7.1 — Audit sécurité (9 fixes)
+
+Sécurité : Mode panique efface aussi les rendez-vous
+du calendrier système Android (avant fuite RGPD).
+Lockout protégé par horloge monotone (anti-rollback
+clock OS). GIF refusé comme avatar (anti-OOM).
+
+UI : isUniversalApk=false (-30 Mo), dialog suppression
+autofocus Annuler, haptique panic + delete.
+
+Tests : audit_v1_7_1 (7 guards). 127/127 verts.

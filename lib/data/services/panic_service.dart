@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/painting.dart' show PaintingBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
@@ -9,13 +10,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/providers.dart';
 import '../../utils/ephemeral_cache.dart';
+import '../db/database.dart';
 import '../vault/health_vault.dart';
 import 'notification_service.dart';
+import 'system_calendar_bridge.dart';
 
 /// Étape franchie pendant un panic-wipe. Sert au diagnostic et à
 /// pouvoir reprendre proprement si l'OS tue le process à mi-parcours.
 enum PanicStep {
   notificationsCancel,
+
+  /// v1.7.1 (C3 audit) — suppression des événements poussés dans le
+  /// calendrier système Android (Google Calendar / Samsung Calendar /
+  /// CalDAV) avant la destruction du vault. **Doit précéder
+  /// [vaultDestroy] et [dbDelete]** car la lecture des `externalCalendarId`
+  /// / `externalCalendarEventId` requiert que la DB soit encore ouverte
+  /// et déchiffrée. Sans ce step, après un panic-wipe sur appareil perdu
+  /// ou en situation de coercition, les rendez-vous restaient lisibles
+  /// dans l'agenda système Android — fuite RGPD (noms client, dates,
+  /// titres) accessible à toute app avec READ_CALENDAR.
+  systemCalendarWipe,
   vaultDestroy,
   dbDelete,
   attachmentsWipe,
@@ -52,11 +66,25 @@ class PanicService {
   PanicService({
     required this.vault,
     required this.notifications,
+    required this.calendar,
+    required this.db,
     SharedPreferences? prefs,
   }) : _prefsOverride = prefs;
 
   final HealthVault vault;
   final NotificationService notifications;
+
+  /// v1.7.1 (C3) — bridge vers le Calendar Android (ContentResolver via
+  /// MethodChannel). Utilisé pour effacer les événements poussés par
+  /// l'app avant la destruction du vault.
+  final SystemCalendarBridge calendar;
+
+  /// v1.7.1 (C3) — DB SQLCipher utilisée en lecture **seule** lors du
+  /// step `systemCalendarWipe`, AVANT `vaultDestroy`. Les références
+  /// calendrier ne sont pas chiffrées (colonnes `externalCalendarId` +
+  /// `externalCalendarEventId` en clair dans la DB SQLCipher elle-même
+  /// chiffrée at-rest), donc pas besoin de `FieldCrypto` pour les lire.
+  final HealthDb db;
 
   /// Surcharge pour les tests. En prod on récupère l'instance via le
   /// singleton standard.
@@ -83,6 +111,13 @@ class PanicService {
     await _safe(notifications.cancelAll);
     onStep?.call(PanicStep.notificationsCancel);
 
+    // v1.7.1 (C3) — Calendar wipe AVANT vault.destroy : on a besoin de la
+    // DB encore ouverte pour récupérer les (calendarId, eventId) à
+    // supprimer. Best-effort comme le reste : si permission Calendar
+    // refusée ou device offline, on continue les autres étapes.
+    await _safe(_wipeSystemCalendar);
+    onStep?.call(PanicStep.systemCalendarWipe);
+
     await _safe(vault.destroy);
     onStep?.call(PanicStep.vaultDestroy);
 
@@ -104,6 +139,59 @@ class PanicService {
     onStep?.call(PanicStep.imageCacheClear);
 
     onStep?.call(PanicStep.done);
+  }
+
+  /// v1.7.1 (C3) — efface tous les événements poussés par Health Tech dans
+  /// le calendrier système Android (Google Calendar / Samsung Calendar /
+  /// CalDAV). Best-effort : si la permission READ/WRITE_CALENDAR n'est pas
+  /// accordée, [SystemCalendarBridge.remove] retourne `false` silencieusement
+  /// et la suite du panic-wipe continue.
+  ///
+  /// **Ordre** : lit la DB SQLCipher AVANT que `vault.destroy` ne la rende
+  /// inaccessible. Les colonnes `externalCalendarId` et
+  /// `externalCalendarEventId` ne sont pas chiffrées au niveau champ (la DB
+  /// SQLCipher est chiffrée at-rest comme un tout), donc on les lit
+  /// directement via drift sans passer par `FieldCrypto`.
+  ///
+  /// **Tolérance** : chaque suppression est isolée — une exception sur un
+  /// event particulier n'empêche pas la suppression des suivants. La méthode
+  /// elle-même est wrappée dans `_safe()` au niveau caller.
+  Future<void> _wipeSystemCalendar() async {
+    // Appointments : on lit toute la table (peu de lignes attendues côté
+    // praticien solo, l'overhead est négligeable) puis on filtre côté Dart
+    // les lignes ayant les deux colonnes non-null. Évite la combinaison
+    // d'expressions Drift `Expression<bool> & Expression<bool>` qui n'est
+    // pas exposée publiquement par le runtime de cette version de Drift.
+    final aptQuery = db.select(db.appointments)
+      ..orderBy([(t) => OrderingTerm.asc(t.startAt)]);
+    final apts = await aptQuery.get();
+    for (final apt in apts) {
+      final calId = apt.externalCalendarId;
+      final evtId = apt.externalCalendarEventId;
+      if (calId == null || evtId == null) continue;
+      try {
+        await calendar.remove(calendarId: calId, eventId: evtId);
+      } on Object {
+        // Best-effort : un event déjà supprimé manuellement, une perte
+        // de permission ou un calendrier disparu ne doivent pas
+        // interrompre la séquence panic.
+      }
+    }
+
+    // Sessions : même pattern.
+    final sessQuery = db.select(db.sessions)
+      ..orderBy([(t) => OrderingTerm.asc(t.startAt)]);
+    final sessions = await sessQuery.get();
+    for (final s in sessions) {
+      final calId = s.externalCalendarId;
+      final evtId = s.externalCalendarEventId;
+      if (calId == null || evtId == null) continue;
+      try {
+        await calendar.remove(calendarId: calId, eventId: evtId);
+      } on Object {
+        // Best-effort, on continue le wipe.
+      }
+    }
   }
 
   Future<void> _wipeDatabase() async {
@@ -168,5 +256,11 @@ final panicServiceProvider = Provider<PanicService>((ref) {
   return PanicService(
     vault: ref.watch(vaultProvider),
     notifications: ref.watch(notificationServiceProvider),
+    calendar: ref.watch(systemCalendarBridgeProvider),
+    // v1.7.1 (C3) — DB lue en clair pour récupérer les références
+    // calendrier avant vault.destroy. Le panic-wipe n'est invocable que
+    // depuis un coffre déverrouillé (cf. settings_screen.dart:408), donc
+    // `requireValue` est légitime ici.
+    db: ref.watch(databaseProvider).requireValue,
   );
 });

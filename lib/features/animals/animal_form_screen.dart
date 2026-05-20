@@ -12,6 +12,7 @@ import '../../widgets/busy_helpers.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/sensitive_text_field.dart';
+import '../../widgets/snack_utils.dart';
 import '../clients/client_providers.dart';
 import 'animal_l10n.dart';
 
@@ -134,9 +135,14 @@ class _AnimalFormScreenState extends ConsumerState<AnimalFormScreen> {
   Future<void> _save() async {
     final l10n = AppL10n.of(context);
     if (_clientId == null) {
-      ScaffoldMessenger.of(
+      // v1.7.1 (H2) — snackbar canonique floating + couleur erreur M3.
+      // Avant : SnackBar brut sans `behavior: floating` ni `backgroundColor`
+      // → fixed en bas, contraste blanc-sur-blanc potentiel en light mode.
+      showFloatingSnack(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.sessionFormSelectClient)));
+        l10n.sessionFormSelectClient,
+        tone: SnackTone.error,
+      );
       return;
     }
     if (!_formKey.currentState!.validate()) return;

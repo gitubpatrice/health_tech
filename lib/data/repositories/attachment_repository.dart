@@ -226,6 +226,17 @@ class AttachmentRepository {
     if (!mimeType.startsWith('image/')) {
       throw const AttachmentRejectedError('image_format_unrecognised');
     }
+    // v1.7.1 (H1 audit) — refus explicite des GIF (animés ou non). Un avatar
+    // n'est jamais animé par design ; or `ImageCompress.maybeCompress` ne
+    // downscale pas les GIF (seulement JPEG/PNG/WebP), donc un GIF animé
+    // 20 Mo passe le cap `kMaxAttachmentBytes` (25 Mo) et termine chiffré en
+    // l'état. Au rendu via `MemoryImage`, les 100+ frames RGBA décodées
+    // saturent la RAM sur device d'entrée de gamme (POCO C75, Redmi 9A) →
+    // OOM crash. On refuse en amont ; les formats valides restent JPEG,
+    // PNG et WebP — couverts par le compress pipeline.
+    if (mimeType == 'image/gif') {
+      throw const AttachmentRejectedError('image_format_unsupported');
+    }
     final current = await getAvatar(ownerType: ownerType, ownerId: ownerId);
     if (current != null) {
       await purge(current.id);
