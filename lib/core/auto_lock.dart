@@ -10,21 +10,31 @@ import 'providers.dart';
 /// clock-skew attacks where a rooted attacker could rewind the system clock
 /// to keep the session alive).
 ///
-/// Exposed as a [StateNotifier] so the Settings tile listens to the
-/// configured [Duration] reactively: changing the value via
-/// [setDurationMinutes] both persists it AND rebuilds anything that
-/// `ref.watch`es the provider.
-class AutoLockController extends StateNotifier<Duration> {
-  AutoLockController(this._ref) : super(_defaultDuration) {
-    _stopwatch.start();
-  }
-
+/// v1.8.0 (C6 audit cohérence) — migré de `StateNotifier` (Riverpod v1) vers
+/// `Notifier` (Riverpod v2). API call-side identique
+/// (`ref.read(autoLockControllerProvider.notifier).lockNow()`,
+/// `ref.watch(autoLockControllerProvider)`) — pas de modif des call-sites.
+/// Le `ref` est hérité de `Notifier` (plus de membre `_ref`). Le cleanup
+/// `dispose()` est remplacé par `ref.onDispose(...)` registré dans `build()`.
+class AutoLockController extends Notifier<Duration> {
   static const _kDurationKey = 'auto_lock.minutes';
   static const Duration _defaultDuration = Duration(minutes: 5);
 
-  final Ref _ref;
   final Stopwatch _stopwatch = Stopwatch();
   Timer? _ticker;
+
+  @override
+  Duration build() {
+    _stopwatch.start();
+    ref.onDispose(() {
+      _ticker?.cancel();
+      _ticker = null;
+      _backgroundGrace?.cancel();
+      _backgroundGrace = null;
+      _stopwatch.stop();
+    });
+    return _defaultDuration;
+  }
 
   /// Loads the user-configured duration from prefs (or falls back to 5 min).
   Future<void> init() async {
@@ -63,7 +73,7 @@ class AutoLockController extends StateNotifier<Duration> {
   void lockNow() {
     _backgroundGrace?.cancel();
     _backgroundGrace = null;
-    _ref.read(vaultSessionProvider.notifier).lock();
+    ref.read(vaultSessionProvider.notifier).lock();
   }
 
   /// Schedule a lock after a short grace period. Used by the lifecycle
@@ -77,8 +87,8 @@ class AutoLockController extends StateNotifier<Duration> {
     _backgroundGrace?.cancel();
     _backgroundGrace = Timer(_backgroundGracePeriod, () {
       _backgroundGrace = null;
-      if (_ref.read(vaultSessionProvider) != null) {
-        _ref.read(vaultSessionProvider.notifier).lock();
+      if (ref.read(vaultSessionProvider) != null) {
+        ref.read(vaultSessionProvider.notifier).lock();
       }
     });
   }
@@ -102,25 +112,15 @@ class AutoLockController extends StateNotifier<Duration> {
   Timer? _backgroundGrace;
 
   void _tick() {
-    if (_ref.read(vaultSessionProvider) == null) return; // already locked
+    if (ref.read(vaultSessionProvider) == null) return; // already locked
     if (_stopwatch.elapsed >= state) {
       lockNow();
     }
   }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    _ticker = null;
-    _backgroundGrace?.cancel();
-    _backgroundGrace = null;
-    _stopwatch.stop();
-    super.dispose();
-  }
 }
 
 final autoLockControllerProvider =
-    StateNotifierProvider<AutoLockController, Duration>(AutoLockController.new);
+    NotifierProvider<AutoLockController, Duration>(AutoLockController.new);
 
 /// Wraps the app with a [Listener] that records pointer events as activity
 /// and an [AppLifecycleListener] that locks on background.

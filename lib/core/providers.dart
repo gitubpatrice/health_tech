@@ -109,19 +109,24 @@ class VaultSession {
   final DateTime unlockedAt;
 }
 
-class VaultSessionController extends StateNotifier<VaultSession?> {
-  VaultSessionController(this._ref) : super(null);
-  final Ref _ref;
+/// v1.8.0 (C6 audit cohérence) — migré de `StateNotifier` (Riverpod v1) vers
+/// `Notifier` (Riverpod v2). API call-side identique
+/// (`ref.read(vaultSessionProvider.notifier).lock()`,
+/// `ref.watch(vaultSessionProvider)`) — pas de modification des 6 call-sites.
+/// Le `ref` est désormais hérité de `Notifier` (plus de membre `_ref`).
+class VaultSessionController extends Notifier<VaultSession?> {
+  @override
+  VaultSession? build() => null;
 
   Future<bool> setupAndUnlock(String passphrase) async {
-    final vault = _ref.read(vaultProvider);
+    final vault = ref.read(vaultProvider);
     await vault.setupWithPassphrase(passphrase);
     state = VaultSession(unlockedAt: DateTime.now());
     return true;
   }
 
   Future<bool> unlock(String passphrase) async {
-    final vault = _ref.read(vaultProvider);
+    final vault = ref.read(vaultProvider);
     final ok = await vault.unlockWithPassphrase(passphrase);
     if (ok) {
       state = VaultSession(unlockedAt: DateTime.now());
@@ -137,7 +142,7 @@ class VaultSessionController extends StateNotifier<VaultSession?> {
     required String subtitle,
     required String negativeButton,
   }) async {
-    final vault = _ref.read(vaultProvider);
+    final vault = ref.read(vaultProvider);
     final ok = await vault.unlockWithBiometric(
       title: title,
       subtitle: subtitle,
@@ -157,7 +162,7 @@ class VaultSessionController extends StateNotifier<VaultSession?> {
   /// supprimer `health.db` alors que SQLCipher tient encore le file
   /// descriptor ouvert (corruption WAL/SHM possible).
   Future<void> lock() async {
-    final dbAsync = _ref.read(databaseProvider);
+    final dbAsync = ref.read(databaseProvider);
     if (dbAsync.hasValue) {
       try {
         await dbAsync.requireValue.close();
@@ -175,13 +180,13 @@ class VaultSessionController extends StateNotifier<VaultSession?> {
     PaintingBinding.instance.imageCache
       ..clear()
       ..clearLiveImages();
-    _ref.read(vaultProvider).lock();
+    ref.read(vaultProvider).lock();
     state = null;
   }
 }
 
 final vaultSessionProvider =
-    StateNotifierProvider<VaultSessionController, VaultSession?>(
+    NotifierProvider<VaultSessionController, VaultSession?>(
       VaultSessionController.new,
     );
 

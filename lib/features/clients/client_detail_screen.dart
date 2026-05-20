@@ -8,15 +8,18 @@ import '../../domain/lifestyle.dart';
 import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../widgets/breakpoints.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/owner_avatar.dart';
+import '../animals/animal_detail_screen.dart';
 import '../animals/animal_form_screen.dart';
 import '../animals/animal_l10n.dart';
 import '../animals/animal_providers.dart';
 import '../attachments/attachments_section.dart';
+import '../sessions/session_detail_screen.dart';
 import '../sessions/session_form_screen.dart';
 import '../sessions/session_l10n.dart';
 import '../sessions/session_providers.dart';
@@ -359,9 +362,21 @@ class _AnimalsTab extends ConsumerWidget {
                         ),
                         title: Text(a.name),
                         subtitle: Text(speciesLabel(l10n, a.species)),
+                        // v1.8.0 fix : sur téléphone (compact), tap doit
+                        // PUSH AnimalDetailScreen — sans ça, le state était
+                        // mis à jour mais aucun écran ne s'affichait (le
+                        // détail n'est rendu côté pane que sur tablette).
+                        // Pattern aligné sur `animals_screen._AnimalTile._select`.
                         onTap: () {
                           ref.read(selectedAnimalIdProvider.notifier).state =
                               a.id;
+                          if (context.isCompact) {
+                            Navigator.of(context).push<void>(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const AnimalDetailScreen(),
+                              ),
+                            );
+                          }
                         },
                       );
                     },
@@ -426,9 +441,20 @@ class _SessionsTab extends ConsumerWidget {
                           '${kindLabel(l10n, s.kind)} · '
                           '${statusLabel(l10n, s.status)}',
                         ),
+                        // v1.8.0 fix : push SessionDetailScreen sur compact
+                        // (téléphone) — sinon le state était mis à jour
+                        // mais aucun écran ne s'affichait. Cohérent avec
+                        // le tab Animals corrigé en parallèle.
                         onTap: () {
                           ref.read(selectedSessionIdProvider.notifier).state =
                               s.id;
+                          if (context.isCompact) {
+                            Navigator.of(context).push<void>(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const SessionDetailScreen(),
+                              ),
+                            );
+                          }
                         },
                       );
                     },
