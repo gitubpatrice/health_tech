@@ -35,7 +35,7 @@ dependencies:
   shared_preferences: ^2.3.4
 
   # Runtime app metadata (version is read from PackageInfo, not hardcoded)
-  package_info_plus: ^8.1.4
+  package_info_plus: ^9.0.1
 
   # Files & paths
   path_provider: ^2.1.5
