@@ -63,7 +63,7 @@ dependencies:
 
   # Local notifications (appointment reminders) — runs on-device only,
   # no Firebase / FCM. Uses AlarmManager + NotificationManager on Android.
-  flutter_local_notifications: ^17.2.4
+  flutter_local_notifications: ^18.0.1
 
   # Monthly calendar widget
   table_calendar: ^3.1.3
