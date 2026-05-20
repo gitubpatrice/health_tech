@@ -360,6 +360,7 @@ class _PurgeClientTile extends ConsumerWidget {
         content: Text(l10n.settingsRgpdPurgeSubtitle),
         actions: [
           TextButton(
+            autofocus: true,
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(l10n.actionCancel),
           ),
@@ -490,6 +491,7 @@ class _PanicConfirmDialogState extends State<_PanicConfirmDialog> {
       ),
       actions: [
         TextButton(
+          autofocus: true,
           onPressed: () => Navigator.of(context).pop(false),
           child: Text(l10n.actionCancel),
         ),

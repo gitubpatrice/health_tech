@@ -6,9 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/services/global_search_service.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/breakpoints.dart';
+import '../animals/animal_detail_screen.dart';
 import '../animals/animal_providers.dart';
+import '../clients/client_detail_screen.dart';
 import '../clients/client_providers.dart';
 import '../home/home_shell.dart';
+import '../sessions/session_detail_screen.dart';
 import '../sessions/session_providers.dart';
 
 /// Single-screen global search reachable from the Home AppBar.
@@ -66,20 +70,35 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
 
   void _open(SearchHit hit) {
     final tabNotifier = ref.read(homeTabProvider.notifier);
+    // v1.8.1 (audit final HIGH-2) — sur compact (téléphone), après le pop
+    // de la search, l'utilisateur retombait sur la liste avec la sélection
+    // appliquée mais aucune fiche détail ne s'affichait. On capture le
+    // Navigator AVANT pop puis on push le DetailScreen correspondant.
+    // Pattern aligné v1.8.0 (ClientDetailScreen tabs Animals/Sessions).
+    final navigator = Navigator.of(context);
+    final isCompact = context.isCompact;
+    WidgetBuilder? detailBuilder;
     switch (hit.kind) {
       case SearchHitKind.client:
         ref.read(selectedClientIdProvider.notifier).state = hit.id;
         tabNotifier.state = HomeTab.clients;
+        detailBuilder = (_) => const ClientDetailScreen();
       case SearchHitKind.animal:
         ref.read(selectedAnimalIdProvider.notifier).state = hit.id;
         tabNotifier.state = HomeTab.animals;
+        detailBuilder = (_) => const AnimalDetailScreen();
       case SearchHitKind.session:
         ref.read(selectedSessionIdProvider.notifier).state = hit.id;
         tabNotifier.state = HomeTab.sessions;
+        detailBuilder = (_) => const SessionDetailScreen();
       case SearchHitKind.appointment:
+        // Agenda n'a pas (encore) d'écran détail dédié — pop seul.
         tabNotifier.state = HomeTab.agenda;
     }
-    Navigator.of(context).pop();
+    navigator.pop();
+    if (isCompact && detailBuilder != null) {
+      navigator.push<void>(MaterialPageRoute<void>(builder: detailBuilder));
+    }
   }
 
   @override

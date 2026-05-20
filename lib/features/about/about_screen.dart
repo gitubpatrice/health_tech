@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/snack_utils.dart';
@@ -89,6 +92,21 @@ class AboutScreen extends StatelessWidget {
                 ),
               ),
               _AboutRow(
+                icon: Icons.public_outlined,
+                label: l10n.aboutWebsiteLabel,
+                value: l10n.aboutWebsiteValue,
+                trailing: IconButton(
+                  icon: const Icon(Icons.open_in_new),
+                  tooltip: l10n.aboutWebsiteValue,
+                  onPressed: () => unawaited(
+                    launchUrl(
+                      Uri.parse(l10n.aboutWebsiteValue),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
+                ),
+              ),
+              _AboutRow(
                 icon: Icons.lock_outline,
                 label: l10n.aboutPrivacyLabel,
                 value: l10n.aboutPrivacyValue,
@@ -99,6 +117,19 @@ class AboutScreen extends StatelessWidget {
                 value: l10n.aboutLicenseValue,
               ),
               const SizedBox(height: 24),
+              FilledButton.tonalIcon(
+                onPressed: () => unawaited(
+                  launchUrl(
+                    Uri.parse(
+                      'https://github.com/gitubpatrice/health_tech/releases/latest',
+                    ),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+                icon: const Icon(Icons.system_update_alt),
+                label: Text(l10n.aboutCheckUpdate),
+              ),
+              const SizedBox(height: 12),
               FilledButton.tonalIcon(
                 onPressed: () => Navigator.of(context).push<void>(
                   MaterialPageRoute<void>(builder: (_) => const LegalScreen()),

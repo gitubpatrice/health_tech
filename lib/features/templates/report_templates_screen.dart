@@ -116,6 +116,7 @@ class ReportTemplatesScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
+            autofocus: true,
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(l10n.actionCancel),
           ),

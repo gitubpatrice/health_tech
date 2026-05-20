@@ -8,12 +8,14 @@ import '../../domain/attachment.dart';
 import '../../domain/tag.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
+import '../../widgets/breakpoints.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/owner_avatar.dart';
 import '../../widgets/snack_utils.dart';
 import '../attachments/attachments_section.dart';
+import '../sessions/session_detail_screen.dart';
 import '../sessions/session_form_screen.dart';
 import '../sessions/session_l10n.dart';
 import '../sessions/session_providers.dart';
@@ -272,13 +274,21 @@ class _SessionsTab extends ConsumerWidget {
                           '${kindLabel(l10n, s.kind)} · '
                           '${statusLabel(l10n, s.status)}',
                         ),
-                        // (audit M6) Onglet sessions de l'animal :
-                        // tap → sélection + navigation cohérente avec
-                        // l'onglet sessions du client (qui le faisait
-                        // déjà). Avant : tile inerte.
+                        // v1.8.1 (audit final HIGH-1) : tab Sessions de
+                        // la fiche Animal — tap doit pousser SessionDetailScreen
+                        // sur compact (téléphone), sinon le state était mis
+                        // à jour mais aucun écran ne s'affichait. Pattern
+                        // aligné v1.8.0 fixes sur ClientDetailScreen.
                         onTap: () {
                           ref.read(selectedSessionIdProvider.notifier).state =
                               s.id;
+                          if (context.isCompact) {
+                            Navigator.of(context).push<void>(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const SessionDetailScreen(),
+                              ),
+                            );
+                          }
                         },
                       );
                     },
