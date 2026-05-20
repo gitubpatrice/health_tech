@@ -331,8 +331,19 @@ final ownerAvatarProvider = StreamProvider.autoDispose
 /// la `PaintingBinding.imageCache` Flutter prend ensuite le relais pour
 /// les bitmaps décodés (et est déjà clear au lock dans
 /// `VaultSessionController.lock`).
+///
+/// **v1.7.2 (M3 audit perf)** : `keepAlive()` 30 s après le dernier listener.
+/// Sans ce délai, la navigation rapide liste→détail→liste re-déclenche un
+/// `decryptBytes` à chaque transition (autoDispose immédiat). Le délai est
+/// volontairement court : on accepte un peu de RAM en vol pour éviter le
+/// flash de loader sur le retour, sans rester en mémoire après un `lock()`
+/// (l'invalidation au verrouillage purge le provider). Le timer est annulé
+/// si un nouveau listener se rebranche dans la fenêtre.
 final attachmentBytesProvider = FutureProvider.autoDispose
     .family<Uint8List, String>((ref, attachmentId) {
+      final link = ref.keepAlive();
+      final timer = Timer(const Duration(seconds: 30), link.close);
+      ref.onDispose(timer.cancel);
       return ref.watch(attachmentRepositoryProvider).readBytes(attachmentId);
     });
 

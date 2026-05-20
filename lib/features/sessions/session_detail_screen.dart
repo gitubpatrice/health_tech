@@ -58,6 +58,7 @@ class _SessionBody extends ConsumerWidget {
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final l10n = AppL10n.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    final scheme = Theme.of(context).colorScheme;
     final confirmed = await showConfirmDeleteDialog(
       context,
       title: l10n.sessionDetailDeleteTitle,
@@ -66,7 +67,11 @@ class _SessionBody extends ConsumerWidget {
     if (!confirmed) return;
     await ref.read(purgeServiceProvider).softDeleteSession(session.id);
     messenger.showSnackBar(
-      SnackBar(content: Text(l10n.sessionDetailDeleteSuccess)),
+      buildFloatingSnack(
+        l10n.sessionDetailDeleteSuccess,
+        scheme,
+        tone: SnackTone.success,
+      ),
     );
     if (!context.mounted) return;
     ref.read(selectedSessionIdProvider.notifier).state = null;

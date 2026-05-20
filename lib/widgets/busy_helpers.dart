@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'error_view.dart';
+import 'snack_utils.dart';
 
 /// Encapsule le pattern récurrent dans les form save handlers :
 ///   1. setState busy=true
@@ -43,7 +44,9 @@ Future<void> runWithBusy({
 /// `e.toString()` (chemin de fichier, code Keystore, nom de classe
 /// d'exception interne).
 void showErrorSnack(BuildContext context, Object error) {
-  ScaffoldMessenger.of(
+  showFloatingSnack(
     context,
-  ).showSnackBar(SnackBar(content: Text(localiseError(context, error))));
+    localiseError(context, error),
+    tone: SnackTone.error,
+  );
 }

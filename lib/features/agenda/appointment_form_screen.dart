@@ -12,6 +12,7 @@ import '../../widgets/busy_helpers.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/sensitive_text_field.dart';
+import '../../widgets/snack_utils.dart';
 import '../animals/animal_providers.dart';
 import '../clients/client_providers.dart';
 import '../sessions/session_l10n.dart';
@@ -134,9 +135,12 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
     final l10n = AppL10n.of(context);
     if (!_formKey.currentState!.validate()) return;
     if (!_end.isAfter(_start)) {
-      ScaffoldMessenger.of(
+      // v1.7.2 (M5) — snackbar canonique floating + tone erreur.
+      showFloatingSnack(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.sessionFormDurationInvalid)));
+        l10n.sessionFormDurationInvalid,
+        tone: SnackTone.error,
+      );
       return;
     }
     // (audit code M1) le passage à _busy=true est entièrement délégué
@@ -159,7 +163,10 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
 
     final repo = ref.read(appointmentRepositoryProvider);
     final bridge = ref.read(systemCalendarBridgeProvider);
+    // v1.7.2 (M5) — capture messenger + scheme avant await pour
+    // `buildFloatingSnack` canonique.
     final messenger = ScaffoldMessenger.of(context);
+    final scheme = Theme.of(context).colorScheme;
     await runWithBusy(
       context: context,
       setBusy: (bool v) => setState(() => _busy = v),
@@ -188,7 +195,11 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
           // et se serait plaint que "le rappel n'a pas marché".
           if (outcome == ScheduleOutcome.skippedPastDue) {
             messenger.showSnackBar(
-              SnackBar(content: Text(l10n.appointmentFormReminderPastDue)),
+              buildFloatingSnack(
+                l10n.appointmentFormReminderPastDue,
+                scheme,
+                tone: SnackTone.info,
+              ),
             );
           }
         } on Object {
@@ -215,18 +226,28 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                 );
               }
               messenger.showSnackBar(
-                SnackBar(content: Text(l10n.appointmentFormSyncedToCalendar)),
+                buildFloatingSnack(
+                  l10n.appointmentFormSyncedToCalendar,
+                  scheme,
+                  tone: SnackTone.success,
+                ),
               );
             }
           } on CalendarPermissionDenied {
             messenger.showSnackBar(
-              SnackBar(
-                content: Text(l10n.appointmentFormCalendarPermissionDenied),
+              buildFloatingSnack(
+                l10n.appointmentFormCalendarPermissionDenied,
+                scheme,
+                tone: SnackTone.error,
               ),
             );
           } on CalendarUnavailable {
             messenger.showSnackBar(
-              SnackBar(content: Text(l10n.appointmentFormCalendarMissing)),
+              buildFloatingSnack(
+                l10n.appointmentFormCalendarMissing,
+                scheme,
+                tone: SnackTone.error,
+              ),
             );
           } on Object {
             // Tout autre échec calendrier ne doit pas bloquer la navigation.

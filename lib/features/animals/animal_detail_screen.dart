@@ -12,6 +12,7 @@ import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/detail_section_card.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/owner_avatar.dart';
+import '../../widgets/snack_utils.dart';
 import '../attachments/attachments_section.dart';
 import '../sessions/session_form_screen.dart';
 import '../sessions/session_l10n.dart';
@@ -307,7 +308,7 @@ class _VetCard extends StatelessWidget {
     String fallbackErrorLabel,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final cs = Theme.of(context).colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     bool ok;
     try {
       ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -316,14 +317,7 @@ class _VetCard extends StatelessWidget {
     }
     if (!ok) {
       messenger.showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: cs.errorContainer,
-          content: Text(
-            fallbackErrorLabel,
-            style: TextStyle(color: cs.onErrorContainer),
-          ),
-        ),
+        buildFloatingSnack(fallbackErrorLabel, scheme, tone: SnackTone.error),
       );
     }
   }

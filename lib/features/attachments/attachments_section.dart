@@ -11,6 +11,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../utils/date_format.dart';
 import '../../utils/ephemeral_cache.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/snack_utils.dart';
 import 'attachment_viewer.dart';
 
 /// Reusable attachments section embedded in client / animal / session detail
@@ -151,9 +152,11 @@ class AttachmentsSection extends ConsumerWidget {
     } on AttachmentTooLargeError {
       if (!context.mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(
+      showFloatingSnack(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.attachmentsTooLarge)));
+        l10n.attachmentsTooLarge,
+        tone: SnackTone.error,
+      );
     } on AttachmentRejectedError catch (e) {
       if (!context.mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
@@ -164,7 +167,7 @@ class AttachmentsSection extends ConsumerWidget {
       final msg = e.reason == 'image_too_large'
           ? l10n.attachmentsImageTooLarge
           : l10n.attachmentsRejectedImage;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      showFloatingSnack(context, msg, tone: SnackTone.error);
     } finally {
       // Le file_picker plugin a copié le fichier source dans
       // cache/file_picker/ avant de retourner les bytes. Maintenant que

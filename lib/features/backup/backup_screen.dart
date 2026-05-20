@@ -12,6 +12,7 @@ import '../../data/services/backup_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/ephemeral_cache.dart';
 import '../../widgets/error_view.dart' show localiseError;
+import '../../widgets/snack_utils.dart';
 
 /// Settings → Backup. Two flows on one screen:
 ///   - **Export**: ask the user for a backup passphrase (≥12 chars), produce
@@ -114,10 +115,13 @@ class _ExportTile extends ConsumerWidget {
     }
 
     final messenger = ScaffoldMessenger.of(context);
+    final scheme = Theme.of(context).colorScheme;
     messenger.showSnackBar(
-      SnackBar(
+      buildFloatingSnack(
+        l10n.backupExportInProgress,
+        scheme,
+        tone: SnackTone.info,
         duration: const Duration(seconds: 2),
-        content: Text(l10n.backupExportInProgress),
       ),
     );
 
@@ -141,11 +145,21 @@ class _ExportTile extends ConsumerWidget {
       unawaited(EphemeralCache.scheduleSharePurge());
     } on ValidationError catch (e) {
       if (!context.mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(_localiseError(l10n, e))));
+      messenger.showSnackBar(
+        buildFloatingSnack(
+          _localiseError(l10n, e),
+          scheme,
+          tone: SnackTone.error,
+        ),
+      );
     } on VaultLockedError {
       if (!context.mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text(l10n.backupVaultMustBeUnlocked)),
+        buildFloatingSnack(
+          l10n.backupVaultMustBeUnlocked,
+          scheme,
+          tone: SnackTone.error,
+        ),
       );
     }
   }
@@ -201,6 +215,7 @@ class _RestoreTile extends ConsumerWidget {
 
     final service = ref.read(backupServiceProvider);
     final messenger = ScaffoldMessenger.of(context);
+    final scheme = Theme.of(context).colorScheme;
 
     BackupPreview preview;
     try {
@@ -209,7 +224,13 @@ class _RestoreTile extends ConsumerWidget {
         backupPassphrase: passphrase,
       );
     } on ValidationError catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(_localiseError(l10n, e))));
+      messenger.showSnackBar(
+        buildFloatingSnack(
+          _localiseError(l10n, e),
+          scheme,
+          tone: SnackTone.error,
+        ),
+      );
       return;
     }
     if (!context.mounted) return;
@@ -260,14 +281,24 @@ class _RestoreTile extends ConsumerWidget {
       // Keystore, noms d'erreurs crypto) — localiseError → errorGeneric
       // pour tout ce qui n'est pas un HealthError mappé.
       messenger.showSnackBar(
-        SnackBar(content: Text(localiseError(context, e))),
+        buildFloatingSnack(
+          localiseError(context, e),
+          scheme,
+          tone: SnackTone.error,
+        ),
       );
       return;
     }
     unawaited(EphemeralCache.purgeFilePicker());
     preview.wipe();
     if (!context.mounted) return;
-    messenger.showSnackBar(SnackBar(content: Text(l10n.backupRestoreDone)));
+    messenger.showSnackBar(
+      buildFloatingSnack(
+        l10n.backupRestoreDone,
+        scheme,
+        tone: SnackTone.success,
+      ),
+    );
     // Force the app back to the lock screen so providers re-init around
     // the restored DB & vault material.
     Navigator.of(context).popUntil((r) => r.isFirst);

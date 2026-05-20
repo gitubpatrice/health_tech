@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/snack_utils.dart';
 import '../legal/legal_screen.dart';
 
 /// Page « À propos » : version (lue dynamiquement via PackageInfo, jamais
@@ -79,8 +80,10 @@ class AboutScreen extends StatelessWidget {
                     Clipboard.setData(
                       ClipboardData(text: l10n.aboutContactValue),
                     );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l10n.aboutCopyContact)),
+                    showFloatingSnack(
+                      context,
+                      l10n.aboutCopyContact,
+                      tone: SnackTone.success,
                     );
                   },
                 ),

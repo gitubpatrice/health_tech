@@ -13,6 +13,7 @@ import '../../data/vault/biometric_channel.dart' show BiometricFailure;
 import '../../l10n/generated/app_localizations.dart';
 import '../../utils/ephemeral_cache.dart';
 import '../../widgets/error_view.dart' show localiseError;
+import '../../widgets/snack_utils.dart';
 import '../about/about_screen.dart';
 import '../backup/backup_screen.dart';
 import '../clients/client_providers.dart';
@@ -177,17 +178,12 @@ class _BiometricTile extends ConsumerWidget {
       }
     }
     if (context.mounted) {
-      final cs = Theme.of(context).colorScheme;
+      final scheme = Theme.of(context).colorScheme;
       messenger.showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: errorMessage != null ? cs.errorContainer : null,
-          content: Text(
-            successMessage ?? errorMessage ?? '',
-            style: TextStyle(
-              color: errorMessage != null ? cs.onErrorContainer : null,
-            ),
-          ),
+        buildFloatingSnack(
+          successMessage ?? errorMessage ?? '',
+          scheme,
+          tone: errorMessage != null ? SnackTone.error : SnackTone.success,
         ),
       );
     }
@@ -293,8 +289,14 @@ class _ExportClientTile extends ConsumerWidget {
     if (selected == null || !context.mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
+    final scheme = Theme.of(context).colorScheme;
     messenger.showSnackBar(
-      const SnackBar(duration: Duration(seconds: 2), content: Text('…')),
+      buildFloatingSnack(
+        '…',
+        scheme,
+        tone: SnackTone.info,
+        duration: const Duration(seconds: 2),
+      ),
     );
     final bytes = await ref
         .read(rgpdExportServiceProvider)

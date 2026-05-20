@@ -61,3 +61,34 @@ SnackBarAction retryAction(BuildContext context, VoidCallback onRetry) {
     onPressed: onRetry,
   );
 }
+
+/// v1.7.2 (M5/C1 audit cohérence) — variante "builder" qui retourne juste
+/// le [SnackBar] sans l'afficher. Utile pour les call sites async qui
+/// **doivent** capturer le [ScaffoldMessengerState] + [ColorScheme] AVANT
+/// le premier `await` (pattern `use_build_context_synchronously`) puis
+/// appeler `messenger.showSnackBar(buildFloatingSnack(...))` après le gap.
+///
+/// Évite la duplication du switch tone côté call site.
+SnackBar buildFloatingSnack(
+  String message,
+  ColorScheme scheme, {
+  SnackTone tone = SnackTone.info,
+  Duration duration = const Duration(seconds: 3),
+  SnackBarAction? action,
+}) {
+  final (bg, fg) = switch (tone) {
+    SnackTone.error => (scheme.errorContainer, scheme.onErrorContainer),
+    SnackTone.success => (
+      scheme.secondaryContainer,
+      scheme.onSecondaryContainer,
+    ),
+    SnackTone.info => (scheme.inverseSurface, scheme.onInverseSurface),
+  };
+  return SnackBar(
+    content: Text(message, style: TextStyle(color: fg)),
+    behavior: SnackBarBehavior.floating,
+    backgroundColor: bg,
+    duration: duration,
+    action: action,
+  );
+}

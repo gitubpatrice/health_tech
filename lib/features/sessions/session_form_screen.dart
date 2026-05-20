@@ -147,15 +147,21 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
     final l10n = AppL10n.of(context);
     if (!_formKey.currentState!.validate()) return;
     if (_clientId == null) {
-      ScaffoldMessenger.of(
+      // v1.7.2 (M5) — snackbar canonique floating + tone erreur.
+      showFloatingSnack(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.sessionFormSelectClient)));
+        l10n.sessionFormSelectClient,
+        tone: SnackTone.error,
+      );
       return;
     }
     if (!_end.isAfter(_start)) {
-      ScaffoldMessenger.of(
+      // v1.7.2 (M5) — snackbar canonique floating + tone erreur.
+      showFloatingSnack(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.sessionFormDurationInvalid)));
+        l10n.sessionFormDurationInvalid,
+        tone: SnackTone.error,
+      );
       return;
     }
 
@@ -201,7 +207,10 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
     final repo = ref.read(sessionRepositoryProvider);
     final bridge = ref.read(systemCalendarBridgeProvider);
     // Capture avant le premier await pour éviter l'accès à context après gap.
+    // v1.7.2 (M5) — capture aussi le ColorScheme pour `buildFloatingSnack`
+    // (snackbars canonique floating + couleurs Material 3 tone).
     final messenger = ScaffoldMessenger.of(context);
+    final scheme = Theme.of(context).colorScheme;
 
     await runWithBusy(
       context: context,
@@ -232,19 +241,30 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
                   ),
                 );
               }
+              // v1.7.2 (M5) — snackbar canonique floating + tone success.
               messenger.showSnackBar(
-                SnackBar(content: Text(l10n.sessionFormSyncedToCalendar)),
+                buildFloatingSnack(
+                  l10n.sessionFormSyncedToCalendar,
+                  scheme,
+                  tone: SnackTone.success,
+                ),
               );
             }
           } on CalendarPermissionDenied {
             messenger.showSnackBar(
-              SnackBar(
-                content: Text(l10n.appointmentFormCalendarPermissionDenied),
+              buildFloatingSnack(
+                l10n.appointmentFormCalendarPermissionDenied,
+                scheme,
+                tone: SnackTone.error,
               ),
             );
           } on CalendarUnavailable {
             messenger.showSnackBar(
-              SnackBar(content: Text(l10n.appointmentFormCalendarMissing)),
+              buildFloatingSnack(
+                l10n.appointmentFormCalendarMissing,
+                scheme,
+                tone: SnackTone.error,
+              ),
             );
           } on Object {
             // Tout autre échec calendrier (PlatformException du
@@ -253,7 +273,11 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
             // croit que la sync a réussi alors que rien n'est dans
             // l'agenda Android.
             messenger.showSnackBar(
-              SnackBar(content: Text(l10n.sessionDetailAddToCalendarFailed)),
+              buildFloatingSnack(
+                l10n.sessionDetailAddToCalendarFailed,
+                scheme,
+                tone: SnackTone.error,
+              ),
             );
           }
         } else if (saved.externalCalendarId != null &&
