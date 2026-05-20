@@ -73,23 +73,15 @@ android {
         }
     }
 
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86_64")
-            // v1.7.1 (H3 audit) — passé à `false` pour aligner Health Tech sur
-            // la doctrine portfolio Files Tech (Pass / Notes / PDF / RFT / SMS
-            // Tech sont tous à `false`). Un APK universel embarque les 3 .so
-            // SQLCipher (~30 Mo cumulés inutiles) et gonfle la release. Les
-            // 3 splits ABI restent générés via `flutter build apk --release
-            // --split-per-abi`. Sur F-Droid (cible future), le build from
-            // source compilera son universel à part — ne pas confondre le
-            // canal F-Droid (universel via build infra) avec le canal GH
-            // Releases (3 splits per-arch).
-            isUniversalApk = false
-        }
-    }
+    // v1.8.1 (hotfix CI) — bloc `splits.abi` retiré. Cause : Flutter 3.41+
+    // pose `ndk.abiFilters` (3 ABIs) automatiquement quand le CI fait
+    // `flutter build apk --debug` (sans `--split-per-abi`), ce qui rentre
+    // en conflit avec `splits.abi.include(...)` configuré ici :
+    //   `Conflicting configuration : 'armeabi-v7a,arm64-v8a,x86_64' in ndk
+    //    abiFilters cannot be present when splits abi filters are set`.
+    // Hotfix portfolio-aligné avec AI Tech `e7a05d4`, PDF Tech `f4f2b35`
+    // et RFT v2.13.1. Pour générer les 3 splits ABI release, passer le
+    // flag explicite : `flutter build apk --release --split-per-abi`.
 
     packaging {
         resources {
