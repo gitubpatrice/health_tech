@@ -32,26 +32,38 @@ void main() {
       final calIdx = values.indexOf(PanicStep.systemCalendarWipe);
       final vaultIdx = values.indexOf(PanicStep.vaultDestroy);
       expect(calIdx, greaterThanOrEqualTo(0));
-      expect(vaultIdx, greaterThan(calIdx),
-          reason: 'systemCalendarWipe DOIT lire la DB déchiffrée avant que '
-              'vault.destroy ne la rende inaccessible. Inverser l\'ordre = '
-              'ne plus pouvoir effacer les events Calendar Android.');
+      expect(
+        vaultIdx,
+        greaterThan(calIdx),
+        reason:
+            'systemCalendarWipe DOIT lire la DB déchiffrée avant que '
+            'vault.destroy ne la rende inaccessible. Inverser l\'ordre = '
+            'ne plus pouvoir effacer les events Calendar Android.',
+      );
     });
 
     test('systemCalendarWipe précède strictement dbDelete', () {
       const values = PanicStep.values;
       final calIdx = values.indexOf(PanicStep.systemCalendarWipe);
       final dbIdx = values.indexOf(PanicStep.dbDelete);
-      expect(dbIdx, greaterThan(calIdx),
-          reason: 'systemCalendarWipe doit lire les externalCalendarId / '
-              'externalCalendarEventId dans la DB avant qu\'elle ne soit '
-              'supprimée.');
+      expect(
+        dbIdx,
+        greaterThan(calIdx),
+        reason:
+            'systemCalendarWipe doit lire les externalCalendarId / '
+            'externalCalendarEventId dans la DB avant qu\'elle ne soit '
+            'supprimée.',
+      );
     });
 
     test('notificationsCancel reste le tout premier step', () {
-      expect(PanicStep.values.first, PanicStep.notificationsCancel,
-          reason: 'Le panic doit toujours couper d\'abord ce qui pourrait '
-              'écrire (notifications planifiées). Inchangé par v1.7.1.');
+      expect(
+        PanicStep.values.first,
+        PanicStep.notificationsCancel,
+        reason:
+            'Le panic doit toujours couper d\'abord ce qui pourrait '
+            'écrire (notifications planifiées). Inchangé par v1.7.1.',
+      );
     });
 
     test('done reste le dernier step', () {
@@ -60,12 +72,15 @@ void main() {
   });
 
   group('H1 v1.7.1 — AttachmentRejectedError image_format_unsupported', () {
-    test('reason "image_format_unsupported" est un AttachmentRejectedError', () {
-      const err = AttachmentRejectedError('image_format_unsupported');
-      // L'API publique du marker error doit exposer la raison textuelle
-      // pour que l'UI puisse mapper vers la string i18n correcte.
-      expect(err.reason, 'image_format_unsupported');
-    });
+    test(
+      'reason "image_format_unsupported" est un AttachmentRejectedError',
+      () {
+        const err = AttachmentRejectedError('image_format_unsupported');
+        // L'API publique du marker error doit exposer la raison textuelle
+        // pour que l'UI puisse mapper vers la string i18n correcte.
+        expect(err.reason, 'image_format_unsupported');
+      },
+    );
 
     test('reason "image_format_unrecognised" toujours supporté', () {
       // Sanity check : on n\'a pas cassé l\'API existante en ajoutant un
